@@ -140,7 +140,7 @@ TABLES.forEach(table => {
         const ql = q.toLowerCase();
         docs = docs.filter(d => JSON.stringify(d).toLowerCase().includes(ql));
       }
-      res.json(docs.map(d => ({ ...d, id: d._id })));
+      res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -148,7 +148,7 @@ TABLES.forEach(table => {
     try {
       const doc = await Model.findById(req.params.id).lean();
       if (!doc) return res.status(404).json({ error: 'غير موجود' });
-      res.json({ ...doc, id: doc._id });
+      res.json({ ...doc, id: String(doc._id), _id: String(doc._id) });
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -210,7 +210,7 @@ app.get('/api/incomplete', auth(), async (req, res) => {
       source: { $exists: true, $ne: null, $ne: '' }, 
       $or: [{ completed: { $exists: false } }, { completed: false }] 
     }).lean();
-      docs.forEach(d => result.push({ ...d, id: d._id, _table: t }));
+      docs.forEach(d => result.push({ ...d, id: String(d._id), _id: String(d._id), _table: t }));
     }));
     result.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json(result);
