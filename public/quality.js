@@ -23,6 +23,9 @@ const QCFG = {
 
 function buildQField(f) {
   const id=`qf-${f.id}`;
+  // textarea يجب أن يكون أولاً قبل أي شرط آخر
+  if(f.t==='textarea')
+    return `<div class="fg full"><label>${f.l}</label><textarea id="${id}" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)" placeholder="اكتب الاسم الأول ثم اضغط Enter للسطر التالي..."></textarea></div>`;
   if(f.t==='date')   return `<div class="fg"><label>${f.l}</label><input id="${id}" type="date"></div>`;
   if(f.t==='number') return `<div class="fg"><label>${f.l}</label><input id="${id}" type="number" min="0"></div>`;
   if(f.t==='college')return `<div class="fg"><label>${f.l}</label><select id="${id}"><option value="">اختر الكلية...</option>${colOpts()}</select></div>`;
@@ -172,7 +175,7 @@ function buildFF(f,pfx='ff') {
   if(f.t==='date'||f.t==='date2') return `<div class="fg"><label>${f.l}</label><input id="${id}" type="date"></div>`;
   if(f.t==='number') return `<div class="fg"><label>${f.l}</label><input id="${id}" type="number"></div>`;
   if(f.t==='select') return `<div class="fg"><label>${f.l}</label><select id="${id}"><option value="">اختر...</option>${selOpts(f.opts||[])}</select></div>`;
-  if(f.t==='textarea') return `<div class="fg full"><label>${f.l}</label><textarea id="${id}" rows="3" style="resize:vertical;white-space:pre-wrap;font-family:inherit" placeholder="اكتب الاسم الأول ثم اضغط Enter للسطر التالي..."></textarea></div>`;
+  // textarea handled in buildQField above
   return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text"></div>`;
 }
 
