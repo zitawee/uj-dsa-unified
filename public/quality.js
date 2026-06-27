@@ -564,7 +564,7 @@ async function editMinutes(id) {
     if(!f) return;
     f.style.display='block';
 
-    // ملء البيانات المرحَّلة
+    // ملء البيانات المرحَّلة من الدعوة تلقائياً
     const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
     setV('ff-committee',   record.committee);
     setV('ff-session_num', record.session_num);
@@ -572,11 +572,9 @@ async function editMinutes(id) {
     setV('ff-time',        record.time);
     setV('ff-nature',      record.nature);
     setV('ff-chair',       record.chair);
-    setV('ff-present',     record.present);
-    setV('ff-absent',      record.absent);
     setV('ff-ameen',       record.ameen);
-    setV('ff-items',       record.items);
-    setV('ff-end_time',    record.end_time);
+    // الحقول التالية تُترك فارغة لإكمالها يدوياً
+    // present, absent, items, end_time
 
     // تخزين ID للتعديل عند الحفظ
     f.dataset.editId = id;
@@ -681,16 +679,15 @@ async function printInvite(id) {
       ? agenda.map((s,i)=>`<div style="padding:3px 0;border-bottom:1px dotted #ddd">${i+1}. ${s}</div>`).join('')
       : '<div style="color:#999">ما يستجد من أعمال</div>'}
   </div>
-  <div class="sg2" style="margin-top:16px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">
     <div class="sbox">
       <div class="st2">أمين السر</div>
-      <div style="font-size:8.5pt;padding:4px">${r.ameen||''}</div>
+      <div style="font-size:8.5pt;padding:4px;min-height:20px">${r.ameen||'...................'}</div>
       <div class="sl2">التوقيع: .................</div>
     </div>
-    <div></div>
     <div class="sbox">
       <div class="st2">مقرر / رئيس اللجنة / المجلس</div>
-      <div style="font-size:8.5pt;padding:4px">${r.head||''}</div>
+      <div style="font-size:8.5pt;padding:4px;min-height:20px">${r.head||'...................'}</div>
       <div class="sl2">التوقيع: .................</div>
     </div>
   </div>`;
