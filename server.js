@@ -189,7 +189,10 @@ app.get('/api/stats', auth(), async (req, res) => {
                 'environment','dialogues','campaigns','expert_acts','community_svc'];
     let incomplete = 0;
     await Promise.all(Q.map(async t => {
-      incomplete += await models[t].countDocuments({ source: { $exists: true }, completed: { $ne: true } });
+      incomplete += await models[t].countDocuments({ 
+      source: { $exists: true, $ne: null, $ne: '' },
+      $or: [{ completed: { $exists: false } }, { completed: false }]
+    });
     }));
     stats.incomplete = incomplete;
     res.json(stats);
@@ -203,7 +206,10 @@ app.get('/api/incomplete', auth(), async (req, res) => {
                 'environment','dialogues','campaigns','expert_acts','community_svc'];
     const result = [];
     await Promise.all(Q.map(async t => {
-      const docs = await models[t].find({ source: { $exists: true }, completed: { $ne: true } }).lean();
+      const docs = await models[t].find({ 
+      source: { $exists: true, $ne: null, $ne: '' }, 
+      $or: [{ completed: { $exists: false } }, { completed: false }] 
+    }).lean();
       docs.forEach(d => result.push({ ...d, id: d._id, _table: t }));
     }));
     result.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
