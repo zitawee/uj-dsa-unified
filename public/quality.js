@@ -53,7 +53,7 @@ async function loadQ(table) {
     <div><div class="pt">${cfg.title}</div><div class="ps">بيانات الجودة — OAAA</div></div>
     <div style="display:flex;gap:6px">
       ${canEdit?`<button class="btn btn-g" onclick="showQForm('${table}')"><i class="ti ti-plus"></i>إضافة سجل</button>`:''}
-      <button class="btn" onclick="window.location='/api/export/${table}'"><i class="ti ti-download"></i>CSV</button>
+      <button class="btn" onclick="exportCSV('${table}')"><i class="ti ti-download"></i>CSV</button>
       <button class="btn btn-b" onclick="printQTable('${table}')"><i class="ti ti-printer"></i>طباعة</button>
     </div>
   </div>
@@ -210,7 +210,7 @@ async function loadForm(table) {
     <div><div class="pt">${cfg.title}</div>${cfg.code?`<div class="pc">${cfg.code}</div>`:''}</div>
     <div style="display:flex;gap:6px">
       ${canEdit?`<button class="btn btn-g" onclick="showFF('${table}')"><i class="ti ti-plus"></i>إضافة جديد</button>`:''}
-      <button class="btn" onclick="window.location='/api/export/${table}'"><i class="ti ti-download"></i>CSV</button>
+      <button class="btn" onclick="exportCSV('${table}')"><i class="ti ti-download"></i>CSV</button>
     </div>
   </div>
   <div id="ff-${table}" style="display:none">

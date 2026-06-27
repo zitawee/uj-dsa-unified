@@ -47,7 +47,7 @@ async function loadStudents() {
     <div><div class="pt"><i class="ti ti-users"></i> الطلبة المسجلون في الأنشطة</div></div>
     <div style="display:flex;gap:6px">
       ${canEdit ? `<button class="btn btn-g" onclick="showStudForm()"><i class="ti ti-plus"></i>تسجيل طالب</button>` : ''}
-      <button class="btn" onclick="window.location='/api/export/students'"><i class="ti ti-download"></i>CSV</button>
+      <button class="btn" onclick="exportCSV('students')"><i class="ti ti-download"></i>CSV</button>
     </div>
   </div>
   <div id="stud-form" style="display:none">
@@ -244,4 +244,51 @@ async function saveAch() {
   showMsg('msg-achievements','تم الحفظ بنجاح ✓');
   document.getElementById('ach-form').style.display='none';
   filterAch(); loadDash();
+}
+
+// تصدير CSV مع Token
+async function exportCSV(table) {
+  const res = await fetch('/api/export/'+table, {
+    headers: { 'Authorization': 'Bearer '+(TOKEN||'') }
+  });
+  if(!res.ok){ alert('يرجى تسجيل الدخول أولاً'); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=table+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// طباعة بطاقة طالب
+function printStudent(r) {
+  if(typeof r === 'string') try { r=JSON.parse(r); } catch(e){ return; }
+  const[bg,fg]=({"المرسم الجامعي":["#EEEDFE","#3C3489"],"الموسيقى":["#E1F5EE","#085041"],"الخط العربي":["#FAEEDA","#633806"],"الحرف اليدوية":["#FAECE7","#712B13"],"المسرح الجامعي":["#FBE8F5","#5D1A4A"],"الأداء الحركي":["#EAF3DE","#27500A"],"المناظرات":["#E8F4FD","#0A4A6B"],"الأنشطة الحزبية":["#FBEAF0","#72243E"]})[r.activity]||["#eee","#555"];
+  const html=`<div class="ph2">
+    <img src="/logo.png" class="plogo">
+    <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+    <div class="pmeta"><div><strong>تاريخ الطباعة:</strong> ${new Date().toLocaleDateString('ar-JO',{year:'numeric',month:'long',day:'numeric'})}</div></div>
+  </div>
+  <div class="ptitle">بطاقة تسجيل طالب في الأنشطة الجامعية</div>
+  <div style="background:${bg};border-radius:8px;padding:10px;text-align:center;margin-bottom:10px">
+    <div style="font-size:14pt;font-weight:700;color:${fg}">${r.activity||''}</div>
+    <div style="font-size:9pt;color:${fg};margin-top:2px">النشاط الجامعي</div>
+  </div>
+  <div class="fg2">
+    <div class="fr"><span class="fl">الرقم الجامعي:</span><span class="fv">${r.student_id||''}</span></div>
+    <div class="fr"><span class="fl">الاسم الكامل:</span><span class="fv">${r.name||''}</span></div>
+    <div class="fr"><span class="fl">الجنس:</span><span class="fv">${r.gender||''}</span></div>
+    <div class="fr"><span class="fl">الجنسية:</span><span class="fv">${r.nationality||''}</span></div>
+    <div class="fr"><span class="fl">الكلية:</span><span class="fv">${r.college||''}</span></div>
+    <div class="fr"><span class="fl">التخصص:</span><span class="fv">${r.major||''}</span></div>
+    <div class="fr"><span class="fl">المستوى الدراسي:</span><span class="fv">${r.study_level||''}</span></div>
+    <div class="fr"><span class="fl">سنة القبول:</span><span class="fv">${r.admit_year||''}</span></div>
+    <div class="fr"><span class="fl">نوع القبول:</span><span class="fv">${r.admit_type||''}</span></div>
+    <div class="fr"><span class="fl">رقم الهاتف:</span><span class="fv">${r.phone||''}</span></div>
+    <div class="fr"><span class="fl">تاريخ الالتحاق:</span><span class="fv">${r.join_date||''}</span></div>
+  </div>
+  <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="sbox"><div class="st2">توقيع الطالب</div><div class="sl2">التوقيع: .................</div></div>
+    <div class="sbox"><div class="st2">توقيع المسؤول</div><div class="sl2">التوقيع: .................</div></div>
+  </div>`;
+  openPrint(html);
 }
