@@ -82,10 +82,10 @@ async function loadQData(table) {
     ${cfg.cols.map(c=>`<td>${r[c]||'-'}</td>`).join('')}
     <td style="font-size:10px">${r.source?`<span class="st st-p" style="font-size:10px">مرحَّل</span>`:'-'}</td>
     ${canEdit?`<td><div class="rb">
-      ${r.source&&!r.completed?`<button class="btn btn-sm btn-g" onclick="markCompleteQ('${table}','${r._id||r.id}')">✅ مكتمل</button>`:''}
-      <button class="btn btn-sm btn-b" onclick="editQRow('${table}','${r._id||r.id}')">✏️ تعديل</button>
-      <button class="btn btn-sm btn-b" onclick="printQRow('${table}','${r._id||r.id}')">🖨️ طباعة</button>
-      <button class="btn btn-r" onclick="delRec('${table}','${r._id||r.id}',()=>loadQData('${table}'))">🗑</button>
+      ${r.source&&!r.completed?`<button class="btn btn-sm btn-g" onclick="markCompleteQ('${table}','${r.id}')">✅ مكتمل</button>`:''}
+      <button class="btn btn-sm btn-b" onclick="editQRow('${table}','${r.id}')">✏️ تعديل</button>
+      <button class="btn btn-sm btn-b" onclick="printQRow('${table}','${r.id}')">🖨️ طباعة</button>
+      <button class="btn btn-r" onclick="delRec('${table}','${r.id}',()=>loadQData('${table}'))">🗑</button>
     </div></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3}">لا توجد سجلات</td></tr>`;
   const c=document.getElementById('c-'+table); if(c) c.textContent=rows?.length||0;
@@ -209,14 +209,14 @@ async function loadFData(table) {
     <td>${i+1}</td>${cfg.cols.map(c=>`<td>${r[c]||'-'}</td>`).join('')}
     ${r.source&&!r.completed?`<td><span class="st st-p" style="font-size:10px">غير مكتمل</span></td>`:(r.source?`<td><span class="st st-a" style="font-size:10px">مكتمل</span></td>`:'<td></td>')}
     ${canEdit?`<td><div class="rb">
-      ${r.source&&!r.completed?`<button class="btn btn-sm btn-g" onclick="markFComplete('${table}','${r._id||r.id}')">✅ مكتمل</button>`:''}
-      ${table==='announcements'?`<button class="btn btn-sm btn-b" onclick="printAnnouncement('${r._id||r.id}')">🖨️ طباعة</button>`:''}
-      ${table==='hall_bookings'?`<button class="btn btn-sm btn-b" onclick="printHallBooking('${r._id||r.id}')">🖨️ طباعة</button>`:''}
-      ${table==='committees'?`<button class="btn btn-sm btn-b" onclick="printCommittee('${r._id||r.id}')">🖨️ طباعة</button>`:''}
-      ${table==='meeting_invites'?`<button class="btn btn-sm btn-b" onclick="printInvite('${r._id||r.id}')">🖨️ طباعة</button>`:''}
-      ${table==='meeting_minutes'?`<button class="btn btn-sm btn-b" onclick="printMinutes('${r._id||r.id}')">🖨️ طباعة</button>`:''}
-      ${table==='meeting_minutes'&&(r.source&&!r.completed)?`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editMinutes('${r._id||r.id}')">✏️ تعديل</button>`:''}
-      <button class="btn btn-r" onclick="delRec('${table}','${r._id||r.id}',()=>loadFData('${table}'))">🗑</button>
+      ${r.source&&!r.completed?`<button class="btn btn-sm btn-g" onclick="markFComplete('${table}','${r.id}')">✅ مكتمل</button>`:''}
+      ${table==='announcements'?`<button class="btn btn-sm btn-b" onclick="printAnnouncement('${r.id}')">🖨️ طباعة</button>`:''}
+      ${table==='hall_bookings'?`<button class="btn btn-sm btn-b" onclick="printHallBooking('${r.id}')">🖨️ طباعة</button>`:''}
+      ${table==='committees'?`<button class="btn btn-sm btn-b" onclick="printCommittee('${r.id}')">🖨️ طباعة</button>`:''}
+      ${table==='meeting_invites'?`<button class="btn btn-sm btn-b" onclick="printInvite('${r.id}')">🖨️ طباعة</button>`:''}
+      ${table==='meeting_minutes'?`<button class="btn btn-sm btn-b" onclick="printMinutes('${r.id}')">🖨️ طباعة</button>`:''}
+      ${table==='meeting_minutes'&&(r.source&&!r.completed)?`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editMinutes('${r.id}')">✏️ تعديل</button>`:''}
+      <button class="btn btn-r" onclick="delRec('${table}','${r.id}',()=>loadFData('${table}'))">🗑</button>
     </div></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3}">لا توجد سجلات</td></tr>`;
   const c=document.getElementById('c-'+table); if(c)c.textContent=rows?.length||0;
@@ -418,8 +418,8 @@ async function filterPart() {
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
     <td>${r.organizer||'-'}</td><td>${(r.students||[]).length||0}</td>
     <td><div class="rb">
-      <button class="btn btn-sm btn-b" onclick="printPart('${r._id||r.id}')">🖨️ طباعة</button>
-      ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r._id||r.id}',filterPart)">🗑</button>`:''}
+      <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
+      ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
   </tr>`).join('')||`<tr class="erow"><td colspan="6">لا توجد نماذج</td></tr>`;
   const cnt=document.getElementById('c-participants'); if(cnt) cnt.textContent=rows?.length||0;

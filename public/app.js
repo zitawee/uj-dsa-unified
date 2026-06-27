@@ -230,7 +230,8 @@ async function loadDash() {
   const stats = await api('/api/stats');
   Object.keys(stats).forEach(k=>{ const el=document.getElementById('c-'+k); if(el) el.textContent=stats[k]||0; });
   document.getElementById('c-all').textContent = Object.values(stats).filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
-  document.getElementById('c-inc').textContent = stats.incomplete||0;
+  const incEl=document.getElementById('c-inc');
+  if(incEl) incEl.textContent = stats.incomplete||0;
 
   const pending = await api('/api/activity_requests?status=pending');
   const studs = await api('/api/students');
@@ -250,8 +251,8 @@ async function loadDash() {
     <td style="font-size:11px;color:var(--g)">${QTBL_LABELS[r.quality_table]||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
     <td><div class="rb">
-      ${ME?.role==='admin'?`<button class="btn btn-sm btn-g" onclick="openApprove('${r._id||r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r._id||r.id}')">❌ رفض</button>`:''}
-      <button class="btn btn-sm btn-b" onclick="printAR('${r._id||r.id}')">🖨️</button>
+      ${ME?.role==='admin'?`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r.id}')">❌ رفض</button>`:''}
+      <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️</button>
     </div></td>
   </tr>`).join('')}</tbody></table></div></div>` : ''}
   <div class="card"><div class="ct"><i class="ti ti-chart-bar"></i>توزيع الطلبة على الأنشطة الجامعية</div>

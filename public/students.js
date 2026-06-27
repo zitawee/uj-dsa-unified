@@ -16,17 +16,20 @@ async function loadIncomplete() {
     <td>${r.date||'-'}</td>
     <td style="font-size:10px;color:var(--g)">${r.source||'-'}</td>
     <td><div class="rb">
-      <button class="btn btn-sm btn-b" onclick="goEditQ('${r._table}',${r.id})">✏️ تعديل</button>
-      <button class="btn btn-sm btn-g" onclick="markComplete('${r._table}',${r.id})">✅ مكتمل</button>
+      <button class="btn btn-sm btn-b" onclick="goEditQ('${r._table}','${r.id}')">✏️ تعديل</button>
+      <button class="btn btn-sm btn-g" onclick="markComplete('${r._table}','${r.id}')">✅ مكتمل</button>
     </div></td>
   </tr>`).join('')}</tbody></table></div>`}`;
 }
 
 async function markComplete(table, id) {
-  const r = await api(`/api/${table}/${id}`);
-  await api(`/api/${table}/${id}`, 'PUT', {...r, completed:true});
+  const r = await api('/api/'+table+'/'+id);
+  await api('/api/'+table+'/'+id, 'PUT', {...r, completed:true});
   loadIncomplete();
-  const el=document.getElementById('c-inc'); if(el) el.textContent=Math.max(0,(parseInt(el.textContent)||1)-1);
+  // تحديث العداد من API
+  const stats = await api('/api/stats');
+  const el=document.getElementById('c-inc');
+  if(el) el.textContent=stats.incomplete||0;
 }
 
 async function goEditQ(table, id) {
@@ -106,7 +109,7 @@ async function filterStudents() {
     <td style="font-size:11px">${r.college||'-'}</td><td>${r.major||'-'}</td>
     <td>${r.study_level||'-'}</td><td>${r.admit_type||'-'}</td>
     <td>${badge(r.activity||'')}</td><td>${r.join_date||'-'}</td><td>${r.phone||'-'}</td>
-    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('students','${r._id||r.id}',filterStudents)">🗑</button></td>`:''}
+    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('students','${r.id}',filterStudents)">🗑</button></td>`:''}
   </tr>`).join('') || `<tr class="erow"><td colspan="13">لا توجد نتائج</td></tr>`;
   const cnt = document.getElementById('c-students'); if(cnt) cnt.textContent=rows?.length||0;
 }
@@ -192,7 +195,7 @@ async function filterAch() {
     <td>${r.work||'-'}</td><td>${r.ach_date||'-'}</td><td>${badge(r.activity||'')}</td>
     <td>${r.honor==='نعم'?'<span class="st st-a">✅ نعم</span>':'-'}</td>
     <td style="font-size:11px">${r.honor_reason||'-'}</td>
-    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('achievements','${r._id||r.id}',filterAch)">🗑</button></td>`:''}
+    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('achievements','${r.id}',filterAch)">🗑</button></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="9">لا توجد إنجازات</td></tr>`;
   const cnt=document.getElementById('c-achievements'); if(cnt) cnt.textContent=filtered.length;
 }
