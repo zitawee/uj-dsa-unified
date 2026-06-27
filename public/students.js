@@ -144,7 +144,7 @@ async function loadAchievements() {
       <div id="msg-achievements" class="msg"></div>
       <div class="g2">
         <div class="fg"><label>الرقم الجامعي *</label><input id="fa-sid" type="text" onblur="autoFill()"></div>
-        <div class="fg"><label>اسم الطالب</label><input id="fa-sname" type="text" readonly></div>
+        <div class="fg"><label>اسم الطالب *</label><input id="fa-sname" type="text" placeholder="يُملأ تلقائياً أو اكتب الاسم يدوياً"></div>
         <div class="fg full"><label>الإنجاز / المشاركة *</label><input id="fa-work" type="text"></div>
         <div class="fg"><label>تاريخ الإنجاز *</label><input id="fa-date" type="date"></div>
         <div class="fg"><label>النشاط المرتبط</label><select id="fa-act"><option value="">اختر...</option>${actOpts()}</select></div>
@@ -171,7 +171,14 @@ async function loadAchievements() {
 
 function showAchForm() {
   const f=document.getElementById('ach-form'); f.style.display='block';
-  f.querySelectorAll('input:not([readonly]):not([type=file]),select').forEach(el=>el.value='');
+  f.querySelectorAll('input:not([type=file]),select').forEach(el=>el.value='');
+  // إعادة تنسيق حقل الاسم
+  const nameEl=document.getElementById('fa-sname');
+  if(nameEl){
+    nameEl.style.background='';
+    nameEl.style.borderColor='';
+    nameEl.placeholder='يُملأ تلقائياً أو اكتب الاسم يدوياً';
+  }
   document.getElementById('fa-date').valueAsDate=new Date();
   f.scrollIntoView({behavior:'smooth'});
 }
@@ -180,7 +187,26 @@ async function autoFill() {
   const sid=g('fa-sid'); if(!sid) return;
   const rows=await api('/api/students?q='+encodeURIComponent(sid));
   const r=(rows||[]).find(s=>s.student_id===sid)||(rows||[])[0];
-  if(r){sg('fa-sname',r.name);if(!g('fa-act'))sg('fa-act',r.activity);}
+  const nameEl=document.getElementById('fa-sname');
+  if(r){
+    // طالب موجود — ملء تلقائي
+    sg('fa-sname',r.name);
+    if(!g('fa-act'))sg('fa-act',r.activity);
+    if(nameEl){
+      nameEl.style.background='#F0FAF4';
+      nameEl.style.borderColor='#1B6B3A';
+      nameEl.placeholder='تم جلب الاسم تلقائياً';
+    }
+  } else {
+    // طالب غير موجود — السماح بالكتابة اليدوية
+    if(nameEl){
+      nameEl.value='';
+      nameEl.style.background='#fff';
+      nameEl.style.borderColor='#D4A017';
+      nameEl.placeholder='الطالب غير موجود في السجل — اكتب الاسم يدوياً';
+      nameEl.focus();
+    }
+  }
 }
 
 async function filterAch() {
@@ -202,8 +228,10 @@ async function filterAch() {
 
 async function saveAch() {
   const honor=g('fa-honor');
-  const data={student_id:g('fa-sid'),student_name:g('fa-sname'),work:g('fa-work'),ach_date:g('fa-date'),activity:g('fa-act'),honor,honor_reason:g('fa-hreason')};
-  if(!data.student_id||!data.work||!data.ach_date){showMsg('msg-achievements','يرجى ملء الحقول الإلزامية',true);return;}
+  const data={student_id:g('fa-sid'),student_name:g('fa-sname').trim()||g('fa-sname'),work:g('fa-work'),ach_date:g('fa-date'),activity:g('fa-act'),honor,honor_reason:g('fa-hreason')};
+  if(!data.student_id){showMsg('msg-achievements','يرجى إدخال الرقم الجامعي',true);return;}
+  if(!data.student_name){showMsg('msg-achievements','يرجى إدخال اسم الطالب',true);return;}
+  if(!data.work||!data.ach_date){showMsg('msg-achievements','يرجى ملء الحقول الإلزامية',true);return;}
   const r=await api('/api/achievements','POST',data);
   if(r.error){showMsg('msg-achievements',r.error,true);return;}
   // ترحيل تلقائي لجدول تكريم الطلبة إذا كان مكرَّماً
