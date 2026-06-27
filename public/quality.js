@@ -17,7 +17,7 @@ const QCFG = {
   initiatives:{title:'مبادرات الإبداع والابتكار والريادة',cols:['name','type','date','participants_count','attendees_count','rating'],heads:['المبادرة','النوع','التاريخ','المشاركون','الحاضرون','التقييم'],fields:[{l:'اسم المبادرة*',id:'name',t:'text'},{l:'نوع المبادرة',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة المشاركين',id:'participants_count',t:'number'},{l:'عدد الطلبة الحاضرين',id:'attendees_count',t:'number'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   external_acts:{title:'مشاركة الطلبة في الأنشطة الإبداعية الخارجية',cols:['name','type','date','students_count','external_party','rating'],heads:['النشاط','النوع','التاريخ','الطلبة','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'نوع النشاط',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة الحاضرين',id:'students_count',t:'number'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   competitions:{title:'الأنشطة التي تعد الطلبة للمنافسات المحلية والدولية',cols:['name','type','date','students_count','trainer'],heads:['النشاط','النوع','التاريخ','الطلبة','المدرب'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'نوع النشاط',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'اسم المدرب',id:'trainer',t:'text'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'}]},
-  student_honors:{title:'تكريم الطلبة لإنجازاتهم وإبداعاتهم',cols:['student_name','reason','date','source'],heads:['اسم الطالب','سبب التكريم','تاريخ التكريم','المصدر'],fields:[{l:'اسم الطالب*',id:'student_name',t:'text'},{l:'سبب التكريم*',id:'reason',t:'text'},{l:'تاريخ التكريم*',id:'date',t:'date'},{l:'ملاحظات',id:'notes',t:'text'}]},
+  student_honors:{title:'تكريم الطلبة لإنجازاتهم وإبداعاتهم',cols:['student_id','student_name','reason','date'],heads:['الرقم الجامعي','اسم الطالب','سبب التكريم','تاريخ التكريم'],fields:[{l:'الرقم الجامعي',id:'student_id',t:'text'},{l:'اسم الطالب*',id:'student_name',t:'text'},{l:'سبب التكريم*',id:'reason',t:'text'},{l:'تاريخ التكريم*',id:'date',t:'date'},{l:'ملاحظات',id:'notes',t:'text'}]},
   staff_committees:{title:'مشاركة الموظفين في اللجان المجتمعية',cols:['staff_name','workplace','committee_name','committee_type','date'],heads:['الموظف','مكان العمل','اللجنة','النوع','التاريخ'],fields:[{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'جهة العمل',id:'workplace',t:'text'},{l:'الصفة الوظيفية',id:'job_title',t:'text'},{l:'اسم اللجنة*',id:'committee_name',t:'text'},{l:'نوع اللجنة',id:'committee_type',t:'select',opts:['وطنية','دولية']},{l:'تاريخ الاشتراك',id:'date',t:'date'}]},
   staff_training:{title:'خطة التدريب المتكاملة للموظفين',cols:['staff_name','workplace','course_name','date','reference_num'],heads:['الموظف','مكان العمل','الدورة','التاريخ','رقم الكتاب'],fields:[{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'مكان العمل',id:'workplace',t:'text'},{l:'الرقم الوظيفي',id:'employee_id',t:'text'},{l:'اسم الدورة*',id:'course_name',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'رقم الكتاب',id:'reference_num',t:'text'}]},
   staff_innovation:{title:'مشاركة الموظفين في أنشطة الإبداع والابتكار',cols:['staff_name','job_title','activity_name','date','rating'],heads:['الموظف','الوظيفة','النشاط','التاريخ','التقييم'],fields:[{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'الوظيفة',id:'job_title',t:'text'},{l:'مكان العمل',id:'workplace',t:'text'},{l:'اسم النشاط*',id:'activity_name',t:'text'},{l:'نوع النشاط',id:'activity_type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'الجهة المشرفة',id:'supervising_authority',t:'text'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
@@ -31,8 +31,11 @@ const QCFG = {
   campaigns:{title:'الحملات التوعوية والتثقيفية',cols:['title','date','external_party','students_count'],heads:['العنوان','التاريخ','الجهة الخارجية','الطلبة'],fields:[{l:'عنوان الحملة*',id:'title',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'الجهة الخارجية',id:'external_party',t:'text'},{l:'أسماء المتحدثين',id:'speakers',t:'text'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'}]},
 };
 
-function buildQField(f) {
+function buildQField(f, table='') {
   const id=`qf-${f.id}`;
+  // حقل الرقم الجامعي في تكريم الطلبة — مع autoFill
+  if(f.id==='student_id' && table==='student_honors')
+    return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text" onblur="autoFillHonor()" placeholder="أدخل الرقم الجامعي..."></div>`;
   // textarea يجب أن يكون أولاً قبل أي شرط آخر
   if(f.t==='textarea')
     return `<div class="fg full"><label>${f.l}</label><textarea id="${id}" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)" ></textarea></div>`;
@@ -43,6 +46,24 @@ function buildQField(f) {
   if(f.t==='yesno')  return `<div class="fg"><label>${f.l}</label><select id="${id}"><option value="">اختر...</option><option>نعم</option><option>لا</option></select></div>`;
   if(f.t==='select') return `<div class="fg"><label>${f.l}</label><select id="${id}"><option value="">اختر...</option>${selOpts(f.opts||[])}</select></div>`;
   return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text"></div>`;
+}
+
+
+// جلب اسم الطالب تلقائياً في نموذج تكريم الطلبة
+async function autoFillHonor() {
+  const sid = document.getElementById('qf-student_id')?.value?.trim();
+  if(!sid) return;
+  const rows = await api('/api/students?q='+encodeURIComponent(sid));
+  const r = (rows||[]).find(s=>s.student_id===sid)||(rows||[])[0];
+  const nameEl = document.getElementById('qf-student_name');
+  if(r && nameEl){
+    nameEl.value = r.name;
+    nameEl.style.background = '#F0FAF4';
+    nameEl.style.borderColor = '#1B6B3A';
+  } else if(nameEl){
+    nameEl.style.background = '#fff';
+    nameEl.style.borderColor = '#D4A017';
+  }
 }
 
 async function loadQ(table) {
@@ -61,7 +82,7 @@ async function loadQ(table) {
     <div class="card">
       <div class="ct"><i class="ti ti-plus"></i>إضافة سجل جديد</div>
       <div id="msg-${table}" class="msg"></div>
-      <div class="g2">${cfg.fields.map(buildQField).join('')}</div>
+      <div class="g2">${cfg.fields.map(f=>buildQField(f,table)).join('')}</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
         <button class="btn" onclick="document.getElementById('qform-${table}').style.display='none'">إلغاء</button>
         <button class="btn btn-g" onclick="saveQ('${table}')">✔ حفظ</button>

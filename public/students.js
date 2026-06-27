@@ -237,8 +237,12 @@ async function saveAch() {
   // ترحيل تلقائي لجدول تكريم الطلبة إذا كان مكرَّماً
   if(honor==='نعم'&&data.student_name){
     await api('/api/student_honors','POST',{
-      student_name:data.student_name,reason:data.honor_reason||data.work,
-      date:data.ach_date,notes:'مرحَّل تلقائياً من الإنجازات',source:'achievements'
+      student_id:data.student_id,
+      student_name:data.student_name,
+      reason:data.honor_reason||data.work,
+      date:data.ach_date,
+      notes:'مرحَّل تلقائياً من الإنجازات',
+      source:'achievements'
     });
   }
   showMsg('msg-achievements','تم الحفظ بنجاح ✓');
