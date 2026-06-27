@@ -1,3 +1,13 @@
+
+// تحويل نص متعدد الأسطر إلى HTML مرقّم
+function fmtVal(val) {
+  if(!val && val !== 0) return '-';
+  const str = String(val);
+  if(str.includes('\n')) {
+    return str.split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('<br>');
+  }
+  return str;
+}
 // ══════════════════════════════════════════
 // جداول الجودة
 // ══════════════════════════════════════════
@@ -511,7 +521,8 @@ async function printQRow(table, id) {
     const val = record[f.id];
     if(!val && val!==0) return '';
     const label = f.l.replace(/\*/g,'').trim();
-    return `<div class="fr"><span class="fl">${label}:</span><span class="fv">${val}</span></div>`;
+    const display = String(val).includes('\n') ? String(val).split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('<br>') : val;
+    return `<div class="fr"><span class="fl">${label}:</span><span class="fv" style="white-space:normal">${display}</span></div>`;
   }).filter(Boolean).join('');
 
   const html = `<div class="ph2">

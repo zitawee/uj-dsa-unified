@@ -1,3 +1,13 @@
+
+// تحويل نص متعدد الأسطر إلى HTML (كل سطر منفصل)
+function fmtVal(val) {
+  if(!val && val !== 0) return '-';
+  const str = String(val);
+  if(str.includes('\n')) {
+    return str.split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('<br>');
+  }
+  return str;
+}
 // ══════════════════════════════════════════
 // الطباعة
 // ══════════════════════════════════════════
@@ -143,7 +153,7 @@ async function printQTable(table) {
     <thead><tr>${allHeads.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>${rows.map((r,i)=>`<tr>
       <td>${i+1}</td>
-      ${allFields.map(f=>`<td>${r[f.id]!==undefined&&r[f.id]!==''?r[f.id]:'-'}</td>`).join('')}
+      ${allFields.map(f=>`<td style='vertical-align:top'>${fmtVal(r[f.id])}</td>`).join('')}
       <td style="font-size:7pt">${r.source?'مرحَّل':'يدوي'}</td>
     </tr>`).join('')}</tbody>
   </table>
