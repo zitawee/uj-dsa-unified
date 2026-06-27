@@ -12,7 +12,7 @@ function fmtVal(val) {
 // جداول الجودة
 // ══════════════════════════════════════════
 const QCFG = {
-  governance:{title:'مشاركة الطلبة في مجالس الحاكمية واللجان',cols:['committee','authority','student_name','college','level','meetings_count','date'],heads:['اللجنة','الجهة','الطالب','الكلية','المستوى','الاجتماعات','التاريخ'],fields:[{l:'اسم اللجنة*',id:'committee',t:'text'},{l:'الجهة',id:'authority',t:'text'},{l:'اسم الطالب*',id:'student_name',t:'text'},{l:'الكلية',id:'college',t:'college'},{l:'التخصص',id:'major',t:'text'},{l:'المستوى الدراسي',id:'level',t:'year'},{l:'عدد الاجتماعات',id:'meetings_count',t:'number'},{l:'التاريخ*',id:'date',t:'date'}]},
+  governance:{title:'مشاركة الطلبة في مجالس الحاكمية واللجان',cols:['committee','authority','student_id','student_name','college','level','meetings_count','date'],heads:['اللجنة','الجهة','الرقم الجامعي','الطالب','الكلية','المستوى','الاجتماعات','التاريخ'],fields:[{l:'اسم اللجنة*',id:'committee',t:'text'},{l:'الجهة',id:'authority',t:'text'},{l:'الرقم الجامعي',id:'student_id',t:'text'},{l:'اسم الطالب*',id:'student_name',t:'text'},{l:'الكلية',id:'college',t:'college'},{l:'التخصص',id:'major',t:'text'},{l:'المستوى الدراسي',id:'level',t:'year'},{l:'عدد الاجتماعات',id:'meetings_count',t:'number'},{l:'التاريخ*',id:'date',t:'date'}]},
   workshops:{title:'الدورات وورش العمل والمحاضرات والبرامج',cols:['name','authority','date','students_count','external_party','rating'],heads:['النشاط','الجهة','التاريخ','الطلبة','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'الجهة المنظِّمة',id:'authority',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة الحاضرين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   initiatives:{title:'مبادرات الإبداع والابتكار والريادة',cols:['name','type','date','participants_count','attendees_count','rating'],heads:['المبادرة','النوع','التاريخ','المشاركون','الحاضرون','التقييم'],fields:[{l:'اسم المبادرة*',id:'name',t:'text'},{l:'نوع المبادرة',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة المشاركين',id:'participants_count',t:'number'},{l:'عدد الطلبة الحاضرين',id:'attendees_count',t:'number'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   external_acts:{title:'مشاركة الطلبة في الأنشطة الإبداعية الخارجية',cols:['name','type','date','students_count','external_party','rating'],heads:['النشاط','النوع','التاريخ','الطلبة','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'نوع النشاط',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة الحاضرين',id:'students_count',t:'number'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
@@ -33,9 +33,9 @@ const QCFG = {
 
 function buildQField(f, table='') {
   const id=`qf-${f.id}`;
-  // حقل الرقم الجامعي في تكريم الطلبة — مع autoFill
-  if(f.id==='student_id' && table==='student_honors')
-    return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text" onblur="autoFillHonor()" placeholder="أدخل الرقم الجامعي..."></div>`;
+  // حقل الرقم الجامعي في جداول الطلبة — مع autoFill
+  if(f.id==='student_id' && (table==='student_honors'||table==='governance'))
+    return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text" onblur="autoFillHonor()" placeholder="أدخل الرقم الجامعي لجلب البيانات تلقائياً..."></div>`;
   // textarea يجب أن يكون أولاً قبل أي شرط آخر
   if(f.t==='textarea')
     return `<div class="fg full"><label>${f.l}</label><textarea id="${id}" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)" ></textarea></div>`;
@@ -49,20 +49,26 @@ function buildQField(f, table='') {
 }
 
 
-// جلب اسم الطالب تلقائياً في نموذج تكريم الطلبة
+// جلب اسم الطالب تلقائياً في نماذج الجودة
 async function autoFillHonor() {
   const sid = document.getElementById('qf-student_id')?.value?.trim();
   if(!sid) return;
   const rows = await api('/api/students?q='+encodeURIComponent(sid));
   const r = (rows||[]).find(s=>s.student_id===sid)||(rows||[])[0];
   const nameEl = document.getElementById('qf-student_name');
-  if(r && nameEl){
-    nameEl.value = r.name;
-    nameEl.style.background = '#F0FAF4';
-    nameEl.style.borderColor = '#1B6B3A';
+  const colEl  = document.getElementById('qf-college');
+  const majEl  = document.getElementById('qf-major');
+  const levEl  = document.getElementById('qf-level');
+  if(r){
+    if(nameEl){ nameEl.value=r.name; nameEl.style.background='#F0FAF4'; nameEl.style.borderColor='#1B6B3A'; }
+    if(colEl && r.college)  colEl.value = r.college;
+    if(majEl && r.major)    majEl.value = r.major;
+    if(levEl && r.study_level) levEl.value = r.study_level;
   } else if(nameEl){
     nameEl.style.background = '#fff';
     nameEl.style.borderColor = '#D4A017';
+    nameEl.placeholder = 'الطالب غير موجود — اكتب الاسم يدوياً';
+    nameEl.focus();
   }
 }
 
