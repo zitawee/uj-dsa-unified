@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نظام عمادة شؤون الطلبة — الجامعة الأردنية</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--g:#1B6B3A;--g2:#145229;--bg:#F3F4F6;--card:#fff;--text:#1A1A1A;--muted:#6B7280;--border:#E5E7EB;--r:8px;--rl:12px;--blue:#1B5E9A}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+#login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1B6B3A,#0D3D20)}
+.lbox{background:#fff;border-radius:16px;padding:36px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+.lbox img{width:80px;margin-bottom:10px}
+.lbox h1{font-size:16px;font-weight:700;color:var(--g);margin-bottom:2px}
+.lbox .sub{font-size:12px;color:var(--muted);margin-bottom:22px}
+.lerr{color:#791F1F;background:#FCEBEB;border:1px solid #F09595;border-radius:var(--r);padding:8px 12px;font-size:13px;margin-bottom:10px;display:none}
+.lg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;text-align:right}
+.lg label{font-size:12px;color:var(--muted);font-weight:600}
+.lg input{padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;width:100%}
+.lg input:focus{outline:none;border-color:var(--g)}
+.lbtn{width:100%;padding:10px;background:var(--g);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px}
+.lbtn:hover{background:var(--g2)}
+#app{display:none}
+.hdr{background:var(--g);padding:9px 20px;display:flex;justify-content:space-between;align-items:center}
+.hdr-title{color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.hdr-left{display:flex;align-items:center;gap:8px}
+.ubadge{background:rgba(255,255,255,.15);color:#fff;padding:4px 12px;border-radius:20px;font-size:12px;display:flex;align-items:center;gap:5px}
+.rtag{font-size:10px;padding:1px 6px;border-radius:20px;font-weight:600}
+.r-admin{background:#FAEEDA;color:#633806}
+.r-editor{background:#EAF3DE;color:#27500A}
+.r-viewer{background:#E1F5EE;color:#085041}
+.logout{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;padding:4px 12px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:inherit}
+.layout{display:flex;min-height:calc(100vh - 50px)}
+.sb{width:235px;background:#fff;border-left:1px solid var(--border);overflow-y:auto;flex-shrink:0}
+.sbt{font-size:10px;font-weight:700;color:var(--muted);padding:8px 14px 3px;letter-spacing:.5px;text-transform:uppercase;margin-top:4px}
+.ni{display:flex;align-items:center;gap:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;color:var(--text);border-right:3px solid transparent;transition:.12s;line-height:1.3}
+.ni:hover{background:#F0FAF4;color:var(--g)}
+.ni.active{background:#F0FAF4;color:var(--g);border-right-color:var(--g);font-weight:600}
+.ni .cnt{margin-right:auto;background:#E5E7EB;color:var(--muted);font-size:10px;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.ni.active .cnt{background:#C6E8D3;color:var(--g)}
+.ni .inc{background:#FAEEDA;color:#633806}
+.content{flex:1;padding:16px;overflow-y:auto}
+.panel{display:none}.panel.active{display:block}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.pt{font-size:16px;font-weight:600}.ps{font-size:11px;color:var(--muted);margin-top:2px}
+.pc{font-size:10px;color:#aaa;margin-top:1px;direction:ltr;text-align:right}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:15px 18px;margin-bottom:12px}
+.ct{font-size:13px;font-weight:600;color:var(--g);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.full{grid-column:1/-1}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:11.5px;color:var(--muted);font-weight:600}
+.fg input,.fg select,.fg textarea{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--text);background:#fff;width:100%}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--g)}
+.fg textarea{resize:vertical;min-height:52px}
+.fg input[readonly]{background:#F9FAFB;color:var(--muted)}
+.btn{padding:6px 14px;border-radius:var(--r);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:#fff;color:var(--text);transition:.12s;display:inline-flex;align-items:center;gap:4px}
+.btn:hover{background:#F9FAFB}
+.btn-g{background:var(--g);color:#fff;border-color:var(--g)}.btn-g:hover{background:var(--g2)}
+.btn-b{background:var(--blue);color:#fff;border-color:var(--blue)}.btn-b:hover{background:#14487A}
+.btn-r{background:transparent;color:#A32D2D;border-color:#F09595;font-size:11px;padding:3px 8px}
+.btn-r:hover{background:#FCEBEB}
+.btn-sm{padding:4px 10px;font-size:11.5px}
+.msg{padding:8px 12px;border-radius:var(--r);font-size:13px;margin-bottom:8px;display:none}
+.msg.ok{background:#EAF3DE;color:#27500A;border:1px solid #97C459}
+.msg.err{background:#FCEBEB;color:#791F1F;border:1px solid #F09595}
+.msg.warn{background:#FAEEDA;color:#633806;border:1px solid #D4A017}
+.st{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.st-p{background:#FAEEDA;color:#633806}.st-a{background:#EAF3DE;color:#27500A}.st-r{background:#FCEBEB;color:#791F1F}
+.tw{overflow-x:auto;border:1px solid var(--border);border-radius:var(--rl);margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#F0FAF4;padding:7px 9px;text-align:right;font-size:11px;font-weight:600;color:var(--g);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:6px 9px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FAFAFA}
+.rb{display:flex;gap:3px;white-space:nowrap}
+.erow td{text-align:center;padding:28px;color:var(--muted)}
+.fb{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.fb input,.fb select{padding:6px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:12.5px;font-family:inherit;background:#fff}
+.fb input[type=text]{flex:1;min-width:150px}
+.ab{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-ov.open{display:flex}
+.modal{background:#fff;border-radius:var(--rl);padding:22px;width:90%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--g)}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  #login-page,#app>.hdr,.sb,.ph,.fb,.card,.tw,.modal-ov,.btn{display:none!important}
+  .content{padding:0!important}
+  .panel,.panel.active{display:none!important}
+  #prt{display:block!important}
+  @page{margin:5mm 8mm}
+}
+#prt{display:none;direction:rtl;font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#000}
+.ph2{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1B6B3A;padding-bottom:7px;margin-bottom:9px}
+.plogo{width:62px;height:62px;object-fit:contain}
+.puni{text-align:center;flex:1}
+.puni .ar{font-size:14pt;font-weight:700;color:#1B6B3A}
+.puni .en{font-size:8.5pt;color:#555;margin-top:1px}
+.puni .dep{font-size:9pt;color:#333;margin-top:2px;font-weight:600}
+.pmeta{font-size:7.5pt;color:#555;text-align:left;line-height:1.8;min-width:145px}
+.ptitle{background:#1B6B3A;color:#fff;text-align:center;padding:6px;font-size:13pt;font-weight:700;margin-bottom:9px;border-radius:4px}
+.psub{background:#E8F5E9;color:#1B6B3A;padding:4px 9px;font-size:9.5pt;font-weight:700;margin:7px 0 5px;border-right:4px solid #1B6B3A}
+.fr{display:flex;border-bottom:1px solid #ccc;padding:3px 0;font-size:9pt;align-items:center;min-height:22px}
+.fl{font-weight:700;color:#1B6B3A;min-width:125px;flex-shrink:0;font-size:8.5pt}
+.fv{flex:1;border-bottom:1px dotted #aaa;padding:0 4px;min-height:15px}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:4px}
+.sg2{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px}
+.sbox{border:1px solid #ccc;border-radius:4px;padding:6px;text-align:center;min-height:52px}
+.sbox .st2{font-size:8pt;font-weight:700;color:#1B6B3A;margin-bottom:3px}
+.sbox .sl2{border-top:1px dotted #aaa;margin-top:16px;padding-top:3px;font-size:7.5pt;color:#666}
+.dbox{border:2px solid #1B6B3A;border-radius:5px;padding:8px;margin-top:9px}
+.chk{width:10px;height:10px;border:1px solid #333;display:inline-block;margin-left:3px;vertical-align:middle}
+.ptbl{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+.ptbl th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
+.ptbl td{padding:4px 6px;border:1px solid #ccc}
+.ptbl tr:nth-child(even) td{background:#F0FAF4}
+
+.folder-hdr{display:flex;align-items:center;gap:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--g);background:#F0FAF4;border-right:3px solid var(--g);transition:.12s;user-select:none}
+.folder-hdr:hover{background:#E0F4E8}
+.folder-body{border-right:3px solid #C6E8D3;margin-right:3px}
+.folder-body .ni{padding-right:22px;font-size:12px}
+.folder-arrow{font-size:12px;transition:.2s}
+
+@media(max-width:768px){.sb{display:none}.g2,.g3,.g4{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login-page">
+  <div class="lbox">
+    <img src="/logo.png" alt="شعار الجامعة الأردنية">
+    <h1>نظام عمادة شؤون الطلبة</h1>
+    <div class="sub">الجامعة الأردنية — The University of Jordan</div>
+    <div id="lerr" class="lerr"></div>
+    <div class="lg"><label>اسم المستخدم</label><input id="lu" type="text" autocomplete="username"></div>
+    <div class="lg"><label>كلمة المرور</label><input id="lp" type="password" autocomplete="current-password"></div>
+    <button class="lbtn" onclick="doLogin()">تسجيل الدخول</button>
+  </div>
+</div>
+<div id="prt"></div>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="ubadge"><i class="ti ti-user-circle"></i><span id="hn"></span><span class="rtag" id="hr"></span></div>
+      <button class="logout" onclick="doLogout()"><i class="ti ti-logout"></i> خروج</button>
+    </div>
+    <div class="hdr-title"><img src="/logo.png" style="width:26px;height:26px;border-radius:50%"> الجامعة الأردنية — عمادة شؤون الطلبة</div>
+  </div>
+  <div class="layout">
+    <div class="sb" id="sidebar"></div>
+    <div class="content" id="panels"></div>
+  </div>
+</div>
+<div class="modal-ov" id="mod-approve">
+  <div class="modal">
+    <h3>✅ اعتماد طلب النشاط وترحيله</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">عند الاعتماد يُرحَّل النشاط تلقائياً للجدول المحدد في بيانات الجودة</p>
+    <div class="fg" style="margin-bottom:10px"><label>الجدول المستهدف في الجودة *</label><select id="approve-tbl" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%"><option value="">اختر الجدول...</option></select></div>
+    <div class="fg" style="margin-bottom:12px"><label>ملاحظة الاعتماد (اختياري)</label><input id="approve-note" type="text" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-g" onclick="confirmApprove()">✅ اعتماد وترحيل</button>
+    </div>
+  </div>
+</div>
+<script src="/app.js"></script>
+<script src="/students.js"></script>
+<script src="/activities.js"></script>
+<script src="/quality.js"></script>
+<script src="/reports.js"></script>
+</body>
+</html>
