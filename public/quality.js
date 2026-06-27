@@ -189,6 +189,19 @@ function buildFF(f,pfx='ff') {
   return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text"></div>`;
 }
 
+
+async function markFComplete(table, id) {
+  const r = await api('/api/'+table+'/'+id);
+  if(!r||r.error){alert('تعذر تحميل السجل');return;}
+  const res = await api('/api/'+table+'/'+id,'PUT',{...r,completed:true});
+  if(res.error){alert('خطأ في الحفظ');return;}
+  loadFData(table);
+  // تحديث العداد
+  const stats = await api('/api/stats');
+  const el=document.getElementById('c-inc');
+  if(el) el.textContent=stats.incomplete||0;
+}
+
 async function loadForm(table) {
   const cfg=FCFG[table]; if(!cfg) return;
   const canEdit=ME?.role!=='viewer';
