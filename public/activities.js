@@ -112,9 +112,9 @@ async function filterAR() {
     <td>${stBadge(r.status||'pending')}</td>
     <td style="font-size:11px;color:var(--g)">${r.transferred_to?QTBL_LABELS[r.transferred_to]||r.transferred_to:'-'}</td>
     <td><div class="rb">
-      ${isAdmin&&(!r.status||r.status==='pending')?`<button class="btn btn-sm btn-g" onclick="openApprove(${r.id})">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR(${r.id})">❌ رفض</button>`:''}
-      <button class="btn btn-sm btn-b" onclick="printAR(${r.id})">🖨️ طباعة</button>
-      ${canEdit?`<button class="btn btn-r" onclick="delRec('activity_requests',${r.id},filterAR)">🗑</button>`:''}
+      ${isAdmin&&(!r.status||r.status==='pending')?`<button class="btn btn-sm btn-g" onclick="openApprove('${r._id||r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r._id||r.id}')">❌ رفض</button>`:''}
+      <button class="btn btn-sm btn-b" onclick="printAR('${r._id||r.id}')">🖨️ طباعة</button>
+      ${canEdit?`<button class="btn btn-r" onclick="delRec('activity_requests','${r._id||r.id}',filterAR)">🗑</button>`:''}
     </div></td>
   </tr>`).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات</td></tr>`;
   const cnt=document.getElementById('c-activity_requests'); if(cnt) cnt.textContent=filtered.length;

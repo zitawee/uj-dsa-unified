@@ -250,8 +250,8 @@ async function loadDash() {
     <td style="font-size:11px;color:var(--g)">${QTBL_LABELS[r.quality_table]||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
     <td><div class="rb">
-      ${ME?.role==='admin'?`<button class="btn btn-sm btn-g" onclick="openApprove(${r.id})">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR(${r.id})">❌ رفض</button>`:''}
-      <button class="btn btn-sm btn-b" onclick="printAR(${r.id})">🖨️</button>
+      ${ME?.role==='admin'?`<button class="btn btn-sm btn-g" onclick="openApprove('${r._id||r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r._id||r.id}')">❌ رفض</button>`:''}
+      <button class="btn btn-sm btn-b" onclick="printAR('${r._id||r.id}')">🖨️</button>
     </div></td>
   </tr>`).join('')}</tbody></table></div></div>` : ''}
   <div class="card"><div class="ct"><i class="ti ti-chart-bar"></i>توزيع الطلبة على الأنشطة الجامعية</div>

@@ -301,7 +301,7 @@ async function refreshUsers() {
     <td>${i+1}</td><td><strong>${r.username}</strong></td><td>${r.fullName}</td>
     <td><span class="rtag ${RCLS[r.role]||''}">${RLABELS[r.role]||r.role}</span></td>
     <td>${new Date(r.created_at).toLocaleDateString('ar-JO')}</td>
-    <td>${r.username!=='admin'?`<button class="btn btn-r" onclick="delUser(${r.id})">🗑</button>`:''}</td>
+    <td>${r.username!=='admin'?`<button class="btn btn-r" onclick="delUser('${r._id||r.id}')">🗑</button>`:''}</td>
   </tr>`).join('')||`<tr class="erow"><td colspan="6">لا يوجد مستخدمون</td></tr>`;
 }
 

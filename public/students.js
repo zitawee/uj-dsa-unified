@@ -106,7 +106,7 @@ async function filterStudents() {
     <td style="font-size:11px">${r.college||'-'}</td><td>${r.major||'-'}</td>
     <td>${r.study_level||'-'}</td><td>${r.admit_type||'-'}</td>
     <td>${badge(r.activity||'')}</td><td>${r.join_date||'-'}</td><td>${r.phone||'-'}</td>
-    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('students',${r.id},filterStudents)">🗑</button></td>`:''}
+    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('students','${r._id||r.id}',filterStudents)">🗑</button></td>`:''}
   </tr>`).join('') || `<tr class="erow"><td colspan="13">لا توجد نتائج</td></tr>`;
   const cnt = document.getElementById('c-students'); if(cnt) cnt.textContent=rows?.length||0;
 }
@@ -192,7 +192,7 @@ async function filterAch() {
     <td>${r.work||'-'}</td><td>${r.ach_date||'-'}</td><td>${badge(r.activity||'')}</td>
     <td>${r.honor==='نعم'?'<span class="st st-a">✅ نعم</span>':'-'}</td>
     <td style="font-size:11px">${r.honor_reason||'-'}</td>
-    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('achievements',${r.id},filterAch)">🗑</button></td>`:''}
+    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('achievements','${r._id||r.id}',filterAch)">🗑</button></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="9">لا توجد إنجازات</td></tr>`;
   const cnt=document.getElementById('c-achievements'); if(cnt) cnt.textContent=filtered.length;
 }
