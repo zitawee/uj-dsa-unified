@@ -558,50 +558,84 @@ async function editMinutes(id) {
   const nav = document.querySelector('.ni[onclick*="meeting_minutes"]');
   if(nav) go('meeting_minutes', nav);
 
-  // انتظار تحميل اللوح ثم فتح النموذج بالبيانات
   setTimeout(()=>{
-    const f = document.getElementById('ff-meeting_minutes');
-    if(!f) return;
-    f.style.display='block';
+    const panel = document.getElementById('panel-meeting_minutes');
+    if(!panel) return;
 
-    // ملء البيانات المرحَّلة من الدعوة تلقائياً
-    const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
-    setV('ff-committee',   record.committee);
-    setV('ff-session_num', record.session_num);
-    setV('ff-date',        record.date);
-    setV('ff-time',        record.time);
-    setV('ff-nature',      record.nature);
-    setV('ff-chair',       record.chair);
-    setV('ff-ameen',       record.ameen);
-    // الحقول التالية تُترك فارغة لإكمالها يدوياً
-    // present, absent, items, end_time
+    // بناء نموذج مخصص مع البيانات مُدمجة مباشرةً
+    const natures = ['دوري وجاهي','دوري عن بعد','دوري مدمج','طارئ'];
+    const natOpts = natures.map(n=>`<option${record.nature===n?' selected':''}>${n}</option>`).join('');
 
-    // تخزين ID للتعديل عند الحفظ
-    f.dataset.editId = id;
-    f.dataset.editTable = 'meeting_minutes';
+    const editForm = document.createElement('div');
+    editForm.id = 'edit-minutes-form';
+    editForm.style.cssText = 'background:#fff;border:2px solid #1B5E9A;border-radius:12px;padding:16px;margin-bottom:14px';
+    editForm.innerHTML = `
+      <div style="font-size:13px;font-weight:600;color:#1B5E9A;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+        ✏️ إكمال محضر الاجتماع
+      </div>
+      <div class="msg warn" style="display:block;margin-bottom:10px">البيانات المرحّلة من الدعوة تظهر مكتملة — أضف البيانات الناقصة فقط</div>
+      <div class="g2">
+        <div class="fg"><label>اللجنة / المجلس</label>
+          <input id="em-committee" type="text" value="${record.committee||''}" style="background:#F9FAFB;color:var(--muted)" readonly></div>
+        <div class="fg"><label>رقم الجلسة</label>
+          <input id="em-session" type="text" value="${record.session_num||''}" style="background:#F9FAFB;color:var(--muted)" readonly></div>
+        <div class="fg"><label>التاريخ</label>
+          <input id="em-date" type="date" value="${record.date||''}" style="background:#F9FAFB;color:var(--muted)" readonly></div>
+        <div class="fg"><label>الوقت</label>
+          <input id="em-time" type="text" value="${record.time||''}" style="background:#F9FAFB;color:var(--muted)" readonly></div>
+        <div class="fg"><label>نوع الاجتماع</label>
+          <input id="em-nature" type="text" value="${record.nature||''}" style="background:#F9FAFB;color:var(--muted)" readonly></div>
+        <div class="fg"><label>رئيس الجلسة</label>
+          <input id="em-chair" type="text" value="${record.chair||''}" style="background:#F9FAFB;color:var(--muted)" readonly></div>
+        <div class="fg"><label>أمين السر</label>
+          <input id="em-ameen" type="text" value="${record.ameen||''}" style="background:#F9FAFB;color:var(--muted)" readonly></div>
+      </div>
+      <div style="border-top:2px dashed #C6E8D3;margin:12px 0;padding-top:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--g);margin-bottom:8px">⬇️ البيانات التي تحتاج إكمالها:</div>
+        <div class="fg full" style="margin-bottom:8px"><label>الحاضرون (الاسم - المنصب)</label>
+          <textarea id="em-present" rows="4" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)">${record.present||''}</textarea></div>
+        <div class="fg full" style="margin-bottom:8px"><label>المعتذرون</label>
+          <textarea id="em-absent" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)">${record.absent||''}</textarea></div>
+        <div class="fg full" style="margin-bottom:8px"><label>البنود والقرارات</label>
+          <textarea id="em-items" rows="5" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)">${record.items||''}</textarea></div>
+        <div class="fg"><label>وقت الانتهاء</label>
+          <input id="em-end" type="text" value="${record.end_time||''}" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);width:100%"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn" onclick="document.getElementById('edit-minutes-form').remove()">إلغاء</button>
+        <button class="btn btn-b" onclick="saveEditedMinutes2('${id}')">💾 حفظ المحضر</button>
+      </div>`;
 
-    // تغيير زر الحفظ
-    const btn = f.querySelector('.btn-g');
-    if(btn){
-      btn.textContent = '💾 حفظ المحضر';
-      btn.onclick = ()=>saveEditedMinutes(id);
-    }
+    // إزالة نموذج تعديل سابق إن وجد
+    const old = document.getElementById('edit-minutes-form');
+    if(old) old.remove();
 
-    // التمييز البصري
-    f.style.border = '2px solid #1B5E9A';
-    f.style.borderRadius = '8px';
-    f.style.padding = '12px';
-
-    // إضافة تنبيه
-    const msg = document.getElementById('msg-meeting_minutes');
-    if(msg){
-      msg.textContent = '✏️ وضع التعديل — أكمل البيانات الناقصة ثم احفظ';
-      msg.className = 'msg warn';
-      msg.style.display = 'block';
-    }
-
-    f.scrollIntoView({behavior:'smooth'});
+    // إدراج النموذج في أعلى اللوح
+    panel.insertBefore(editForm, panel.firstChild);
+    editForm.scrollIntoView({behavior:'smooth'});
   }, 400);
+}
+
+async function saveEditedMinutes2(id) {
+  const getV = eid => { const el=document.getElementById(eid); return el?el.value:''; };
+  const record = await api('/api/meeting_minutes/'+id);
+  if(!record||record.error){alert('تعذر تحميل السجل');return;}
+
+  const data = {
+    ...record,
+    present:  getV('em-present'),
+    absent:   getV('em-absent'),
+    items:    getV('em-items'),
+    end_time: getV('em-end'),
+    completed: true
+  };
+
+  const r = await api('/api/meeting_minutes/'+id,'PUT',data);
+  if(r.error){alert('خطأ في الحفظ: '+r.error);return;}
+
+  document.getElementById('edit-minutes-form')?.remove();
+  alert('✅ تم حفظ المحضر بنجاح');
+  loadFData('meeting_minutes');
 }
 
 async function saveEditedMinutes(oldId) {
