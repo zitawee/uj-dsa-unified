@@ -210,7 +210,6 @@ async function genReport() {
   const qStats={}; QTBLS.forEach((t,i)=>qStats[t]=qData[i]?.length||0);
   const total=Object.values(qStats).reduce((a,b)=>a+b,0);
   const pLabel=from&&to?`من ${from} إلى ${to}`:from?`من ${from}`:to?`إلى ${to}`:'جميع البيانات';
-  const byAct={}; ACTS.forEach(a=>byAct[a]=0); (studs||[]).forEach(s=>{if(byAct[s.activity]!==undefined)byAct[s.activity]++;});
 
   document.getElementById('rpt-out').innerHTML=`
   <div style="background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:18px">
@@ -230,10 +229,7 @@ async function genReport() {
       <thead><tr style="background:#F0FAF4"><th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:right">المجال</th><th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">عدد السجلات</th></tr></thead>
       <tbody>${QTBLS.map((t,i)=>`<tr style="background:${i%2?'#F9FAFB':'#fff'}"><td style="padding:5px 9px;border:1px solid var(--border)">${QCFG[t]?.title||t}</td><td style="padding:5px 9px;border:1px solid var(--border);text-align:center;font-weight:600;color:var(--g)">${qStats[t]}</td></tr>`).join('')}</tbody>
     </table>
-    <div style="font-size:13px;font-weight:600;color:var(--g);border-bottom:2px solid #C6E8D3;padding-bottom:5px;margin-bottom:9px">توزيع الطلبة على الأنشطة الجامعية</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
-      ${ACTS.map(a=>{const[bg,fg]=ACOLORS[a];return`<div style="background:${bg};border-radius:var(--r);padding:9px;text-align:center"><div style="font-size:20px;font-weight:700;color:${fg}">${byAct[a]||0}</div><div style="font-size:10.5px;color:${fg};margin-top:2px">${a}</div></div>`;}).join('')}
-    </div>
+
   </div>`;
 }
 
