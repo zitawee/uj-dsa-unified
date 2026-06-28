@@ -33,6 +33,8 @@ const QCFG = {
 
 function buildQField(f, table='') {
   const id=`qf-${f.id}`;
+  // حقل text عادي -- يُبنى كـ input دائماً بغض النظر عن أي شيء آخر
+  if(f.t==='text') return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text"></div>`;
   // حقل الرقم الجامعي في جداول الطلبة — مع autoFill
   if(f.id==='student_id' && (table==='student_honors'||table==='governance'))
     return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text" onblur="autoFillHonor()" placeholder="أدخل الرقم الجامعي لجلب البيانات تلقائياً..."></div>`;
@@ -177,8 +179,11 @@ async function saveQ(table) {
   const data={};
   cfg.fields.forEach(f=>{
     const el=document.getElementById('qf-'+f.id);
-    data[f.id]=el?el.value:'';
+    if(!el){ data[f.id]=''; return; }
+    data[f.id] = el.value !== undefined ? el.value : '';
   });
+  // تشخيص: طباعة البيانات في console
+  console.log('saveQ table:',table,'data:',JSON.stringify(data).substring(0,200));
   // التحقق من الحقول الإلزامية (فقط عند الإضافة الجديدة)
   const form2=document.getElementById('qform-'+table);
   const isEditing = form2?.dataset.editId;
@@ -186,7 +191,10 @@ async function saveQ(table) {
     const req=cfg.fields.find(f=>{
       if(!f.l.includes('*')) return false;
       if(f.t==='date') return false;
-      return !(data[f.id]||'').trim();
+      // قراءة مباشرة من DOM
+      const el=document.getElementById('qf-'+f.id);
+      const val = el ? el.value.trim() : '';
+      return !val;
     });
     if(req){showMsg('msg-'+table,`يرجى ملء: ${req.l.replace(/\*/g,'').trim()}`,true);return;}
   }
