@@ -357,9 +357,6 @@ async function printAchievements() {
     <span>إجمالي الإنجازات: <strong>${filtered.length}</strong></span>
     <span>المكرَّمون: <strong>${honorCount}</strong></span>
   </div>
-  <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
-    <div class="sbox"><div class="st2">توقيع المسؤول</div><div class="sl2">الاسم والتوقيع: .................</div></div>
-    <div class="sbox"><div class="st2">التاريخ</div><div class="sl2">.......................................</div></div>
-  </div>`;
+`;  // بدون خانات توقيع
   openPrint(html);
 }
