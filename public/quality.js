@@ -22,7 +22,7 @@ const QCFG = {
   staff_training:{title:'خطة التدريب المتكاملة للموظفين',cols:['staff_name','workplace','course_name','date','reference_num'],heads:['الموظف','مكان العمل','الدورة','التاريخ','رقم الكتاب'],fields:[{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'مكان العمل',id:'workplace',t:'text'},{l:'الرقم الوظيفي',id:'employee_id',t:'text'},{l:'اسم الدورة*',id:'course_name',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'رقم الكتاب',id:'reference_num',t:'text'}]},
   staff_innovation:{title:'مشاركة الموظفين في أنشطة الإبداع والابتكار',cols:['staff_name','job_title','activity_name','date','rating'],heads:['الموظف','الوظيفة','النشاط','التاريخ','التقييم'],fields:[{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'الوظيفة',id:'job_title',t:'text'},{l:'مكان العمل',id:'workplace',t:'text'},{l:'اسم النشاط*',id:'activity_name',t:'text'},{l:'نوع النشاط',id:'activity_type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'الجهة المشرفة',id:'supervising_authority',t:'text'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   staff_honors:{title:'الموظفون الحاصلون على جوائز أو تكريم',cols:['staff_name','honor_type','reason','authority','date'],heads:['الموظف','نوع التكريم','السبب','الجهة','التاريخ'],fields:[{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'نوع التكريم',id:'honor_type',t:'select',opts:['شهادة','درع','مكافأة']},{l:'سبب التكريم*',id:'reason',t:'text'},{l:'جهة التكريم',id:'authority',t:'text'},{l:'التاريخ*',id:'date',t:'date'}]},
-  uni_committees:{title:'اللجان الجامعية ومشاركة الموظفين',cols:['committee_name','committee_category','staff_name','participation_type','workplace','date'],heads:['اللجنة','التصنيف','الموظف','المشاركة','مكان العمل','التاريخ'],fields:[{l:'اسم اللجنة*',id:'committee_name',t:'text'},{l:'تصنيف اللجنة',id:'committee_category',t:'text'},{l:'اسم المقرر',id:'secretary_name',t:'text'},{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'نوع المشاركة',id:'participation_type',t:'select',opts:['رئيس','عضو']},{l:'وظيفة الموظف',id:'job_title',t:'text'},{l:'فئة الموظف',id:'staff_category',t:'text'},{l:'مكان العمل',id:'workplace',t:'text'},{l:'تاريخ الاشتراك',id:'date',t:'date'}]},
+  uni_committees:{title:'اللجان الجامعية ومشاركة الموظفين',cols:['committee_name','committee_category','staff_name','participation_type','workplace','date'],heads:['اللجنة','التصنيف','الموظف','المشاركة','مكان العمل','التاريخ'],fields:[{l:'اسم اللجنة*',id:'committee_name',t:'text'},{l:'اسم الموظف*',id:'staff_name',t:'text'},{l:'تصنيف اللجنة',id:'committee_category',t:'text'},{l:'اسم المقرر',id:'secretary_name',t:'text'},{l:'نوع المشاركة',id:'participation_type',t:'select',opts:['رئيس','عضو']},{l:'وظيفة الموظف',id:'job_title',t:'text'},{l:'فئة الموظف',id:'staff_category',t:'text'},{l:'مكان العمل',id:'workplace',t:'text'},{l:'تاريخ الاشتراك',id:'date',t:'date'}]},
   community_svc:{title:'الخدمات التنموية والاستشارات للمجتمع',cols:['service_type','uni_party','community_party','date'],heads:['نوع الخدمة','الجهة الجامعية','الجهة المستفيدة','التاريخ'],fields:[{l:'نوع الخدمة*',id:'service_type',t:'text'},{l:'الجهة المقدِّمة من الجامعة',id:'uni_party',t:'text'},{l:'الجهة المستفيدة',id:'community_party',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'المشاركون من الجامعة',id:'uni_participants',t:'text'},{l:'المشاركون من المجتمع',id:'community_participants',t:'text'}]},
   awareness:{title:'الأنشطة والمحاضرات التوعوية',cols:['name','type','date','external_party','rating'],heads:['النشاط','النوع','التاريخ','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'نوع النشاط',id:'type',t:'select',opts:['ديني','توعوي','وطني','تثقيفي']},{l:'التاريخ*',id:'date',t:'date'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   expert_acts:{title:'الأنشطة التي شارك بها الخبراء من المجتمع',cols:['name','date','authority','students_count','rating'],heads:['النشاط','التاريخ','الجهة','الطلبة','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'الجهة',id:'authority',t:'text'},{l:'عدد الطلبة',id:'students_count',t:'number'},{l:'أسماء الخبراء',id:'experts_names',t:'text'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
@@ -182,20 +182,21 @@ async function saveQ(table) {
     if(!el){ data[f.id]=''; return; }
     data[f.id] = el.value !== undefined ? el.value : '';
   });
-  // التحقق من الحقول الإلزامية — فقط حقول النص العادية عند الإضافة
+  // التحقق من الحقول الإلزامية — يتحقق من أول حقل نصي إلزامي فقط
   const form2=document.getElementById('qform-'+table);
   const isEditing = form2?.dataset.editId;
   if(!isEditing){
-    const req=cfg.fields.find(f=>{
-      // تجاهل الحقول غير النصية تماماً
-      if(!f.l.includes('*')) return false;
-      if(f.t==='date' || f.t==='date2' || f.t==='number' || f.t==='select' || f.t==='yesno') return false;
-      // فقط حقول text و textarea
-      const el=document.getElementById('qf-'+f.id);
-      if(!el) return false;
-      return !el.value.trim();
-    });
-    if(req){showMsg('msg-'+table,`يرجى ملء: ${req.l.replace(/\*/g,'').trim()}`,true);return;}
+    // البحث عن أول حقل نصي إلزامي وقراءته من data
+    const firstRequired = cfg.fields.find(f=>
+      f.l.includes('*') && (f.t==='text'||f.t==='textarea')
+    );
+    if(firstRequired){
+      const val = (data[firstRequired.id]||'').toString().trim();
+      if(!val){
+        showMsg('msg-'+table,`يرجى ملء: ${firstRequired.l.replace(/\*/g,'').trim()}`,true);
+        return;
+      }
+    }
   }
   const form=document.getElementById('qform-'+table);
   const editId=form?.dataset.editId;
