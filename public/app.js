@@ -111,7 +111,7 @@ function buildSidebar() {
   </div>
 
   <!-- بيانات الجودة -->
-  <div class="folder-hdr" onclick="toggleFolder('f-quality')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-quality"></i><i class="ti ti-certificate"></i>بيانات الجودة — OAAA</div>
+  <div class="folder-hdr" onclick="toggleFolder('f-quality')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-quality"></i><i class="ti ti-certificate"></i>بيانات الجودة</div>
   <div class="folder-body" id="f-quality" style="display:none">
     <div class="ni" onclick="go('governance',this)"><i class="ti ti-building-community"></i>مجالس الحاكمية<span class="cnt" id="c-governance">0</span></div>
     <div class="ni" onclick="go('workshops',this)"><i class="ti ti-chalkboard"></i>الدورات وورش العمل<span class="cnt" id="c-workshops">0</span></div>

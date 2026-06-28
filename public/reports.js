@@ -148,7 +148,7 @@ async function printQTable(table) {
   const allFields = cfg.fields.map(f=>({id:f.id, label:f.l.replace(/\*/g,'').trim()}));
   const allHeads  = ['#', ...allFields.map(f=>f.label), 'المصدر'];
 
-  const html=prtHeader(cfg.title,'OAAA')+`
+  const html=prtHeader(cfg.title,'')+`
   <table class="ptbl">
     <thead><tr>${allHeads.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>${rows.map((r,i)=>`<tr>
@@ -166,7 +166,7 @@ async function printQTable(table) {
 // ══════════════════════════════════════════
 async function loadReports() {
   document.getElementById('panel-reports').innerHTML=`
-  <div class="ph"><div><div class="pt"><i class="ti ti-file-analytics"></i> التقارير الموحدة</div><div class="ps">الجامعة الأردنية — عمادة شؤون الطلبة | متوافقة مع معايير OAAA</div></div></div>
+  <div class="ph"><div><div class="pt"><i class="ti ti-file-analytics"></i> التقارير الموحدة</div><div class="ps">الجامعة الأردنية — عمادة شؤون الطلبة | متوافقة مع معايير </div></div></div>
   <div class="card">
     <div class="ct"><i class="ti ti-filter"></i>خيارات التقرير</div>
     <div class="g3">
@@ -220,7 +220,7 @@ async function genReport() {
       <div style="font-size:13px;font-weight:600;color:#333;margin:3px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
       <div style="background:var(--g);color:#fff;padding:7px 22px;border-radius:7px;display:inline-block;margin:9px 0;font-size:15px;font-weight:700">التقرير الشامل للجودة</div>
       <div style="font-size:12px;color:var(--muted)">الفترة: ${pLabel}</div>
-      <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()} | متوافق مع معايير OAAA</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()} | متوافق مع معايير </div>
     </div>
     <div style="font-size:13px;font-weight:600;color:var(--g);border-bottom:2px solid #C6E8D3;padding-bottom:5px;margin-bottom:9px">الملخص التنفيذي</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">

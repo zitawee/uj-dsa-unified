@@ -77,7 +77,7 @@ async function loadQ(table) {
   const canEdit = ME?.role !== 'viewer';
   document.getElementById('panel-'+table).innerHTML = `
   <div class="ph">
-    <div><div class="pt">${cfg.title}</div><div class="ps">بيانات الجودة — OAAA</div></div>
+    <div><div class="pt">${cfg.title}</div><div class="ps">بيانات الجودة</div></div>
     <div style="display:flex;gap:6px">
       ${canEdit?`<button class="btn btn-g" onclick="showQForm('${table}')"><i class="ti ti-plus"></i>إضافة سجل</button>`:''}
       <button class="btn" onclick="exportCSV('${table}')"><i class="ti ti-download"></i>CSV</button>
@@ -102,7 +102,7 @@ async function loadQ(table) {
     <span style="font-size:11px;color:var(--muted)">من — إلى</span>
   </div>
   <div id="qcnt-${table}" style="font-size:11px;color:var(--muted);margin-bottom:5px"></div>
-  <div class="tw"><table><thead><tr><th>#</th>${cfg.heads.map(h=>`<th>${h}</th>`).join('')}<th>المصدر</th>${canEdit?'<th></th>':''}</tr></thead>
+  <div class="tw"><table><thead><tr><th>#</th>${cfg.heads.map(h=>`<th>${h}</th>`).join('')}<th>المصدر / الكشف</th>${canEdit?'<th></th>':''}</tr></thead>
   <tbody id="qtbl-${table}"></tbody></table></div>`;
   loadQData(table);
 }
@@ -120,7 +120,10 @@ async function loadQData(table) {
   tbody.innerHTML=(rows||[]).map((r,i)=>`<tr style="${r.source&&!r.completed?'background:#FFFBF0':''}">
     <td>${i+1}</td>
     ${cfg.cols.map(c=>`<td>${r[c]||'-'}</td>`).join('')}
-    <td style="font-size:10px">${r.source?`<span class="st st-p" style="font-size:10px">مرحَّل</span>`:'-'}</td>
+    <td style="font-size:10px">
+      ${r.source?`<span class="st st-p" style="font-size:10px">مرحَّل</span>`:'-'}
+      ${r.attached_participant_id?`<span class="st st-a" style="font-size:10px;margin-right:4px;cursor:pointer" onclick="printPart('${r.attached_participant_id}')">📄 كشف أسماء 🖨️</span>`:''}
+    </td>
     ${canEdit?`<td><div class="rb">
       ${r.source&&!r.completed?`<button class="btn btn-sm btn-g" onclick="markCompleteQ('${table}','${r.id}')">✅ مكتمل</button>`:''}
       <button class="btn btn-sm btn-b" onclick="editQRow('${table}','${r.id}')">✏️ تعديل</button>
@@ -586,7 +589,7 @@ async function printQRow(table, id) {
       <div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div>
     </div>
     <div class="pmeta">
-      <div><strong>متوافق مع معايير OAAA</strong></div>
+      <div><strong>متوافق مع معايير </strong></div>
       <div><strong>تاريخ الطباعة:</strong> ${today()}</div>
     </div>
   </div>
@@ -858,4 +861,92 @@ async function printCommittee(id) {
     </tbody>
   </table>`;
   openPrint(html);
+}
+
+// ══════════════════════════════════════════
+// إرفاق كشف الأسماء بسجلات الجودة
+// ══════════════════════════════════════════
+let ATTACH_TABLE = '', ATTACH_ID = '', ATTACH_NAME = '';
+
+async function openAttachModal(table, id, name) {
+  ATTACH_TABLE = table; ATTACH_ID = id; ATTACH_NAME = name;
+
+  // جلب كشوفات الأسماء
+  const parts = await api('/api/participants');
+
+  // بناء المودال
+  const existing = document.getElementById('attach-modal');
+  if(existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'attach-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000';
+  modal.innerHTML = `
+  <div style="background:#fff;border-radius:12px;padding:22px;width:90%;max-width:600px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-size:15px;font-weight:600;color:var(--g);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span>📎 إرفاق كشف أسماء المشاركين</span>
+      <button onclick="document.getElementById('attach-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">السجل: <strong style="color:var(--g)">${name}</strong></div>
+    <input type="text" id="attach-search" placeholder="🔍 بحث في كشوفات الأسماء..." oninput="filterAttach()"
+      style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;margin-bottom:10px;width:100%">
+    <div id="attach-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r)">
+      ${!(parts||[]).length
+        ? '<div style="text-align:center;padding:24px;color:var(--muted)">لا توجد كشوفات محفوظة</div>'
+        : (parts||[]).map(p=>`
+        <div class="attach-item" data-id="${p.id}" data-name="${p.activity||''}" data-date="${p.date||''}"
+          style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center"
+          onclick="selectAttach('${p.id}')" onmouseover="this.style.background='#F0FAF4'" onmouseout="this.style.background=''">
+          <div>
+            <div style="font-weight:600;font-size:13px">${p.activity||'-'}</div>
+            <div style="font-size:11px;color:var(--muted)">${p.date||''} — ${(p.students||[]).length} طالب — ${p.organizer||''}</div>
+          </div>
+          <span style="font-size:11px;background:#C6E8D3;color:var(--g);padding:2px 8px;border-radius:20px">${(p.students||[]).length} طالب</span>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn" onclick="document.getElementById('attach-modal').remove()">إلغاء</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+
+  // تخزين الكشوفات للفلترة
+  window._attachParts = parts || [];
+}
+
+function filterAttach() {
+  const q = document.getElementById('attach-search')?.value?.toLowerCase() || '';
+  document.querySelectorAll('.attach-item').forEach(el => {
+    const name = el.dataset.name?.toLowerCase() || '';
+    const date = el.dataset.date?.toLowerCase() || '';
+    el.style.display = (!q || name.includes(q) || date.includes(q)) ? '' : 'none';
+  });
+}
+
+async function selectAttach(partId) {
+  if(!ATTACH_TABLE || !ATTACH_ID) return;
+
+  // جلب السجل الحالي وإضافة الكشف المرفق
+  const rec = await api('/api/'+ATTACH_TABLE+'/'+ATTACH_ID);
+  if(!rec||rec.error){alert('تعذر تحميل السجل');return;}
+
+  const r = await api('/api/'+ATTACH_TABLE+'/'+ATTACH_ID,'PUT',{
+    ...rec,
+    attached_participant_id: partId
+  });
+  if(r.error){alert('خطأ في الحفظ: '+r.error);return;}
+
+  document.getElementById('attach-modal')?.remove();
+  alert('✅ تم إرفاق الكشف بنجاح');
+  loadQData(ATTACH_TABLE);
+}
+
+async function printAttachedParticipants(table, recordId) {
+  // جلب السجل لمعرفة الكشف المرفق
+  const rec = await api('/api/'+table+'/'+recordId);
+  if(!rec||rec.error||!rec.attached_participant_id){
+    alert('لا يوجد كشف مرفق بهذا السجل');return;
+  }
+  // طباعة كشف الأسماء
+  printPart(rec.attached_participant_id);
 }
