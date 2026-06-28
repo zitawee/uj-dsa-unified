@@ -128,6 +128,7 @@ async function loadQData(table) {
       ${r.source&&!r.completed?`<button class="btn btn-sm btn-g" onclick="markCompleteQ('${table}','${r.id}')">✅ مكتمل</button>`:''}
       <button class="btn btn-sm btn-b" onclick="editQRow('${table}','${r.id}')">✏️ تعديل</button>
       <button class="btn btn-sm btn-b" onclick="printQRow('${table}','${r.id}')">🖨️ طباعة</button>
+      ${['workshops','initiatives','external_acts','competitions','awareness','expert_acts','environment','dialogues','campaigns','community_svc'].includes(table)?`<button class="btn btn-sm" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="openAttachModal('${table}','${r.id}','${r.name||r.title||''}')">${r.attached_participant_id?'📄 كشف مرفق':'📎 إرفاق كشف'}</button>`:''}
       <button class="btn btn-r" onclick="delRec('${table}','${r.id}',()=>loadQData('${table}'))">🗑</button>
     </div></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3}">لا توجد سجلات</td></tr>`;
