@@ -143,22 +143,25 @@ async function markCompleteQ(table,id) {
 
 function showQForm(table, record=null) {
   const f=document.getElementById('qform-'+table); f.style.display='block';
+  // مسح جميع الحقول
   f.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>el.value='');
+
   if(record){
     const cfg=QCFG[table];
+    // ملء الحقول بعد المسح مباشرة
     if(cfg) cfg.fields.forEach(fd=>{
       const el=document.getElementById('qf-'+fd.id);
-      if(el) el.value=record[fd.id]||'';
+      if(el){
+        el.value = (record[fd.id] !== undefined && record[fd.id] !== null) ? record[fd.id] : '';
+      }
     });
-    // حفظ ID بطريقة موثوقة
-    f.dataset.editId = record.id || record._id || '';
+    // حفظ ID
+    f.dataset.editId = String(record.id || record._id || '');
     const btn=f.querySelector('button.btn-g');
     if(btn){
       btn.textContent='✔ حفظ التعديلات';
-      // استخدام attribute بدل closure لضمان القراءة الصحيحة
       btn.setAttribute('onclick', `saveQ('${table}')`);
     }
-    // إظهار رسالة التعديل
     const msg=document.getElementById('msg-'+table);
     if(msg){msg.textContent='✏️ وضع التعديل — عدّل البيانات ثم احفظ';msg.className='msg warn';msg.style.display='block';}
   } else {
@@ -176,13 +179,17 @@ async function saveQ(table) {
     const el=document.getElementById('qf-'+f.id);
     data[f.id]=el?el.value:'';
   });
-  // تجاهل حقول التاريخ في التحقق الإلزامي
-  const req=cfg.fields.find(f=>{
-    if(!f.l.includes('*')) return false;
-    if(f.t==='date') return false;
-    return !(data[f.id]||'').trim();
-  });
-  if(req){showMsg('msg-'+table,`يرجى ملء: ${req.l.replace(/\*/g,'').trim()}`,true);return;}
+  // التحقق من الحقول الإلزامية (فقط عند الإضافة الجديدة)
+  const form2=document.getElementById('qform-'+table);
+  const isEditing = form2?.dataset.editId;
+  if(!isEditing){
+    const req=cfg.fields.find(f=>{
+      if(!f.l.includes('*')) return false;
+      if(f.t==='date') return false;
+      return !(data[f.id]||'').trim();
+    });
+    if(req){showMsg('msg-'+table,`يرجى ملء: ${req.l.replace(/\*/g,'').trim()}`,true);return;}
+  }
   const form=document.getElementById('qform-'+table);
   const editId=form?.dataset.editId;
   let r;
