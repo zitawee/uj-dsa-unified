@@ -830,10 +830,13 @@ async function printHallBooking(id) {
   <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:9pt">
     ${halls.map(h=>`<span><span class="chk">${r.hall===h?'✓':''}</span> ${h}</span>`).join('')}
   </div>
-  <div class="fg3">
-    <div class="fr"><span class="fl">في يوم / تاريخ:</span><span class="fv">${r.day||''} &nbsp;&nbsp; ${r.date||''}</span></div>
-    <div class="fr"><span class="fl">من الساعة:</span><span class="fv">${r.time_from||''}</span></div>
-    <div class="fr"><span class="fl">إلى الساعة:</span><span class="fv">${r.time_to||''}</span></div>
+  <div class="fr">
+    <span class="fl">في يوم / تاريخ:</span>
+    <span class="fv" style="flex:2">${r.day||''} &nbsp;&nbsp;&nbsp; ${r.date||''}</span>
+    <span class="fl" style="min-width:80px">من الساعة:</span>
+    <span class="fv" style="flex:1">${r.time_from||''}</span>
+    <span class="fl" style="min-width:80px">إلى الساعة:</span>
+    <span class="fv" style="flex:1">${r.time_to||''}</span>
   </div>
   <div class="fr"><span class="fl">لغايات:</span><span class="fv">${r.purpose||''}</span></div>
   <div class="fg3">
