@@ -180,7 +180,7 @@ async function loadReports() {
     </div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="btn btn-g" onclick="genReport()"><i class="ti ti-file-analytics"></i>توليد التقرير</button>
-      <button class="btn btn-b" onclick="window.print()"><i class="ti ti-printer"></i>طباعة / PDF</button>
+      <button class="btn btn-b" onclick="printReport()"><i class="ti ti-printer"></i>طباعة / PDF</button>
     </div>
   </div>
   <div id="rpt-out" style="margin-top:14px"></div>`;
@@ -220,7 +220,7 @@ async function genReport() {
       <div style="font-size:13px;font-weight:600;color:#333;margin:3px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
       <div style="background:var(--g);color:#fff;padding:7px 22px;border-radius:7px;display:inline-block;margin:9px 0;font-size:15px;font-weight:700">التقرير الشامل للجودة</div>
       <div style="font-size:12px;color:var(--muted)">الفترة: ${pLabel}</div>
-      <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()} | متوافق مع معايير </div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()} | </div>
     </div>
     <div style="font-size:13px;font-weight:600;color:var(--g);border-bottom:2px solid #C6E8D3;padding-bottom:5px;margin-bottom:9px">الملخص التنفيذي</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
@@ -329,4 +329,39 @@ async function delUser(id) {
   if(!confirm('هل تريد حذف هذا المستخدم؟'))return;
   await api('/api/users/'+id,'DELETE');
   refreshUsers();
+}
+
+function printReport() {
+  const content = document.getElementById('rpt-out');
+  if(!content || !content.innerHTML.trim()){
+    alert('يرجى توليد التقرير أولاً');
+    return;
+  }
+  const win = window.open('','_blank','width=960,height=720');
+  win.document.write(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>التقرير الشامل — عمادة شؤون الطلبة</title>
+<style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
+  img{max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+  th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
+  td{padding:4px 6px;border:1px solid #ccc}
+  tr:nth-child(even) td{background:#F0FAF4}
+  .no-print{text-align:center;margin-bottom:12px}
+  @media print{.no-print{display:none}@page{margin:5mm 8mm}}
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
+  <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
+</div>
+${content.innerHTML}
+</body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 800);
 }
