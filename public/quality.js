@@ -875,13 +875,17 @@ async function printCommittee(id) {
   <div class="fr"><span class="fl">اسم اللجنة / المجلس:</span><span class="fv">${r.name||''}</span></div>
   <div class="fr"><span class="fl">تاريخ التشكيل:</span><span class="fv">${r.date||''}</span></div>
   <div class="fr"><span class="fl">نوع اللجنة:</span>
-    <span><span class="chk">${r.type==='دائمة'?'✓':''}</span> دائمة &nbsp;&nbsp; <span class="chk">${r.type==='مؤقتة'?'✓':''}</span> مؤقتة</span>
+    <span>
+      <span class="chk" style="background:${(r.type||'').trim()==='دائمة'?'#1B6B3A':'#fff'};color:#fff;font-size:8pt;line-height:10px;display:inline-flex;align-items:center;justify-content:center">${(r.type||'').trim()==='دائمة'?'✓':''}</span> دائمة 
+      &nbsp;&nbsp;&nbsp;
+      <span class="chk" style="background:${(r.type||'').trim()==='مؤقتة'?'#1B6B3A':'#fff'};color:#fff;font-size:8pt;line-height:10px;display:inline-flex;align-items:center;justify-content:center">${(r.type||'').trim()==='مؤقتة'?'✓':''}</span> مؤقتة
+    </span>
   </div>
   <div class="fr" style="min-height:40px"><span class="fl">الهدف العام:</span><span class="fv">${r.goal||''}</span></div>
   <div class="fr" style="min-height:40px"><span class="fl">المهام:</span><span class="fv">${r.tasks||''}</span></div>
   <div class="fr"><span class="fl">آلية الاجتماع:</span>
     <div style="display:flex;gap:14px;font-size:8.5pt">
-      ${['أسبوعياً','كل أسبوعين','شهرياً','أخرى'].map(f=>`<span><span class="chk">${r.meeting_freq===f?'✓':''}</span> ${f}</span>`).join('')}
+      ${['أسبوعياً','كل أسبوعين','شهرياً','أخرى'].map(f=>`<span><span class="chk" style="background:${(r.meeting_freq||'').trim()===f?'#1B6B3A':'#fff'};color:#fff;font-size:8pt;display:inline-flex;align-items:center;justify-content:center">${(r.meeting_freq||'').trim()===f?'✓':''}</span> ${f}</span>`).join('')}
     </div>
   </div>
   <div class="fr"><span class="fl">المقرر:</span><span class="fv">${r.secretary||''}</span></div>
