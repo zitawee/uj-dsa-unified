@@ -220,16 +220,31 @@ async function saveQ(table) {
 // ══════════════════════════════════════════
 const FCFG = {
   announcements:{title:'الإعلانات عن الفعاليات',code:'',cols:['title','type','date','location','organizer'],heads:['العنوان','النوع','التاريخ','المكان','الجهة'],fields:[{l:'عنوان الفعالية*',id:'title',t:'text'},{l:'نوع الفعالية',id:'type',t:'select',opts:['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','أخرى']},{l:'التاريخ*',id:'date',t:'date'},{l:'الوقت',id:'time',t:'text'},{l:'المكان',id:'location',t:'text'},{l:'الجهة المنظِّمة',id:'organizer',t:'text'},{l:'للتواصل',id:'contact',t:'text'},{l:'وصف',id:'description',t:'text'},{l:'ملاحظات',id:'notes',t:'text'}]},
-  hall_bookings:{title:'حجز المدرجات والقاعات',code:'DSA-06-28-01',cols:['hall','date','time_from','time_to','purpose','supervisor'],heads:['المكان','التاريخ','من','إلى','الغرض','المشرف'],fields:[{l:'المكان*',id:'hall',t:'select',opts:['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات']},{l:'التاريخ*',id:'date',t:'date'},{l:'من الساعة',id:'time_from',t:'text'},{l:'إلى الساعة',id:'time_to',t:'text'},{l:'الغرض*',id:'purpose',t:'text'},{l:'اسم المشرف',id:'supervisor',t:'text'}]},
+  hall_bookings:{title:'حجز المدرجات والقاعات',code:'DSA-06-28-01',cols:['hall','day','date','time_from','time_to','purpose','supervisor'],heads:['المكان','اليوم','التاريخ','من','إلى','الغرض','المشرف'],fields:[{l:'المكان*',id:'hall',t:'select',opts:['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات']},{l:'اليوم*',id:'day',t:'select',opts:['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']},{l:'التاريخ*',id:'date',t:'date'},{l:'من الساعة',id:'time_from',t:'text'},{l:'إلى الساعة',id:'time_to',t:'text'},{l:'الغرض*',id:'purpose',t:'text'},{l:'اسم المشرف',id:'supervisor',t:'text'}]},
   committees:{title:'تشكيل لجنة / مجلس',code:'AQC-02-10-01',cols:['name','type','date','meeting_freq','secretary'],heads:['اللجنة','النوع','التاريخ','آلية الاجتماع','المقرر'],fields:[{l:'اسم اللجنة*',id:'name',t:'text'},{l:'تاريخ التشكيل',id:'date',t:'date'},{l:'نوع اللجنة',id:'type',t:'select',opts:['دائمة','مؤقتة']},{l:'آلية الاجتماع',id:'meeting_freq',t:'select',opts:['أسبوعياً','كل أسبوعين','شهرياً','أخرى']},{l:'الهدف العام',id:'goal',t:'text'},{l:'المهام',id:'tasks',t:'text'},{l:'أسماء الأعضاء',id:'members',t:'textarea'},{l:'المقرر',id:'secretary',t:'text'},{l:'أمين السر',id:'ameen',t:'text'}]},
   meeting_invites:{title:'دعوات حضور الاجتماعات',code:'AQC-04-01-01',cols:['committee','subject','session_num','date','time','location'],heads:['اللجنة','الموضوع','رقم الجلسة','التاريخ','الوقت','المكان'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'الموضوع*',id:'subject',t:'text'},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'طبيعة الاجتماع',id:'nature',t:'select',opts:['عادي وجاهي','عادي عن بعد','عادي مدمج','طارئ وجاهي','طارئ عن بعد']},{l:'المكان',id:'location',t:'text'},{l:'المدعوّون',id:'invitees',t:'textarea'},{l:'جدول الأعمال',id:'agenda',t:'text'},{l:'أمين السر',id:'ameen',t:'text'},{l:'رئيس اللجنة',id:'head',t:'text'}]},
   meeting_minutes:{title:'محاضر الاجتماعات',code:'AQC-04-01-02',cols:['committee','session_num','date','time','chair'],heads:['اللجنة','رقم الجلسة','التاريخ','الوقت','الرئيس'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'نوع الاجتماع',id:'nature',t:'select',opts:['دوري وجاهي','دوري عن بعد','دوري مدمج','طارئ']},{l:'رئيس الجلسة',id:'chair',t:'text'},{l:'الحاضرون (الاسم - المنصب)',id:'present',t:'textarea'},{l:'المعتذرون',id:'absent',t:'textarea'},{l:'أمين السر',id:'ameen',t:'text'},{l:'البنود والقرارات',id:'items',t:'textarea'},{l:'وقت الانتهاء',id:'end_time',t:'text'}]},
 };
 
+
+function autoFillDay(dateVal) {
+  if(!dateVal) return;
+  const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const d = new Date(dateVal);
+  const dayName = days[d.getDay()];
+  // البحث عن حقل اليوم في النموذج
+  const dayEl = document.getElementById('ff-day') || document.getElementById('qf-day');
+  if(dayEl) dayEl.value = dayName;
+}
+
 function buildFF(f,pfx='ff') {
   const id=`${pfx}-${f.id}`;
   if(f.t==='textarea') return `<div class="fg full"><label>${f.l}</label><textarea id="${id}" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)"></textarea></div>`;
-  if(f.t==='date'||f.t==='date2') return `<div class="fg"><label>${f.l}</label><input id="${id}" type="date"></div>`;
+  if(f.t==='date'||f.t==='date2'){
+    // إذا كان في نموذج حجز القاعة — يملأ اليوم تلقائياً
+    const onchange = f.id==='date'?`onchange="autoFillDay(this.value)"`:'' ;
+    return `<div class="fg"><label>${f.l}</label><input id="${id}" type="date" ${onchange}></div>`;
+  }
   if(f.t==='number') return `<div class="fg"><label>${f.l}</label><input id="${id}" type="number"></div>`;
   if(f.t==='select') return `<div class="fg"><label>${f.l}</label><select id="${id}"><option value="">اختر...</option>${selOpts(f.opts||[])}</select></div>`;
   return `<div class="fg"><label>${f.l}</label><input id="${id}" type="text"></div>`;
@@ -816,7 +831,7 @@ async function printHallBooking(id) {
     ${halls.map(h=>`<span><span class="chk">${r.hall===h?'✓':''}</span> ${h}</span>`).join('')}
   </div>
   <div class="fg3">
-    <div class="fr"><span class="fl">في يوم / تاريخ:</span><span class="fv">${r.date||''}</span></div>
+    <div class="fr"><span class="fl">في يوم / تاريخ:</span><span class="fv">${r.day||''} &nbsp;&nbsp; ${r.date||''}</span></div>
     <div class="fr"><span class="fl">من الساعة:</span><span class="fv">${r.time_from||''}</span></div>
     <div class="fr"><span class="fl">إلى الساعة:</span><span class="fv">${r.time_to||''}</span></div>
   </div>
