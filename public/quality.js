@@ -282,7 +282,8 @@ async function loadFData(table) {
 
 function showFF(table) {
   const f=document.getElementById('ff-'+table); f.style.display='block';
-  f.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>el.value='');
+  // مسح جميع الحقول بما فيها date
+  f.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>{el.value='';});
   f.scrollIntoView({behavior:'smooth'});
 }
 
@@ -291,7 +292,17 @@ async function saveFF(table) {
   const data={};
   cfg.fields.forEach(f=>{
     const el=document.getElementById('ff-'+f.id);
-    data[f.id]=el?el.value:'';
+    if(!el){ data[f.id]=''; return; }
+    // date inputs تحتاج معالجة خاصة
+    if(el.type==='date'){
+      data[f.id] = el.value || '';
+    } else if(el.tagName==='TEXTAREA'){
+      data[f.id] = el.value || '';
+    } else if(el.tagName==='SELECT'){
+      data[f.id] = el.value || '';
+    } else {
+      data[f.id] = el.value || '';
+    }
   });
   // التحقق من الحقول الإلزامية (يتجاهل حقول التاريخ لأنها تُقرأ بشكل مختلف)
   const missing=cfg.fields.find(f=>{
@@ -307,21 +318,23 @@ async function saveFF(table) {
   document.getElementById('ff-'+table).style.display='none';
   // ترحيل دعوة الاجتماع ← محضر الاجتماع تلقائياً
   if(table==='meeting_invites'){
-    await api('/api/meeting_minutes','POST',{
-      committee:   data.committee,
-      session_num: data.session_num,
-      date:        data.date,       // التاريخ بدون كلمة "يوم"
-      time:        data.time,       // الوقت في خانة الساعة
-      nature:      data.nature,
-      chair:       data.head||'',
+    // ترحيل للمحضر — نستخدم data المحفوظة مباشرة
+    const minutesData = {
+      committee:   data.committee   || '',
+      session_num: data.session_num || '',
+      date:        data.date        || '',
+      time:        data.time        || '',
+      nature:      data.nature      || '',
+      chair:       data.head        || '',
       present:     '',
       absent:      '',
-      ameen:       data.ameen||'',
+      ameen:       data.ameen       || '',
       items:       '',
       end_time:    '',
       source:      `مرحَّل من دعوة اجتماع — ${data.committee}`,
       completed:   false
-    });
+    };
+    await api('/api/meeting_minutes','POST', minutesData);
   }
   loadFData(table);
 }
