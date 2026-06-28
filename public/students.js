@@ -135,7 +135,8 @@ async function loadAchievements() {
     <div><div class="pt"><i class="ti ti-trophy"></i> الإنجازات والتكريم</div></div>
     <div style="display:flex;gap:6px">
       ${canEdit ? `<button class="btn btn-g" onclick="showAchForm()"><i class="ti ti-plus"></i>إضافة إنجاز</button>` : ''}
-      <button class="btn" onclick="window.location='/api/export/achievements'"><i class="ti ti-download"></i>CSV</button>
+      <button class="btn btn-b" onclick="printAchievements()"><i class="ti ti-printer"></i>طباعة</button>
+      <button class="btn" onclick="exportCSV('achievements')"><i class="ti ti-download"></i>CSV</button>
     </div>
   </div>
   <div id="ach-form" style="display:none">
@@ -293,6 +294,72 @@ function printStudent(r) {
   <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
     <div class="sbox"><div class="st2">توقيع الطالب</div><div class="sl2">التوقيع: .................</div></div>
     <div class="sbox"><div class="st2">توقيع المسؤول</div><div class="sl2">التوقيع: .................</div></div>
+  </div>`;
+  openPrint(html);
+}
+
+// ══ طباعة تقرير الإنجازات والتكريم ══
+async function printAchievements() {
+  const q=document.getElementById('af-q')?.value||'';
+  const act=document.getElementById('af-act')?.value||'';
+  const hon=document.getElementById('af-hon')?.value||'';
+  const p=new URLSearchParams();
+  if(q)p.set('q',q); if(act)p.set('activity',act);
+  const rows=await api('/api/achievements?'+p);
+  let filtered=rows||[];
+  if(hon==='yes') filtered=filtered.filter(r=>r.honor==='نعم');
+
+  const today=new Date().toLocaleDateString('ar-JO',{year:'numeric',month:'long',day:'numeric'});
+  const honorCount=filtered.filter(r=>r.honor==='نعم').length;
+
+  const html=`<div class="ph2">
+    <img src="/logo.png" class="plogo">
+    <div class="puni">
+      <div class="ar">الجامعة الأردنية</div>
+      <div class="en">The University of Jordan</div>
+      <div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div>
+    </div>
+    <div class="pmeta">
+      <div><strong>تاريخ الطباعة:</strong> ${today}</div>
+      <div><strong>إجمالي السجلات:</strong> ${filtered.length}</div>
+      <div><strong>المكرَّمون:</strong> ${honorCount}</div>
+    </div>
+  </div>
+  <div class="ptitle">تقرير الإنجازات والتكريم</div>
+  ${act?`<div style="font-size:9pt;margin-bottom:8px;color:#1B6B3A"><strong>النشاط:</strong> ${act}</div>`:''}
+  <table class="ptbl">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الرقم الجامعي</th>
+        <th>اسم الطالب</th>
+        <th>الإنجاز / المشاركة</th>
+        <th>التاريخ</th>
+        <th>النشاط</th>
+        <th>تكريم</th>
+        <th>سبب التكريم</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filtered.map((r,i)=>`<tr>
+        <td>${i+1}</td>
+        <td>${r.student_id||'-'}</td>
+        <td>${r.student_name||'-'}</td>
+        <td>${r.work||'-'}</td>
+        <td>${r.ach_date||'-'}</td>
+        <td>${r.activity||'-'}</td>
+        <td style="text-align:center">${r.honor==='نعم'?'✅':'−'}</td>
+        <td>${r.honor_reason||'-'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  <div style="margin-top:10px;font-size:8pt;color:#666;display:flex;justify-content:space-between">
+    <span>إجمالي الإنجازات: <strong>${filtered.length}</strong></span>
+    <span>المكرَّمون: <strong>${honorCount}</strong></span>
+  </div>
+  <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="sbox"><div class="st2">توقيع المسؤول</div><div class="sl2">الاسم والتوقيع: .................</div></div>
+    <div class="sbox"><div class="st2">التاريخ</div><div class="sl2">.......................................</div></div>
   </div>`;
   openPrint(html);
 }
