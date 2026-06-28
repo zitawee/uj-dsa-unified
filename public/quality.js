@@ -182,19 +182,18 @@ async function saveQ(table) {
     if(!el){ data[f.id]=''; return; }
     data[f.id] = el.value !== undefined ? el.value : '';
   });
-  // تشخيص: طباعة البيانات في console
-  console.log('saveQ table:',table,'data:',JSON.stringify(data).substring(0,200));
-  // التحقق من الحقول الإلزامية (فقط عند الإضافة الجديدة)
+  // التحقق من الحقول الإلزامية — فقط حقول النص العادية عند الإضافة
   const form2=document.getElementById('qform-'+table);
   const isEditing = form2?.dataset.editId;
   if(!isEditing){
     const req=cfg.fields.find(f=>{
+      // تجاهل الحقول غير النصية تماماً
       if(!f.l.includes('*')) return false;
-      if(f.t==='date') return false;
-      // قراءة مباشرة من DOM
+      if(f.t==='date' || f.t==='date2' || f.t==='number' || f.t==='select' || f.t==='yesno') return false;
+      // فقط حقول text و textarea
       const el=document.getElementById('qf-'+f.id);
-      const val = el ? el.value.trim() : '';
-      return !val;
+      if(!el) return false;
+      return !el.value.trim();
     });
     if(req){showMsg('msg-'+table,`يرجى ملء: ${req.l.replace(/\*/g,'').trim()}`,true);return;}
   }
