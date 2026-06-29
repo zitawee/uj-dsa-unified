@@ -210,7 +210,7 @@ function go(name, el) {
   const loaders = {
     dash:loadDash, incomplete:loadIncomplete, students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
-    participants:loadParticipants, committees:()=>loadForm('committees'),
+    participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
     governance:()=>loadQ('governance'), workshops:()=>loadQ('workshops'), initiatives:()=>loadQ('initiatives'),
     external_acts:()=>loadQ('external_acts'), competitions:()=>loadQ('competitions'),
