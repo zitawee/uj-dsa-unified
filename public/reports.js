@@ -234,9 +234,12 @@ async function genReport() {
 // تقرير اجتماعات اللجان
 // ══════════════════════════════════════════
 let _cmtReportData = { committees: [], byCommittee: {} };
+let _cmtFilter = '';            // اللجنة المختارة حالياً (فارغ = الكل)
+let _cmtFilterMatches = [];     // الأسماء المطابقة المعروضة في قائمة الاقتراح
 
 async function loadCommitteeReport() {
   const panel = document.getElementById('panel-committee_report');
+  _cmtFilter = '';
   panel.innerHTML = `
   <div class="ph">
     <div><div class="pt"><i class="ti ti-clipboard-list"></i> تقرير اجتماعات اللجان</div><div class="ps">عدد الاجتماعات التي عقدتها كل لجنة</div></div>
@@ -245,11 +248,14 @@ async function loadCommitteeReport() {
     </div>
   </div>
   <div class="card" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
-    <div class="fg" style="margin:0;min-width:260px;flex:1">
-      <label>تصفية حسب اللجنة</label>
-      <select id="cmt-filter" onchange="renderCommitteeReport()"><option value="">جميع اللجان</option></select>
+    <div class="fg" id="cmt-filter-wrapper" style="margin:0;min-width:280px;flex:1;position:relative">
+      <label>تصفية حسب اللجنة (ابحث بالاسم)</label>
+      <input id="cmt-filter-input" type="text" autocomplete="off" placeholder="اكتب للبحث عن لجنة..."
+        oninput="cmtFilterSuggest(this.value)" onfocus="cmtFilterSuggest(this.value)"
+        style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%">
+      <div id="cmt-filter-list" style="display:none;position:absolute;top:100%;right:0;left:0;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:260px;overflow-y:auto"></div>
     </div>
-    <div style="font-size:11px;color:var(--muted);padding-bottom:8px">اختر لجنة لعرضها وطباعتها وحدها، أو «جميع اللجان» لعرض الكل.</div>
+    <button class="btn" onclick="cmtFilterClear()" style="margin-bottom:0"><i class="ti ti-list"></i>عرض جميع اللجان</button>
   </div>
   <div id="cmt-rpt-out"><div style="padding:20px;text-align:center;color:var(--muted)">جارٍ التحميل...</div></div>`;
 
@@ -270,21 +276,62 @@ async function loadCommitteeReport() {
   });
 
   _cmtReportData = { committees: committees || [], byCommittee };
-
-  // ملء قائمة التصفية بأسماء اللجان (بدون تكرار)
-  const sel = document.getElementById('cmt-filter');
-  if (sel) {
-    const names = [...new Set((committees || []).map(c => (c.name || '').trim()).filter(Boolean))];
-    sel.innerHTML = '<option value="">جميع اللجان</option>' +
-      names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
-  }
-
   renderCommitteeReport();
 }
 
+// قائمة الاقتراحات للبحث عن لجنة
+function cmtFilterSuggest(q) {
+  const box = document.getElementById('cmt-filter-list');
+  if (!box) return;
+  const names = [...new Set((_cmtReportData.committees || []).map(c => (c.name || '').trim()).filter(Boolean))];
+  const query = (q || '').trim().toLowerCase();
+  _cmtFilterMatches = query ? names.filter(n => n.toLowerCase().includes(query)) : names;
+
+  let html = `<div onclick="cmtFilterPick(-1)"
+    style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--g)"
+    onmouseover="this.style.background='#F0FAF4'" onmouseout="this.style.background=''">جميع اللجان</div>`;
+  if (_cmtFilterMatches.length) {
+    html += _cmtFilterMatches.map((n, i) => `<div onclick="cmtFilterPick(${i})"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px"
+      onmouseover="this.style.background='#F0FAF4'" onmouseout="this.style.background=''">${n}</div>`).join('');
+  } else {
+    html += `<div style="padding:8px 12px;font-size:12px;color:var(--muted)">لا توجد لجنة مطابقة</div>`;
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+// اختيار لجنة من القائمة (i = -1 يعني جميع اللجان)
+function cmtFilterPick(i) {
+  const name = (i >= 0 && _cmtFilterMatches[i] !== undefined) ? _cmtFilterMatches[i] : '';
+  _cmtFilter = name;
+  const input = document.getElementById('cmt-filter-input');
+  if (input) input.value = name;
+  const box = document.getElementById('cmt-filter-list');
+  if (box) box.style.display = 'none';
+  renderCommitteeReport();
+}
+
+function cmtFilterClear() {
+  _cmtFilter = '';
+  const input = document.getElementById('cmt-filter-input');
+  if (input) input.value = '';
+  const box = document.getElementById('cmt-filter-list');
+  if (box) box.style.display = 'none';
+  renderCommitteeReport();
+}
+
+// إغلاق قائمة الاقتراح عند النقر خارجها
+document.addEventListener('click', e => {
+  if (!e.target.closest('#cmt-filter-wrapper')) {
+    const box = document.getElementById('cmt-filter-list');
+    if (box) box.style.display = 'none';
+  }
+});
+
 function renderCommitteeReport() {
   const { committees, byCommittee } = _cmtReportData;
-  const filter = (document.getElementById('cmt-filter')?.value || '').trim();
+  const filter = (_cmtFilter || '').trim();
 
   const source = filter
     ? committees.filter(c => (c.name || '').trim() === filter)
