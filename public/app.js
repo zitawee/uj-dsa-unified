@@ -134,6 +134,7 @@ function buildSidebar() {
 
   <div class="sbt">الأدوات</div>
   <div class="ni" onclick="go('reports',this)"><i class="ti ti-file-analytics"></i>التقارير الموحدة</div>
+  <div class="ni" onclick="go('committee_report',this)"><i class="ti ti-clipboard-list"></i>تقرير اجتماعات اللجان</div>
   <div class="ni" onclick="go('search',this)"><i class="ti ti-search"></i>البحث الشامل</div>
   <div class="ni" id="nav-users" onclick="go('users',this)"><i class="ti ti-shield"></i>إدارة المستخدمين</div>`;
 }
@@ -149,7 +150,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','students','achievements','activity_requests','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','workshops','initiatives','external_acts','competitions','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','awareness','expert_acts','environment','dialogues','campaigns','reports','search','users'];
+  const IDS = ['dash','incomplete','students','achievements','activity_requests','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','workshops','initiatives','external_acts','competitions','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','awareness','expert_acts','environment','dialogues','campaigns','reports','committee_report','search','users'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
   // fill approve modal options
   const sel = document.getElementById('approve-tbl');
@@ -220,7 +221,7 @@ function go(name, el) {
     community_svc:()=>loadQ('community_svc'), awareness:()=>loadQ('awareness'),
     expert_acts:()=>loadQ('expert_acts'), environment:()=>loadQ('environment'),
     dialogues:()=>loadQ('dialogues'), campaigns:()=>loadQ('campaigns'),
-    reports:loadReports, search:loadSearch, users:loadUsers,
+    reports:loadReports, search:loadSearch, users:loadUsers, committee_report:loadCommitteeReport,
   };
   if (loaders[name]) loaders[name]();
 }

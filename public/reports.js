@@ -231,6 +231,132 @@ async function genReport() {
 }
 
 // ══════════════════════════════════════════
+// تقرير اجتماعات اللجان
+// ══════════════════════════════════════════
+async function loadCommitteeReport() {
+  const panel = document.getElementById('panel-committee_report');
+  panel.innerHTML = `
+  <div class="ph">
+    <div><div class="pt"><i class="ti ti-clipboard-list"></i> تقرير اجتماعات اللجان</div><div class="ps">عدد الاجتماعات التي عقدتها كل لجنة</div></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-b" onclick="printCommitteeReport()"><i class="ti ti-printer"></i>طباعة / PDF</button>
+    </div>
+  </div>
+  <div id="cmt-rpt-out"><div style="padding:20px;text-align:center;color:var(--muted)">جارٍ التحميل...</div></div>`;
+
+  const [committees, invites] = await Promise.all([
+    api('/api/committees'),
+    api('/api/meeting_invites')
+  ]);
+
+  // تجميع اجتماعات كل لجنة (التاريخ + رقم الجلسة) حسب اسم اللجنة
+  const byCommittee = {};
+  (invites || []).forEach(m => {
+    const key = (m.committee || '').trim();
+    if (!key) return;
+    (byCommittee[key] = byCommittee[key] || []).push({
+      date: (m.date || '').trim(),
+      session: (m.session_num || '').toString().trim()
+    });
+  });
+
+  const rows = (committees || []).map(c => {
+    const list = (byCommittee[(c.name || '').trim()] || [])
+      .slice()
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    // قائمة التواريخ كأسطر منفصلة: رقم الجلسة — التاريخ
+    const datesHtml = list.length
+      ? list.map(m => {
+          const d = m.date || '—';
+          return m.session ? `الجلسة ${m.session} — ${d}` : d;
+        }).map((s, i) => `${i + 1}. ${s}`).join('<br>')
+      : '-';
+    return {
+      name:      (c.name || '').trim() || '-',
+      date:      c.date || '-',
+      ref_num:   c.ref_num || '-',
+      meetings:  list.length,
+      datesHtml,
+      secretary: c.secretary || '-'
+    };
+  });
+
+  const totalMeetings = rows.reduce((a, r) => a + r.meetings, 0);
+
+  document.getElementById('cmt-rpt-out').innerHTML = `
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:18px">
+    <div style="text-align:center;padding:16px;border-bottom:3px solid var(--g);margin-bottom:14px">
+      <img src="/logo.png" style="width:68px;height:68px;object-fit:contain;margin-bottom:7px">
+      <div style="font-size:20px;font-weight:700;color:var(--g)">الجامعة الأردنية</div>
+      <div style="font-size:13px;font-weight:600;color:#333;margin:3px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
+      <div style="background:var(--g);color:#fff;padding:7px 22px;border-radius:7px;display:inline-block;margin:9px 0;font-size:15px;font-weight:700">تقرير اجتماعات اللجان</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+      <div style="background:#F0FAF4;border:1px solid #C6E8D3;border-radius:var(--r);padding:10px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--g)">${rows.length}</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">عدد اللجان</div></div>
+      <div style="background:#F0FAF4;border:1px solid #C6E8D3;border-radius:var(--r);padding:10px;text-align:center"><div style="font-size:22px;font-weight:700;color:#1B5E9A">${totalMeetings}</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">إجمالي الاجتماعات</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#F0FAF4">
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">#</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:right">اسم اللجنة</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">تاريخ التشكيل</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">رقم كتاب التشكيل</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">عدد الاجتماعات</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:right">تواريخ الاجتماعات</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:right">مقرر اللجنة</th>
+      </tr></thead>
+      <tbody>
+        ${rows.length ? rows.map((r, i) => `<tr style="background:${i%2?'#F9FAFB':'#fff'}">
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center">${i+1}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border)">${r.name}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center">${r.date}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center">${r.ref_num}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center;font-weight:700;color:var(--g)">${r.meetings}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border);font-size:11px;line-height:1.7">${r.datesHtml}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border)">${r.secretary}</td>
+        </tr>`).join('') : `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--muted)">لا توجد لجان مسجلة</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function printCommitteeReport() {
+  const content = document.getElementById('cmt-rpt-out');
+  if (!content || !content.innerHTML.trim() || content.innerHTML.includes('جارٍ التحميل')) {
+    alert('لا يوجد تقرير للطباعة');
+    return;
+  }
+  const win = window.open('', '_blank', 'width=960,height=720');
+  win.document.write(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير اجتماعات اللجان — عمادة شؤون الطلبة</title>
+<style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
+  img{max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+  th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
+  td{padding:4px 6px;border:1px solid #ccc}
+  tr:nth-child(even) td{background:#F0FAF4}
+  .no-print{text-align:center;margin-bottom:12px}
+  @media print{.no-print{display:none}@page{margin:5mm 8mm}}
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
+  <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
+</div>
+${content.innerHTML}
+</body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 800);
+}
+
+// ══════════════════════════════════════════
 // البحث الشامل
 // ══════════════════════════════════════════
 async function loadSearch() {
