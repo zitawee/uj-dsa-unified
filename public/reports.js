@@ -65,10 +65,13 @@ async function printAR(id) {
     <div class="fr"><span class="fl">الكلية:</span><span class="fv">${r.sup_college||''}</span></div>
     <div class="fr"><span class="fl">الهاتف:</span><span class="fv">${r.sup_phone||''}</span></div>
   </div>
-  <div class="psub">مشاركة جهة خارجية</div>
-  <div class="fr"><span class="fl">مشاركة جهة خارجية:</span><span class="fv">${r.guests||'-'}</span></div>
-  <div class="fr"><span class="fl">اسم الجهة الخارجية:</span><span class="fv">${r.ext_name||''}</span></div>
-  <div class="fr" style="min-height:35px"><span class="fl">أسماء المشاركين من الخارج:</span><span class="fv" style="white-space:pre-wrap">${r.ext_people||''}</span></div>
+  <div class="psub">معلومات إضافية</div>
+  <table class="ptbl"><tr><th>البيان</th><th>الإجابة</th></tr>
+    <tr><td>هل يوجد راعٍ أو داعم؟</td><td>${r.sponsor||'-'}</td></tr>
+    <tr><td>هل سيتم إظهار بانر لداعم؟</td><td>${r.banner||'-'}</td></tr>
+    <tr><td>هل يوجد ضيوف من خارج الجامعة؟</td><td>${r.guests||'-'}</td></tr>
+    <tr><td>هل سيتم توزيع مواد أو ضيافة؟</td><td>${r.materials||'-'}</td></tr>
+  </table>
   ${prtApproval()}
   <div style="margin-top:9px;font-size:8pt">
     <div class="fg2">
