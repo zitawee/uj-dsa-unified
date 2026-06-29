@@ -331,8 +331,11 @@ function showFF(table) {
 async function saveFF(table) {
   const cfg=FCFG[table];
   const data={};
+  // نطاق البحث محصور داخل نموذج هذا الجدول فقط — لتفادي تعارض المعرّفات
+  // المكرّرة (مثل ff-date) الموجودة في نماذج أخرى مفتوحة في الصفحة
+  const form=document.getElementById('ff-'+table);
   cfg.fields.forEach(f=>{
-    const el=document.getElementById('ff-'+f.id);
+    const el = form ? form.querySelector('[id="ff-'+f.id+'"]') : document.getElementById('ff-'+f.id);
     if(!el){ data[f.id]=''; return; }
     // date inputs تحتاج معالجة خاصة
     if(el.type==='date'){
@@ -734,7 +737,8 @@ async function saveEditedMinutes2(id) {
 
 async function saveEditedMinutes(oldId) {
   const f = document.getElementById('ff-meeting_minutes');
-  const getV = id => { const el=document.getElementById(id); return el?el.value:''; };
+  // البحث محصور داخل نموذج المحضر لتفادي تعارض المعرّفات المكرّرة بين النماذج
+  const getV = id => { const el=(f&&f.querySelector('[id="'+id+'"]'))||document.getElementById(id); return el?el.value:''; };
 
   const data = {
     committee:   getV('ff-committee'),
