@@ -13,7 +13,7 @@ function fmtVal(val) {
 // ══════════════════════════════════════════
 const QCFG = {
   governance:{title:'مشاركة الطلبة في مجالس الحاكمية واللجان',cols:['committee','authority','student_id','student_name','college','level','meetings_count','date'],heads:['اللجنة','الجهة','الرقم الجامعي','الطالب','الكلية','المستوى','الاجتماعات','التاريخ'],fields:[{l:'اسم اللجنة*',id:'committee',t:'text'},{l:'الجهة',id:'authority',t:'text'},{l:'الرقم الجامعي',id:'student_id',t:'text'},{l:'اسم الطالب*',id:'student_name',t:'text'},{l:'الكلية',id:'college',t:'college'},{l:'التخصص',id:'major',t:'text'},{l:'المستوى الدراسي',id:'level',t:'year'},{l:'عدد الاجتماعات',id:'meetings_count',t:'number'},{l:'التاريخ*',id:'date',t:'date'}]},
-  workshops:{title:'الدورات وورش العمل والمحاضرات والبرامج',cols:['name','authority','date','students_count','external_party','rating'],heads:['النشاط','الجهة','التاريخ','الطلبة','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'الجهة المنظِّمة',id:'authority',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة الحاضرين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
+  workshops:{title:'الدورات وورش العمل والمحاضرات والبرامج',cols:['name','authority','date','students_count','external_party','rating'],heads:['النشاط','الجهة','التاريخ','الطلبة','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'الجهة المنظِّمة',id:'authority',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة الحاضرين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   initiatives:{title:'مبادرات الإبداع والابتكار والريادة',cols:['name','type','date','participants_count','attendees_count','rating'],heads:['المبادرة','النوع','التاريخ','المشاركون','الحاضرون','التقييم'],fields:[{l:'اسم المبادرة*',id:'name',t:'text'},{l:'نوع المبادرة',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة المشاركين',id:'participants_count',t:'number'},{l:'عدد الطلبة الحاضرين',id:'attendees_count',t:'number'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   external_acts:{title:'مشاركة الطلبة في الأنشطة الإبداعية الخارجية',cols:['name','type','date','students_count','external_party','rating'],heads:['النشاط','النوع','التاريخ','الطلبة','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'نوع النشاط',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة الحاضرين',id:'students_count',t:'number'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   competitions:{title:'الأنشطة التي تعد الطلبة للمنافسات المحلية والدولية',cols:['name','type','date','students_count','trainer','rating'],heads:['النشاط','النوع','التاريخ','الطلبة','المدرب','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'نوع النشاط',id:'type',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'اسم المدرب',id:'trainer',t:'text'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
@@ -26,9 +26,9 @@ const QCFG = {
   community_svc:{title:'الخدمات التنموية والاستشارات للمجتمع',cols:['service_type','uni_party','community_party','date'],heads:['نوع الخدمة','الجهة الجامعية','الجهة المستفيدة','التاريخ'],fields:[{l:'نوع الخدمة*',id:'service_type',t:'text'},{l:'الجهة المقدِّمة من الجامعة',id:'uni_party',t:'text'},{l:'الجهة المستفيدة',id:'community_party',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'المشاركون من الجامعة',id:'uni_participants',t:'text'},{l:'المشاركون من المجتمع',id:'community_participants',t:'text'}]},
   awareness:{title:'الأنشطة والمحاضرات التوعوية',cols:['name','type','date','external_party','rating'],heads:['النشاط','النوع','التاريخ','جهة خارجية','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'نوع النشاط',id:'type',t:'select',opts:['ديني','توعوي','وطني','تثقيفي']},{l:'التاريخ*',id:'date',t:'date'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'yesno'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   expert_acts:{title:'الأنشطة التي شارك بها الخبراء من المجتمع',cols:['name','date','authority','students_count','rating'],heads:['النشاط','التاريخ','الجهة','الطلبة','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'الجهة',id:'authority',t:'text'},{l:'عدد الطلبة',id:'students_count',t:'number'},{l:'أسماء الخبراء',id:'experts_names',t:'text'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
-  environment:{title:'أنشطة البيئة والتنمية المستدامة',cols:['name','authority','date','students_count','rating'],heads:['النشاط','الجهة','التاريخ','الطلبة','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'الجهة',id:'authority',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'text'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
+  environment:{title:'أنشطة البيئة والتنمية المستدامة',cols:['name','authority','date','students_count','rating'],heads:['النشاط','الجهة','التاريخ','الطلبة','التقييم'],fields:[{l:'اسم النشاط*',id:'name',t:'text'},{l:'الجهة',id:'authority',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'جهة خارجية',id:'external_party',t:'text'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
   dialogues:{title:'الجلسات الحوارية عن التشريعات السياسية',cols:['title','date','students_count','rating'],heads:['العنوان','التاريخ','الطلبة','التقييم'],fields:[{l:'عنوان الجلسة*',id:'title',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'المتحدثون',id:'speakers',t:'text'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'},{l:'رقم تقييم النشاط',id:'rating',t:'number'}]},
-  campaigns:{title:'الحملات التوعوية والتثقيفية',cols:['title','date','external_party','students_count'],heads:['العنوان','التاريخ','الجهة الخارجية','الطلبة'],fields:[{l:'عنوان الحملة*',id:'title',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'الجهة الخارجية',id:'external_party',t:'text'},{l:'أسماء المتحدثين',id:'speakers',t:'text'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'}]},
+  campaigns:{title:'الحملات التوعوية والتثقيفية',cols:['title','date','external_party','students_count'],heads:['العنوان','التاريخ','الجهة الخارجية','الطلبة'],fields:[{l:'عنوان الحملة*',id:'title',t:'text'},{l:'التاريخ*',id:'date',t:'date'},{l:'الجهة الخارجية',id:'external_party',t:'text'},{l:'اسم الجهة الخارجية',id:'ext_name',t:'text'},{l:'أسماء المشاركين من الخارج',id:'ext_people',t:'textarea'},{l:'أسماء المتحدثين',id:'speakers',t:'text'},{l:'عدد الطلبة المشاركين',id:'students_count',t:'number'},{l:'أسماء العاملين',id:'staff_names',t:'textarea'},{l:'أسماء القيادات',id:'leaders_names',t:'textarea'}]},
 };
 
 function buildQField(f, table='') {
@@ -221,7 +221,7 @@ async function saveQ(table) {
 const FCFG = {
   announcements:{title:'الإعلانات عن الفعاليات',code:'',cols:['title','type','date','location','organizer'],heads:['العنوان','النوع','التاريخ','المكان','الجهة'],fields:[{l:'عنوان الفعالية*',id:'title',t:'text'},{l:'نوع الفعالية',id:'type',t:'select',opts:['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','أخرى']},{l:'التاريخ*',id:'date',t:'date'},{l:'الوقت',id:'time',t:'text'},{l:'المكان',id:'location',t:'text'},{l:'الجهة المنظِّمة',id:'organizer',t:'text'},{l:'للتواصل',id:'contact',t:'text'},{l:'وصف',id:'description',t:'text'},{l:'ملاحظات',id:'notes',t:'text'}]},
   hall_bookings:{title:'حجز المدرجات والقاعات',code:'DSA-06-28-01',cols:['hall','day','date','time_from','time_to','purpose','supervisor'],heads:['المكان','اليوم','التاريخ','من','إلى','الغرض','المشرف'],fields:[{l:'المكان*',id:'hall',t:'select',opts:['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات']},{l:'اليوم*',id:'day',t:'select',opts:['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']},{l:'التاريخ*',id:'date',t:'date'},{l:'من الساعة',id:'time_from',t:'text'},{l:'إلى الساعة',id:'time_to',t:'text'},{l:'الغرض*',id:'purpose',t:'text'},{l:'اسم المشرف',id:'supervisor',t:'text'}]},
-  committees:{title:'تشكيل لجنة / مجلس',code:'AQC-02-10-01',cols:['name','type','date','meeting_freq','secretary'],heads:['اللجنة','النوع','التاريخ','آلية الاجتماع','المقرر'],fields:[{l:'اسم اللجنة*',id:'name',t:'text'},{l:'تاريخ التشكيل',id:'date',t:'date'},{l:'نوع اللجنة',id:'type',t:'select',opts:['دائمة','مؤقتة']},{l:'آلية الاجتماع',id:'meeting_freq',t:'select',opts:['أسبوعياً','كل أسبوعين','شهرياً','أخرى']},{l:'الهدف العام',id:'goal',t:'text'},{l:'المهام',id:'tasks',t:'text'},{l:'أسماء الأعضاء',id:'members',t:'textarea'},{l:'المقرر',id:'secretary',t:'text'},{l:'أمين السر',id:'ameen',t:'text'}]},
+  committees:{title:'تشكيل لجنة / مجلس',code:'AQC-02-10-01',cols:['name','type','date','ref_num','meeting_freq','secretary'],heads:['اللجنة','النوع','التاريخ','رقم الكتاب','آلية الاجتماع','المقرر'],fields:[{l:'اسم اللجنة*',id:'name',t:'text'},{l:'رقم الكتاب',id:'ref_num',t:'text'},{l:'تاريخ التشكيل',id:'date',t:'date'},{l:'نوع اللجنة',id:'type',t:'select',opts:['دائمة','مؤقتة']},{l:'آلية الاجتماع',id:'meeting_freq',t:'select',opts:['أسبوعياً','كل أسبوعين','شهرياً','أخرى']},{l:'الهدف العام',id:'goal',t:'text'},{l:'المهام',id:'tasks',t:'text'},{l:'أسماء الأعضاء',id:'members',t:'textarea'},{l:'المقرر',id:'secretary',t:'text'},{l:'أمين السر',id:'ameen',t:'text'}]},
   meeting_invites:{title:'دعوات حضور الاجتماعات',code:'AQC-04-01-01',cols:['committee','subject','session_num','date','time','location'],heads:['اللجنة','الموضوع','رقم الجلسة','التاريخ','الوقت','المكان'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'الموضوع*',id:'subject',t:'text'},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'طبيعة الاجتماع',id:'nature',t:'select',opts:['عادي وجاهي','عادي عن بعد','عادي مدمج','طارئ وجاهي','طارئ عن بعد']},{l:'المكان',id:'location',t:'text'},{l:'المدعوّون',id:'invitees',t:'textarea'},{l:'جدول الأعمال',id:'agenda',t:'text'},{l:'أمين السر',id:'ameen',t:'text'},{l:'رئيس اللجنة',id:'head',t:'text'}]},
   meeting_minutes:{title:'محاضر الاجتماعات',code:'AQC-04-01-02',cols:['committee','session_num','date','time','chair'],heads:['اللجنة','رقم الجلسة','التاريخ','الوقت','الرئيس'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'نوع الاجتماع',id:'nature',t:'select',opts:['دوري وجاهي','دوري عن بعد','دوري مدمج','طارئ']},{l:'رئيس الجلسة',id:'chair',t:'text'},{l:'الحاضرون (الاسم - المنصب)',id:'present',t:'textarea'},{l:'المعتذرون',id:'absent',t:'textarea'},{l:'أمين السر',id:'ameen',t:'text'},{l:'البنود والقرارات',id:'items',t:'textarea'},{l:'وقت الانتهاء',id:'end_time',t:'text'}]},
 };
@@ -239,6 +239,13 @@ function autoFillDay(dateVal) {
 
 function buildFF(f,pfx='ff') {
   const id=`${pfx}-${f.id}`;
+  // حقل اللجنة في دعوات الاجتماع — مع اقتراح تلقائي
+  if(f.id==='committee' && pfx==='ff')
+    return `<div class="fg" id="comm-wrapper" style="position:relative">
+      <label>${f.l}</label>
+      <input id="${id}" type="text" oninput="showCommitteeSuggest(this.value)" onfocus="loadCommitteesList();showCommitteeSuggest(this.value)" autocomplete="off" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%">
+      <div id="comm-suggest" style="display:none;position:absolute;top:100%;right:0;left:0;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:200px;overflow-y:auto"></div>
+    </div>`;
   if(f.t==='textarea') return `<div class="fg full"><label>${f.l}</label><textarea id="${id}" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)"></textarea></div>`;
   if(f.t==='date'||f.t==='date2'){
     // إذا كان في نموذج حجز القاعة — يملأ اليوم تلقائياً
@@ -874,6 +881,7 @@ async function printCommittee(id) {
   <div class="ptitle">نموذج تشكيل لجنة / مجلس</div>
   <div class="fr"><span class="fl">اسم اللجنة / المجلس:</span><span class="fv">${r.name||''}</span></div>
   <div class="fr"><span class="fl">تاريخ التشكيل:</span><span class="fv">${r.date||''}</span></div>
+  <div class="fr"><span class="fl">رقم الكتاب:</span><span class="fv">${r.ref_num||''}</span></div>
   <div class="fr"><span class="fl">نوع اللجنة:</span>
     <span>
       <span class="chk" style="background:${(r.type||'').trim()==='دائمة'?'#1B6B3A':'#fff'};color:#fff;font-size:8pt;line-height:10px;display:inline-flex;align-items:center;justify-content:center">${(r.type||'').trim()==='دائمة'?'✓':''}</span> دائمة 
@@ -987,4 +995,107 @@ async function printAttachedParticipants(table, recordId) {
   }
   // طباعة كشف الأسماء
   printPart(rec.attached_participant_id);
+}
+
+// ══ اختيار اللجنة من قائمة في دعوات الاجتماع ══
+async function loadCommitteesList() {
+  const rows = await api('/api/committees');
+  window._committeesList = rows || [];
+}
+
+function showCommitteeSuggest(val) {
+  const list = window._committeesList || [];
+  const box = document.getElementById('comm-suggest');
+  if(!box) return;
+  if(!val || val.length < 1) { box.style.display='none'; return; }
+  const filtered = list.filter(c => (c.name||'').includes(val)).slice(0,8);
+  if(!filtered.length) { box.style.display='none'; return; }
+  box.innerHTML = filtered.map(c => `
+    <div onclick="selectCommittee(${JSON.stringify(c).replace(/"/g,'&quot;')})"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px"
+      onmouseover="this.style.background='#F0FAF4'" onmouseout="this.style.background=''">
+      <div style="font-weight:600">${c.name}</div>
+      <div style="font-size:10px;color:var(--muted)">
+        ${c.date?'تاريخ التشكيل: '+c.date:''} 
+        ${c.ref_num?' | رقم الكتاب: '+c.ref_num:''}
+      </div>
+    </div>`).join('');
+  box.style.display = 'block';
+}
+
+function selectCommittee(c) {
+  if(typeof c === 'string') try{c=JSON.parse(c);}catch(e){return;}
+  const el = document.getElementById('ff-committee');
+  if(el) el.value = c.name||'';
+  const box = document.getElementById('comm-suggest');
+  if(box) box.style.display='none';
+}
+
+// إغلاق القائمة عند النقر خارجها
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#comm-wrapper')){
+    const box=document.getElementById('comm-suggest');
+    if(box) box.style.display='none';
+  }
+});
+
+// ══ تقرير اللجان ══
+async function printCommitteesReport() {
+  const rows = await api('/api/committees');
+  if(!rows||!rows.length){alert('لا توجد لجان مشكّلة');return;}
+
+  // لكل لجنة نحسب عدد اجتماعاتها من محاضر الاجتماعات
+  const minutes = await api('/api/meeting_minutes');
+
+  const today = new Date().toLocaleDateString('ar-JO',{year:'numeric',month:'long',day:'numeric'});
+
+  const html = `<div class="ph2">
+    <img src="/logo.png" class="plogo">
+    <div class="puni">
+      <div class="ar">الجامعة الأردنية</div>
+      <div class="en">The University of Jordan</div>
+      <div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div>
+    </div>
+    <div class="pmeta">
+      <div><strong>تاريخ الطباعة:</strong> ${today}</div>
+      <div><strong>إجمالي اللجان:</strong> ${rows.length}</div>
+    </div>
+  </div>
+  <div class="ptitle">تقرير اللجان والمجالس</div>
+  <table class="ptbl">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>اسم اللجنة</th>
+        <th>تاريخ التشكيل</th>
+        <th>رقم الكتاب</th>
+        <th>نوع اللجنة</th>
+        <th>المهام</th>
+        <th>الهدف العام</th>
+        <th>المقرر</th>
+        <th>عدد الاجتماعات</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map((r,i)=>{
+        const meetCount = (minutes||[]).filter(m=>(m.committee||'').includes(r.name||'')).length;
+        return `<tr>
+          <td>${i+1}</td>
+          <td><strong>${r.name||'-'}</strong></td>
+          <td>${r.date||'-'}</td>
+          <td>${r.ref_num||'-'}</td>
+          <td>${r.type||'-'}</td>
+          <td style="font-size:7.5pt">${r.tasks||'-'}</td>
+          <td style="font-size:7.5pt">${r.goal||'-'}</td>
+          <td>${r.secretary||'-'}</td>
+          <td style="text-align:center;font-weight:700;color:#1B6B3A">${meetCount}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  <div style="margin-top:8px;font-size:8pt;color:#666">
+    إجمالي اللجان: <strong>${rows.length}</strong> | 
+    إجمالي الاجتماعات: <strong>${(minutes||[]).length}</strong>
+  </div>`;
+  openPrint(html);
 }

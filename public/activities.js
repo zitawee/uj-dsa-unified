@@ -63,12 +63,11 @@ async function loadAR() {
       </div>
     </div>
     <div class="card">
-      <div class="ct"><i class="ti ti-info-circle"></i>معلومات إضافية</div>
+      <div class="ct"><i class="ti ti-info-circle"></i>مشاركة جهة خارجية</div>
       <div class="g2">
-        <div class="fg"><label>هل يوجد راعٍ أو داعم؟</label><select id="ar-spon"><option value="">اختر...</option><option>نعم</option><option>لا</option></select></div>
-        <div class="fg"><label>هل سيتم إظهار بانر لداعم؟</label><select id="ar-ban"><option value="">اختر...</option><option>نعم</option><option>لا</option></select></div>
-        <div class="fg"><label>هل يوجد ضيوف من خارج الجامعة؟</label><select id="ar-guest"><option value="">اختر...</option><option>نعم</option><option>لا</option></select></div>
-        <div class="fg"><label>هل سيتم توزيع مواد أو ضيافة؟</label><select id="ar-mat"><option value="">اختر...</option><option>نعم</option><option>لا</option></select></div>
+        <div class="fg"><label>مشاركة جهة خارجية</label><select id="ar-guest"><option value="">اختر...</option><option>نعم</option><option>لا</option></select></div>
+        <div class="fg"><label>اسم الجهة الخارجية</label><input id="ar-ext-name" type="text" placeholder="اسم الجهة..."></div>
+        <div class="fg full"><label>أسماء المشاركين من الخارج</label><textarea id="ar-ext-people" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)" placeholder="الاسم الأول&#10;الاسم الثاني&#10;..."></textarea></div>
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px">
@@ -130,7 +129,7 @@ async function saveAR() {
     activity_date:g('ar-date'),time_from:g('ar-tfrom'),time_to:g('ar-tto'),
     location:g('ar-loc'),services:g('ar-srv'),
     supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),
-    sponsor:g('ar-spon'),banner:g('ar-ban'),guests:g('ar-guest'),materials:g('ar-mat'),
+    guests:g('ar-guest'),ext_name:g('ar-ext-name'),ext_people:document.getElementById('ar-ext-people')?.value||'',
     status:'pending'
   };
   if (!data.title||!data.student_name){showMsg('msg-ar','يرجى ملء الحقول الإلزامية',true);return null;}
