@@ -233,6 +233,8 @@ async function genReport() {
 // ══════════════════════════════════════════
 // تقرير اجتماعات اللجان
 // ══════════════════════════════════════════
+let _cmtReportData = { committees: [], byCommittee: {} };
+
 async function loadCommitteeReport() {
   const panel = document.getElementById('panel-committee_report');
   panel.innerHTML = `
@@ -241,6 +243,13 @@ async function loadCommitteeReport() {
     <div style="display:flex;gap:6px">
       <button class="btn btn-b" onclick="printCommitteeReport()"><i class="ti ti-printer"></i>طباعة / PDF</button>
     </div>
+  </div>
+  <div class="card" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div class="fg" style="margin:0;min-width:260px;flex:1">
+      <label>تصفية حسب اللجنة</label>
+      <select id="cmt-filter" onchange="renderCommitteeReport()"><option value="">جميع اللجان</option></select>
+    </div>
+    <div style="font-size:11px;color:var(--muted);padding-bottom:8px">اختر لجنة لعرضها وطباعتها وحدها، أو «جميع اللجان» لعرض الكل.</div>
   </div>
   <div id="cmt-rpt-out"><div style="padding:20px;text-align:center;color:var(--muted)">جارٍ التحميل...</div></div>`;
 
@@ -260,7 +269,28 @@ async function loadCommitteeReport() {
     });
   });
 
-  const rows = (committees || []).map(c => {
+  _cmtReportData = { committees: committees || [], byCommittee };
+
+  // ملء قائمة التصفية بأسماء اللجان (بدون تكرار)
+  const sel = document.getElementById('cmt-filter');
+  if (sel) {
+    const names = [...new Set((committees || []).map(c => (c.name || '').trim()).filter(Boolean))];
+    sel.innerHTML = '<option value="">جميع اللجان</option>' +
+      names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+  }
+
+  renderCommitteeReport();
+}
+
+function renderCommitteeReport() {
+  const { committees, byCommittee } = _cmtReportData;
+  const filter = (document.getElementById('cmt-filter')?.value || '').trim();
+
+  const source = filter
+    ? committees.filter(c => (c.name || '').trim() === filter)
+    : committees;
+
+  const rows = source.map(c => {
     const list = (byCommittee[(c.name || '').trim()] || [])
       .slice()
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -282,6 +312,7 @@ async function loadCommitteeReport() {
   });
 
   const totalMeetings = rows.reduce((a, r) => a + r.meetings, 0);
+  const scopeLabel = filter ? `اللجنة: ${filter}` : 'جميع اللجان';
 
   document.getElementById('cmt-rpt-out').innerHTML = `
   <div style="background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:18px">
@@ -290,6 +321,7 @@ async function loadCommitteeReport() {
       <div style="font-size:20px;font-weight:700;color:var(--g)">الجامعة الأردنية</div>
       <div style="font-size:13px;font-weight:600;color:#333;margin:3px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
       <div style="background:var(--g);color:#fff;padding:7px 22px;border-radius:7px;display:inline-block;margin:9px 0;font-size:15px;font-weight:700">تقرير اجتماعات اللجان</div>
+      <div style="font-size:12px;color:#333;font-weight:600;margin-top:2px">${scopeLabel}</div>
       <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()}</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
@@ -315,7 +347,7 @@ async function loadCommitteeReport() {
           <td style="padding:5px 9px;border:1px solid var(--border);text-align:center;font-weight:700;color:var(--g)">${r.meetings}</td>
           <td style="padding:5px 9px;border:1px solid var(--border);font-size:11px;line-height:1.7">${r.datesHtml}</td>
           <td style="padding:5px 9px;border:1px solid var(--border)">${r.secretary}</td>
-        </tr>`).join('') : `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--muted)">لا توجد لجان مسجلة</td></tr>`}
+        </tr>`).join('') : `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--muted)">لا توجد لجان مطابقة</td></tr>`}
       </tbody>
     </table>
   </div>`;
