@@ -257,6 +257,9 @@ async function loadCommitteeReport() {
       <div id="cmt-filter-list" style="display:none;position:absolute;top:100%;right:0;left:0;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:260px;overflow-y:auto"></div>
     </div>
     <button class="btn" onclick="cmtFilterClear()" style="margin-bottom:0"><i class="ti ti-list"></i>عرض جميع اللجان</button>
+    <div class="fg" style="margin:0"><label>من تاريخ</label><input type="date" id="cmt-from" onchange="renderCommitteeReport()"></div>
+    <div class="fg" style="margin:0"><label>إلى تاريخ</label><input type="date" id="cmt-to" onchange="renderCommitteeReport()"></div>
+    <button class="btn" onclick="document.getElementById('cmt-from').value='';document.getElementById('cmt-to').value='';renderCommitteeReport()" style="margin-bottom:0">كل الفترات</button>
   </div>
   <div id="cmt-rpt-out"><div style="padding:20px;text-align:center;color:var(--muted)">جارٍ التحميل...</div></div>`;
 
@@ -333,6 +336,8 @@ document.addEventListener('click', e => {
 function renderCommitteeReport() {
   const { committees, byCommittee } = _cmtReportData;
   const filter = (_cmtFilter || '').trim();
+  const from = document.getElementById('cmt-from')?.value || '';
+  const to   = document.getElementById('cmt-to')?.value || '';
 
   const source = filter
     ? committees.filter(c => (c.name || '').trim() === filter)
@@ -341,6 +346,8 @@ function renderCommitteeReport() {
   const rows = source.map(c => {
     const list = (byCommittee[(c.name || '').trim()] || [])
       .slice()
+      // تصفية الاجتماعات حسب الفترة الزمنية المحددة
+      .filter(m => (!from || (m.date || '') >= from) && (!to || (m.date || '') <= to))
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     // قائمة التواريخ كأسطر منفصلة: رقم الجلسة — التاريخ
     const datesHtml = list.length
@@ -361,6 +368,7 @@ function renderCommitteeReport() {
 
   const totalMeetings = rows.reduce((a, r) => a + r.meetings, 0);
   const scopeLabel = filter ? `اللجنة: ${filter}` : 'جميع اللجان';
+  const periodLabel = from&&to ? `الفترة: من ${from} إلى ${to}` : from ? `الفترة: من ${from}` : to ? `الفترة: حتى ${to}` : 'الفترة: جميع التواريخ';
 
   document.getElementById('cmt-rpt-out').innerHTML = `
   <div style="background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:18px">
@@ -370,6 +378,7 @@ function renderCommitteeReport() {
       <div style="font-size:13px;font-weight:600;color:#333;margin:3px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
       <div style="background:var(--g);color:#fff;padding:7px 22px;border-radius:7px;display:inline-block;margin:9px 0;font-size:15px;font-weight:700">تقرير اجتماعات اللجان</div>
       <div style="font-size:12px;color:#333;font-weight:600;margin-top:2px">${scopeLabel}</div>
+      <div style="font-size:11px;color:#555;margin-top:1px">${periodLabel}</div>
       <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()}</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
