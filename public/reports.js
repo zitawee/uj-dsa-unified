@@ -534,6 +534,113 @@ ${content.innerHTML}
 }
 
 // ══════════════════════════════════════════
+// تقرير حسب التصنيف (أنشطة تصنيف محدد)
+// ══════════════════════════════════════════
+let _catReportData = [];
+
+async function loadCategoryReport() {
+  const panel = document.getElementById('panel-cat_report');
+  const cats = (typeof ACTIVITY_CATEGORIES!=='undefined') ? ACTIVITY_CATEGORIES : [];
+  panel.innerHTML = `
+  <div class="ph">
+    <div><div class="pt"><i class="ti ti-category"></i> تقرير حسب التصنيفات</div><div class="ps">قائمة الأنشطة المندرجة تحت تصنيف محدد</div></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-b" onclick="printCategoryReport()"><i class="ti ti-printer"></i>طباعة / PDF</button>
+    </div>
+  </div>
+  <div class="card" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div class="fg" style="margin:0;min-width:300px;flex:1">
+      <label>التصنيف</label>
+      <select id="cat-sel" onchange="renderCategoryReport()" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%">
+        <option value="">اختر التصنيف...</option>
+        ${cats.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg" style="margin:0"><label>من تاريخ</label><input type="date" id="cat-from" onchange="renderCategoryReport()"></div>
+    <div class="fg" style="margin:0"><label>إلى تاريخ</label><input type="date" id="cat-to" onchange="renderCategoryReport()"></div>
+  </div>
+  <div id="cat-out"><div style="padding:20px;text-align:center;color:var(--muted)">اختر تصنيفاً لعرض أنشطته.</div></div>`;
+
+  _catReportData = (await api('/api/student_activities')) || [];
+  renderCategoryReport();
+}
+
+function renderCategoryReport() {
+  const cat  = document.getElementById('cat-sel')?.value || '';
+  const from = document.getElementById('cat-from')?.value || '';
+  const to   = document.getElementById('cat-to')?.value || '';
+  const out  = document.getElementById('cat-out');
+  if(!out) return;
+
+  if(!cat){
+    out.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted)">اختر تصنيفاً لعرض أنشطته.</div>`;
+    return;
+  }
+
+  let rows = (Array.isArray(_catReportData)?_catReportData:[])
+    .filter(r => Array.isArray(r.categories) && r.categories.includes(cat));
+  if(from) rows = rows.filter(r => (r.date||'') >= from);
+  if(to)   rows = rows.filter(r => (r.date||'') <= to);
+  rows.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+
+  const pLabel = from&&to ? `من ${from} إلى ${to}` : from ? `من ${from}` : to ? `حتى ${to}` : 'جميع الفترات';
+
+  out.innerHTML = `
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:18px">
+    <div style="text-align:center;padding:16px;border-bottom:3px solid var(--g);margin-bottom:14px">
+      <img src="/logo.png" style="width:68px;height:68px;object-fit:contain;margin-bottom:7px">
+      <div style="font-size:20px;font-weight:700;color:var(--g)">الجامعة الأردنية</div>
+      <div style="font-size:13px;font-weight:600;color:#333;margin:3px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
+      <div style="background:var(--g);color:#fff;padding:7px 22px;border-radius:7px;display:inline-block;margin:9px 0;font-size:15px;font-weight:700">${cat}</div>
+      <div style="font-size:12px;color:#333;font-weight:600;margin-top:2px">عدد الأنشطة: ${rows.length} — الفترة: ${pLabel}</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#F0FAF4">
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">#</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:right">عنوان النشاط</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:right">الجهة المنظمة</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">التاريخ</th>
+      </tr></thead>
+      <tbody>
+        ${rows.length ? rows.map((r,i)=>`<tr style="background:${i%2?'#F9FAFB':'#fff'}">
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center">${i+1}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border)">${r.title||'-'}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border)">${r.organizer||'-'}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center">${r.date||'-'}</td>
+        </tr>`).join('') : `<tr><td colspan="4" style="padding:14px;text-align:center;color:var(--muted)">لا توجد أنشطة ضمن هذا التصنيف في الفترة المحددة</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function printCategoryReport() {
+  const cat = document.getElementById('cat-sel')?.value || '';
+  const content = document.getElementById('cat-out');
+  if(!cat || !content || content.innerHTML.includes('اختر تصنيفاً')){ alert('يرجى اختيار تصنيف أولاً'); return; }
+  const fullDoc = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير حسب التصنيف — عمادة شؤون الطلبة</title>
+<style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
+  img{max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+  th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
+  td{padding:4px 6px;border:1px solid #ccc}
+  tr:nth-child(even) td{background:#F0FAF4}
+  @media print{@page{margin:5mm 8mm}}
+</style>
+</head>
+<body>
+${content.innerHTML}
+</body></html>`;
+  printDocument(fullDoc);
+}
+
+// ══════════════════════════════════════════
 // البحث الشامل
 // ══════════════════════════════════════════
 async function loadSearch() {
