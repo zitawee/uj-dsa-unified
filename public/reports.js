@@ -407,6 +407,9 @@ function printCommitteeReport() {
     return;
   }
   const win = window.open('', '_blank', 'width=960,height=720');
+  if(!win){ alert('تعذّر فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) لهذا الموقع ثم إعادة المحاولة.'); return; }
+  const body = content.innerHTML.replace(/src="\/logo\.png"/g, 'src="' + location.origin + '/logo.png"');
+  win.document.open();
   win.document.write(`<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -429,10 +432,18 @@ function printCommitteeReport() {
   <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
   <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
 </div>
-${content.innerHTML}
+${body}
+<script>
+  (function(){
+    var done=false;
+    function go(){ if(done) return; done=true; try{ window.focus(); }catch(e){} window.print(); }
+    if(document.readyState==='complete'){ setTimeout(go,300); }
+    else { window.addEventListener('load', function(){ setTimeout(go,200); }); }
+    setTimeout(go,1800);
+  })();
+<\/script>
 </body></html>`);
   win.document.close();
-  setTimeout(() => win.print(), 800);
 }
 
 // ══════════════════════════════════════════
@@ -536,6 +547,9 @@ function printReport() {
     return;
   }
   const win = window.open('','_blank','width=960,height=720');
+  if(!win){ alert('تعذّر فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) لهذا الموقع ثم إعادة المحاولة.'); return; }
+  const body = content.innerHTML.replace(/src="\/logo\.png"/g, 'src="' + location.origin + '/logo.png"');
+  win.document.open();
   win.document.write(`<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -558,8 +572,16 @@ function printReport() {
   <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
   <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
 </div>
-${content.innerHTML}
+${body}
+<script>
+  (function(){
+    var done=false;
+    function go(){ if(done) return; done=true; try{ window.focus(); }catch(e){} window.print(); }
+    if(document.readyState==='complete'){ setTimeout(go,300); }
+    else { window.addEventListener('load', function(){ setTimeout(go,200); }); }
+    setTimeout(go,1800);
+  })();
+<\/script>
 </body></html>`);
   win.document.close();
-  setTimeout(()=>win.print(), 800);
 }

@@ -40,7 +40,11 @@ const sg = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||
 const today = () => new Date().toLocaleDateString('ar-JO',{year:'numeric',month:'long',day:'numeric'});
 
 function openPrint(html) {
+  // تصحيح مسار الشعار: نافذة الطباعة من نوع about:blank فلا تتعرّف على المسار النسبي "/logo.png"
+  const fixedHtml = String(html).replace(/src="\/logo\.png"/g, 'src="' + location.origin + '/logo.png"');
   const win = window.open('','_blank','width=960,height=720');
+  if(!win){ alert('تعذّر فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) لهذا الموقع ثم إعادة المحاولة.'); return; }
+  win.document.open();
   win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>طباعة — عمادة شؤون الطلبة</title><style>
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
     body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt}
@@ -72,9 +76,18 @@ function openPrint(html) {
     <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
     <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
   </div>
-  ${html}</body></html>`);
+  ${fixedHtml}
+  <script>
+    (function(){
+      var done=false;
+      function go(){ if(done) return; done=true; try{ window.focus(); }catch(e){} window.print(); }
+      if(document.readyState==='complete'){ setTimeout(go,300); }
+      else { window.addEventListener('load', function(){ setTimeout(go,200); }); }
+      setTimeout(go,1800); // احتياطي في حال تأخّر تحميل صورة الشعار
+    })();
+  <\/script>
+  </body></html>`);
   win.document.close();
-  setTimeout(()=>win.print(),700);
 }
 const badge = act => { const[bg,fg]=ACOLORS[act]||['#eee','#555']; return `<span class="ab" style="background:${bg};color:${fg}">${act}</span>`; };
 const stBadge = st => { const m={pending:'🟡 قيد الانتظار',approved:'✅ معتمد',rejected:'❌ مرفوض'}; const c={pending:'st-p',approved:'st-a',rejected:'st-r'}; return `<span class="st ${c[st]||'st-p'}">${m[st]||'🟡 قيد الانتظار'}</span>`; };
