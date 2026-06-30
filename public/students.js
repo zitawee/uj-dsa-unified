@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════
 async function loadIncomplete() {
   const rows = await api('/api/incomplete');
-  const TNAMES = {workshops:'الدورات وورش العمل',initiatives:'مبادرات الإبداع',external_acts:'الأنشطة الخارجية',competitions:'أنشطة المنافسات',awareness:'الأنشطة التوعوية',environment:'أنشطة البيئة',dialogues:'الجلسات الحوارية',campaigns:'الحملات التوعوية',expert_acts:'أنشطة الخبراء',community_svc:'الخدمات المجتمعية'};
+  const TNAMES = {student_activities:'الأنشطة الطلابية',community_svc:'الخدمات المجتمعية'};
   document.getElementById('panel-incomplete').innerHTML = `
   <div class="ph"><div><div class="pt"><i class="ti ti-alert-circle" style="color:#633806"></i> الطلبات غير المكتملة</div><div class="ps">سجلات رُحِّلت من النماذج وتحتاج إدخال بيانات إضافية</div></div></div>
   ${!(rows||[]).length ? `<div style="text-align:center;padding:40px;color:var(--muted)"><i class="ti ti-circle-check" style="font-size:48px;color:#27500A;display:block;margin-bottom:10px"></i>لا توجد طلبات غير مكتملة</div>` : `

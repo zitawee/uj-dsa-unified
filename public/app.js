@@ -8,18 +8,31 @@ const YEARS = ['الأولى','الثانية','الثالثة','الرابعة'
 const ACOLORS = {'المرسم الجامعي':['#EEEDFE','#3C3489'],'الموسيقى':['#E1F5EE','#085041'],'الخط العربي':['#FAEEDA','#633806'],'الحرف اليدوية':['#FAECE7','#712B13'],'المسرح الجامعي':['#FBE8F5','#5D1A4A'],'الأداء الحركي':['#EAF3DE','#27500A'],'المناظرات':['#E8F4FD','#0A4A6B'],'الأنشطة الحزبية':['#FBEAF0','#72243E']};
 const RLABELS = {admin:'مدير',editor:'مدخل بيانات',viewer:'عرض فقط'};
 const RCLS = {admin:'r-admin',editor:'r-editor',viewer:'r-viewer'};
-const QTBL_LABELS = {
-  workshops:'الدورات وورش العمل والمحاضرات',
-  initiatives:'مبادرات الإبداع والابتكار والريادة',
-  external_acts:'الأنشطة الإبداعية / الريادية الخارجية',
-  competitions:'الأنشطة التي تعد للمنافسات',
-  awareness:'الأنشطة والمحاضرات التوعوية',
-  staff_innovation:'مشاركة الموظفين في أنشطة الإبداع',
-  expert_acts:'الأنشطة التي شارك بها الخبراء من المجتمع',
-  environment:'أنشطة البيئة والتنمية المستدامة',
-  dialogues:'الجلسات الحوارية عن التشريعات السياسية',
-  campaigns:'الحملات التوعوية والتثقيفية'
-};
+// التصنيفات التسعة للأنشطة (يختارها مدير النظام عند الاعتماد) — قابلة للإضافة عليها لاحقاً
+const ACTIVITY_CATEGORIES = [
+  'الدورات وورش العمل والمحاضرات والبرامج',
+  'مبادرات الإبداع والابتكار والريادة',
+  'مشاركة الطلبة في الأنشطة الإبداعية الخارجية',
+  'الأنشطة التي تعد الطلبة للمنافسات المحلية والدولية',
+  'الأنشطة والمحاضرات التوعوية',
+  'الأنشطة التي شارك بها الخبراء من المجتمع',
+  'أنشطة البيئة والتنمية المستدامة',
+  'الجلسات الحوارية عن التشريعات السياسية',
+  'الحملات التوعوية والتثقيفية'
+];
+
+// دوائر العمادة (تظهر في حقل الجهة المنظمة بطلب إقامة نشاط)
+const DEANSHIP_DEPTS = [
+  'دائرة الهيئات والخدمات الطلابية',
+  'دائرة الرعاية الصحية',
+  'دائرة الإرشاد الطلابي',
+  'دائرة النشاطات الرياضية',
+  'دائرة المنازل',
+  'دائرة الخدمات الفنية والتطوير',
+  'دائرة النشاطات الثقافية والحزبية',
+  'مكتب شؤون الطلبة الدوليين',
+  'اتحاد طلبة الجامعة الأردنية'
+];
 
 let TOKEN = localStorage.getItem('uj_tok');
 let ME = null;
@@ -159,10 +172,7 @@ function buildSidebar() {
   <div class="folder-hdr" onclick="toggleFolder('f-quality')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-quality"></i><i class="ti ti-certificate"></i>بيانات الجودة</div>
   <div class="folder-body" id="f-quality" style="display:none">
     <div class="ni" onclick="go('governance',this)"><i class="ti ti-building-community"></i>مجالس الحاكمية<span class="cnt" id="c-governance">0</span></div>
-    <div class="ni" onclick="go('workshops',this)"><i class="ti ti-chalkboard"></i>الدورات وورش العمل<span class="cnt" id="c-workshops">0</span></div>
-    <div class="ni" onclick="go('initiatives',this)"><i class="ti ti-bulb"></i>مبادرات الإبداع<span class="cnt" id="c-initiatives">0</span></div>
-    <div class="ni" onclick="go('external_acts',this)"><i class="ti ti-world"></i>الأنشطة الخارجية<span class="cnt" id="c-external_acts">0</span></div>
-    <div class="ni" onclick="go('competitions',this)"><i class="ti ti-medal"></i>أنشطة المنافسات<span class="cnt" id="c-competitions">0</span></div>
+    <div class="ni" onclick="go('student_activities',this)"><i class="ti ti-confetti"></i>الأنشطة الطلابية<span class="cnt" id="c-student_activities">0</span></div>
     <div class="ni" onclick="go('student_honors',this)"><i class="ti ti-award"></i>تكريم الطلبة<span class="cnt" id="c-student_honors">0</span></div>
     <div class="ni" onclick="go('staff_committees',this)"><i class="ti ti-users-group"></i>لجان الموظفين<span class="cnt" id="c-staff_committees">0</span></div>
     <div class="ni" onclick="go('staff_training',this)"><i class="ti ti-certificate"></i>تدريب الموظفين<span class="cnt" id="c-staff_training">0</span></div>
@@ -170,11 +180,6 @@ function buildSidebar() {
     <div class="ni" onclick="go('staff_honors',this)"><i class="ti ti-star"></i>تكريم الموظفين<span class="cnt" id="c-staff_honors">0</span></div>
     <div class="ni" onclick="go('uni_committees',this)"><i class="ti ti-network"></i>اللجان الجامعية<span class="cnt" id="c-uni_committees">0</span></div>
     <div class="ni" onclick="go('community_svc',this)"><i class="ti ti-heart-handshake"></i>الخدمات المجتمعية<span class="cnt" id="c-community_svc">0</span></div>
-    <div class="ni" onclick="go('awareness',this)"><i class="ti ti-bell"></i>الأنشطة التوعوية<span class="cnt" id="c-awareness">0</span></div>
-    <div class="ni" onclick="go('expert_acts',this)"><i class="ti ti-user-star"></i>أنشطة الخبراء<span class="cnt" id="c-expert_acts">0</span></div>
-    <div class="ni" onclick="go('environment',this)"><i class="ti ti-leaf"></i>أنشطة البيئة<span class="cnt" id="c-environment">0</span></div>
-    <div class="ni" onclick="go('dialogues',this)"><i class="ti ti-messages"></i>الجلسات الحوارية<span class="cnt" id="c-dialogues">0</span></div>
-    <div class="ni" onclick="go('campaigns',this)"><i class="ti ti-flag"></i>الحملات التوعوية<span class="cnt" id="c-campaigns">0</span></div>
   </div>
 
   <div class="sbt">الأدوات</div>
@@ -195,11 +200,8 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','students','achievements','activity_requests','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','workshops','initiatives','external_acts','competitions','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','awareness','expert_acts','environment','dialogues','campaigns','reports','committee_report','search','users'];
+  const IDS = ['dash','incomplete','students','achievements','activity_requests','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','search','users'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
-  // fill approve modal options
-  const sel = document.getElementById('approve-tbl');
-  Object.entries(QTBL_LABELS).forEach(([k,v])=>{ const o=document.createElement('option'); o.value=k; o.textContent=v; sel.appendChild(o); });
 }
 
 // ══ Login ══
@@ -258,14 +260,11 @@ function go(name, el) {
     activity_requests:loadAR, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
-    governance:()=>loadQ('governance'), workshops:()=>loadQ('workshops'), initiatives:()=>loadQ('initiatives'),
-    external_acts:()=>loadQ('external_acts'), competitions:()=>loadQ('competitions'),
+    governance:()=>loadQ('governance'), student_activities:()=>loadQ('student_activities'),
     student_honors:()=>loadQ('student_honors'), staff_committees:()=>loadQ('staff_committees'),
     staff_training:()=>loadQ('staff_training'), staff_innovation:()=>loadQ('staff_innovation'),
     staff_honors:()=>loadQ('staff_honors'), uni_committees:()=>loadQ('uni_committees'),
-    community_svc:()=>loadQ('community_svc'), awareness:()=>loadQ('awareness'),
-    expert_acts:()=>loadQ('expert_acts'), environment:()=>loadQ('environment'),
-    dialogues:()=>loadQ('dialogues'), campaigns:()=>loadQ('campaigns'),
+    community_svc:()=>loadQ('community_svc'),
     reports:loadReports, search:loadSearch, users:loadUsers, committee_report:loadCommitteeReport,
   };
   if (loaders[name]) loaders[name]();
@@ -291,10 +290,10 @@ async function loadDash() {
   </div>
   ${(pending||[]).length ? `
   <div class="card"><div class="ct" style="color:#633806"><i class="ti ti-clock"></i>طلبات تنتظر الاعتماد (${pending.length})</div>
-  <div class="tw"><table><thead><tr><th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجدول المستهدف</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th></th></tr></thead>
+  <div class="tw"><table><thead><tr><th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th></th></tr></thead>
   <tbody>${(pending||[]).slice(0,6).map((r,i)=>`<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
-    <td style="font-size:11px;color:var(--g)">${QTBL_LABELS[r.quality_table]||'-'}</td>
+    <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
     <td><div class="rb">
       ${ME?.role==='admin'?`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r.id}')">❌ رفض</button>`:''}

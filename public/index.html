@@ -157,13 +157,13 @@ tr:hover td{background:#FAFAFA}
 </div>
 <div class="modal-ov" id="mod-approve">
   <div class="modal">
-    <h3>✅ اعتماد طلب النشاط وترحيله</h3>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">عند الاعتماد يُرحَّل النشاط تلقائياً للجدول المحدد في بيانات الجودة</p>
-    <div class="fg" style="margin-bottom:10px"><label>الجدول المستهدف في الجودة *</label><select id="approve-tbl" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%"><option value="">اختر الجدول...</option></select></div>
+    <h3>✅ اعتماد طلب النشاط</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">اختر تصنيف النشاط (يمكن اختيار أكثر من تصنيف) — سيُنشأ سجل واحد في «الأنشطة الطلابية» يحمل التصنيفات المختارة</p>
+    <div class="fg" style="margin-bottom:10px"><label>تصنيف النشاط *</label><div id="approve-cats" style="max-height:300px;overflow-y:auto;margin-top:4px"></div></div>
     <div class="fg" style="margin-bottom:12px"><label>ملاحظة الاعتماد (اختياري)</label><input id="approve-note" type="text" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn" onclick="closeModal()">إلغاء</button>
-      <button class="btn btn-g" onclick="confirmApprove()">✅ اعتماد وترحيل</button>
+      <button class="btn btn-g" onclick="confirmApprove()">✅ اعتماد</button>
     </div>
   </div>
 </div>

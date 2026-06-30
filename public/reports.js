@@ -41,7 +41,8 @@ async function printAR(id) {
   <div class="fr" style="min-height:42px"><span class="fl">أهداف النشاط:</span><span class="fv">${r.goals||''}</span></div>
   <div class="fr"><span class="fl">نوع الحضور:</span><span class="fv">${r.audience||''}</span></div>
   <div class="fr"><span class="fl">التكلفة المالية:</span><span class="fv">${r.cost||''}</span></div>
-  <div class="fr"><span class="fl">الجدول المستهدف في الجودة:</span><span class="fv" style="color:#1B6B3A;font-weight:600">${QTBL_LABELS[r.quality_table]||''}</span></div>
+  <div class="fr"><span class="fl">الجهة المنظمة:</span><span class="fv" style="color:#1B6B3A;font-weight:600">${r.organizer||''}</span></div>
+  ${(r.categories&&r.categories.length)?`<div class="fr" style="min-height:30px"><span class="fl">تصنيفات الجودة المعتمدة:</span><span class="fv" style="white-space:normal">${r.categories.map((c,i)=>`${i+1}. ${c}`).join('<br>')}</span></div>`:''}
   <div class="fg2">
     <div class="fr"><span class="fl">اسم مقدم الطلب:</span><span class="fv">${r.student_name||''}</span></div>
     <div class="fr"><span class="fl">تاريخ التقديم:</span><span class="fv">${r.submit_date||''}</span></div>
@@ -202,7 +203,7 @@ async function genReport() {
   const{from,to}=getRPRange();
   const qs=new URLSearchParams(); if(from)qs.set('from',from); if(to)qs.set('to',to);
   const qstr='?'+qs;
-  const QTBLS=['governance','workshops','initiatives','external_acts','competitions','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','awareness','expert_acts','environment','dialogues','campaigns'];
+  const QTBLS=['governance','student_activities','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc'];
   const[studs,achs,...qData]=await Promise.all([api('/api/students'+qstr),api('/api/achievements'+qstr),...QTBLS.map(t=>api('/api/'+t+qstr))]);
   const qStats={}; QTBLS.forEach((t,i)=>qStats[t]=qData[i]?.length||0);
   const total=Object.values(qStats).reduce((a,b)=>a+b,0);

@@ -24,19 +24,12 @@ async function loadAR() {
         <div class="fg full"><label>أهداف النشاط</label><textarea id="ar-goals"></textarea></div>
         <div class="fg"><label>نوع الحضور</label><input id="ar-aud" type="text" placeholder="طلبة، أكاديميين..."></div>
         <div class="fg"><label>التكلفة المالية</label><input id="ar-cost" type="text"></div>
-        <div class="fg full" style="background:#F0FAF4;padding:10px;border-radius:var(--r);border:1px solid #C6E8D3">
-          <label style="color:var(--g);font-weight:700">الجدول المستهدف في الجودة *</label>
-          <select id="ar-qtbl" style="margin-top:5px;padding:8px;border:1px solid #C6E8D3;border-radius:var(--r);font-family:inherit;width:100%">
-            <option value="">اختر الجدول المناسب...</option>
-            ${Object.entries(QTBL_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
-          </select>
-          <div style="font-size:11px;color:var(--g);margin-top:4px">✅ عند اعتماد الطلب سيُرحَّل تلقائياً لهذا الجدول في بيانات الجودة</div>
-        </div>
       </div>
     </div>
     <div class="card">
       <div class="ct"><i class="ti ti-user"></i>مقدم الطلب</div>
       <div class="g3">
+        <div class="fg full"><label>الجهة المنظمة *</label><select id="ar-org"><option value="">اختر الجهة المنظمة (دائرة العمادة)...</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select></div>
         <div class="fg"><label>اسم الطالب مقدم النشاط *</label><input id="ar-sname" type="text"></div>
         <div class="fg"><label>الرقم الجامعي</label><input id="ar-sid" type="text"></div>
         <div class="fg"><label>رقم الهاتف</label><input id="ar-phone" type="text"></div>
@@ -81,7 +74,7 @@ async function loadAR() {
     <select id="arf-st" onchange="filterAR()"><option value="">جميع الحالات</option><option value="pending">🟡 قيد الانتظار</option><option value="approved">✅ معتمد</option><option value="rejected">❌ مرفوض</option></select>
   </div>
   <div class="tw"><table><thead><tr>
-    <th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجدول المستهدف</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>الحالة</th><th>رُحِّل إلى</th><th></th>
+    <th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>الحالة</th><th>التصنيفات المعتمدة</th><th></th>
   </tr></thead><tbody id="tbl-ar"></tbody></table></div>`;
 
   document.getElementById('ar-sdate').valueAsDate = new Date();
@@ -106,10 +99,10 @@ async function filterAR() {
   const filtered=(rows||[]).filter(r=>!st||(r.status||'pending')===st);
   document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>`<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
-    <td style="font-size:11px;color:var(--g)">${QTBL_LABELS[r.quality_table]||'-'}</td>
+    <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
     <td>${stBadge(r.status||'pending')}</td>
-    <td style="font-size:11px;color:var(--g)">${r.transferred_to?QTBL_LABELS[r.transferred_to]||r.transferred_to:'-'}</td>
+    <td style="font-size:11px;color:var(--g)">${(r.categories&&r.categories.length)?r.categories.map(c=>`• ${c}`).join('<br>'):'-'}</td>
     <td><div class="rb">
       ${isAdmin&&(!r.status||r.status==='pending')?`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r.id}')">❌ رفض</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
@@ -123,7 +116,7 @@ async function saveAR() {
   const data = {
     type:g('ar-type'),title:g('ar-title'),ad_title:g('ar-adtitle'),
     description:g('ar-desc'),goals:g('ar-goals'),audience:g('ar-aud'),cost:g('ar-cost'),
-    quality_table:g('ar-qtbl'),
+    organizer:g('ar-org'),
     student_name:g('ar-sname'),student_id:g('ar-sid'),phone:g('ar-phone'),
     college:g('ar-col'),submit_date:g('ar-sdate'),
     activity_date:g('ar-date'),time_from:g('ar-tfrom'),time_to:g('ar-tto'),
@@ -133,7 +126,6 @@ async function saveAR() {
     status:'pending'
   };
   if (!data.title||!data.student_name){showMsg('msg-ar','يرجى ملء الحقول الإلزامية',true);return null;}
-  if (!data.quality_table){showMsg('msg-ar','يرجى اختيار الجدول المستهدف في الجودة',true);return null;}
   const r=await api('/api/activity_requests','POST',data);
   if(r.error){showMsg('msg-ar',r.error,true);return null;}
   showMsg('msg-ar','تم حفظ الطلب بنجاح ✓');
@@ -164,43 +156,55 @@ async function saveAndPrintAR() {
 // ══ الاعتماد والترحيل ══
 function openApprove(id) {
   APPROVE_ID=id;
-  sg('approve-tbl',''); sg('approve-note','');
+  // بناء قائمة التصنيفات التسعة كخيارات متعددة
+  const box=document.getElementById('approve-cats');
+  if(box){
+    box.innerHTML = ACTIVITY_CATEGORIES.map((c,i)=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:5px;cursor:pointer;font-size:12.5px">
+        <input type="checkbox" class="approve-cat" value="${c.replace(/"/g,'&quot;')}" style="width:16px;height:16px;cursor:pointer">
+        <span>${c}</span>
+      </label>`).join('');
+  }
+  sg('approve-note','');
   document.getElementById('mod-approve').classList.add('open');
 }
 function closeModal() { document.getElementById('mod-approve').classList.remove('open'); APPROVE_ID=null; }
 
 async function confirmApprove() {
-  const target=g('approve-tbl');
-  if(!target){alert('يرجى اختيار الجدول المستهدف');return;}
+  const checked = Array.from(document.querySelectorAll('.approve-cat:checked')).map(el=>el.value);
+  if(!checked.length){alert('يرجى اختيار تصنيف واحد على الأقل من قائمة الأنشطة');return;}
   if(!APPROVE_ID){closeModal();return;}
   const req=await api('/api/activity_requests/'+APPROVE_ID);
   if(req.error){alert('تعذر جلب البيانات');return;}
   await api('/api/activity_requests/'+APPROVE_ID,'PUT',{
-    ...req,status:'approved',transferred_to:target,
+    ...req,status:'approved',transferred_to:'student_activities',categories:checked,
     approved_by:ME.fullName,approved_at:new Date().toISOString(),approval_note:g('approve-note')
   });
-  const qRec=buildQRecord(req,target);
-  await api('/api/'+target,'POST',qRec);
+  // إنشاء سجل واحد في "الأنشطة الطلابية" يحمل التصنيفات المختارة
+  const qRec=buildStudentActivityRecord(req,checked);
+  await api('/api/student_activities','POST',qRec);
   closeModal();
-  alert('✅ تم الاعتماد وترحيل البيانات لجدول الجودة بنجاح!');
+  alert('✅ تم الاعتماد وإنشاء سجل في الأنشطة الطلابية بنجاح!');
   filterAR(); loadDash();
 }
 
-function buildQRecord(req, target) {
-  const base={name:req.title,date:req.activity_date,authority:req.sup_college||'عمادة شؤون الطلبة',external_party:req.guests==='نعم'?'نعم':'لا',source:`مُرحَّل من طلب نشاط رقم ${req.id} — ${req.title}`,completed:false};
-  const map={
-    workshops:{...base,students_count:'',staff_names:req.supervisor||'',leaders_names:'',rating:''},
-    initiatives:{...base,type:req.type||'',participants_count:'',attendees_count:'',leaders_names:'',rating:''},
-    external_acts:{...base,type:req.type||'',students_count:'',leaders_names:'',rating:''},
-    competitions:{...base,type:req.type||'',students_count:'',trainer:req.supervisor||'',staff_names:''},
-    awareness:{...base,type:req.type||'',leaders_names:'',staff_names:req.supervisor||'',rating:''},
-    staff_innovation:{staff_name:req.supervisor||'',job_title:'',workplace:req.sup_college||'',activity_name:req.title,activity_type:req.type||'',date:req.activity_date,supervising_authority:'عمادة شؤون الطلبة',rating:'',source:base.source,completed:false},
-    expert_acts:{...base,students_count:'',experts_names:'',staff_names:req.supervisor||'',leaders_names:'',rating:''},
-    environment:{...base,students_count:'',staff_names:req.supervisor||'',leaders_names:'',rating:''},
-    dialogues:{title:req.title,date:req.activity_date,speakers:req.supervisor||'',students_count:'',staff_names:'',leaders_names:'',rating:'',source:base.source,completed:false},
-    campaigns:{title:req.title,date:req.activity_date,external_party:req.guests==='نعم'?'نعم':'لا',students_count:'',speakers:req.supervisor||'',staff_names:'',leaders_names:'',source:base.source,completed:false},
+function buildStudentActivityRecord(req, categories) {
+  return {
+    title:          req.title || '',
+    organizer:      req.organizer || '',
+    activity_type:  req.type || '',
+    date:           req.activity_date || '',
+    students_count: '',
+    staff_names:    '',
+    leaders_names:  '',
+    external_party: req.guests==='نعم' ? 'نعم' : 'لا',
+    ext_name:       req.ext_name || '',
+    ext_people:     req.ext_people || '',
+    rating:         '',
+    categories:     categories,
+    source:         `مُرحَّل من طلب نشاط رقم ${req.id} — ${req.title}`,
+    completed:      false
   };
-  return map[target]||base;
 }
 
 async function rejectAR(id) {
