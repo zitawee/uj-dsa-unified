@@ -218,6 +218,19 @@ async function saveQ(table) {
     // تعديل سجل موجود
     const old=await api('/api/'+table+'/'+editId);
     r=await api('/api/'+table+'/'+editId,'PUT',{...old,...data});
+    // مزامنة التصنيفات مع طلب إقامة النشاط الأصلي (حتى تظهر محدّثة في شاشة الطلبات وطباعتها)
+    if(table==='student_activities' && !r.error){
+      let reqId = old.request_id;
+      if(!reqId && old.source){ const m=String(old.source).match(/رقم\s+(\S+)/); if(m) reqId=m[1]; }
+      if(reqId){
+        try{
+          const req=await api('/api/activity_requests/'+reqId);
+          if(req && !req.error){
+            await api('/api/activity_requests/'+reqId,'PUT',{...req,categories:data.categories});
+          }
+        }catch(e){ /* تجاهل: السجل اليدوي قد لا يكون مرتبطاً بطلب */ }
+      }
+    }
   } else {
     r=await api('/api/'+table,'POST',data);
   }

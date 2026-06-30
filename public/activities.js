@@ -202,6 +202,7 @@ function buildStudentActivityRecord(req, categories) {
     ext_people:     req.ext_people || '',
     rating:         '',
     categories:     categories,
+    request_id:     req.id,
     source:         `مُرحَّل من طلب نشاط رقم ${req.id} — ${req.title}`,
     completed:      false
   };
