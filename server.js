@@ -21,7 +21,7 @@ const User = mongoose.model('User', userSchema);
 
 const TABLES = [
   'students','achievements',
-  'governance','workshops','initiatives','external_acts','competitions',
+  'governance','student_activities','workshops','initiatives','external_acts','competitions',
   'student_honors','community_svc','staff_committees','awareness','expert_acts',
   'staff_training','staff_innovation','staff_honors','uni_committees',
   'environment','dialogues','campaigns',
@@ -185,8 +185,7 @@ app.get('/api/stats', auth(), async (req, res) => {
       stats[t] = await models[t].countDocuments();
     }));
     stats.pending_requests = await models['activity_requests'].countDocuments({ status: 'pending' });
-    const Q = ['workshops','initiatives','external_acts','competitions','awareness',
-                'environment','dialogues','campaigns','expert_acts','community_svc'];
+    const Q = ['student_activities','community_svc'];
     let incomplete = 0;
     await Promise.all(Q.map(async t => {
       incomplete += await models[t].countDocuments({ 
@@ -202,8 +201,7 @@ app.get('/api/stats', auth(), async (req, res) => {
 // ══ الطلبات غير المكتملة ══
 app.get('/api/incomplete', auth(), async (req, res) => {
   try {
-    const Q = ['workshops','initiatives','external_acts','competitions','awareness',
-                'environment','dialogues','campaigns','expert_acts','community_svc'];
+    const Q = ['student_activities','community_svc'];
     const result = [];
     await Promise.all(Q.map(async t => {
       const docs = await models[t].find({ 
