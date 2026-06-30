@@ -39,15 +39,61 @@ const g = id => { const el=document.getElementById(id); return el?el.value.trim(
 const sg = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
 const today = () => new Date().toLocaleDateString('ar-JO',{year:'numeric',month:'long',day:'numeric'});
 
-function openPrint(html) {
-  // تصحيح مسار الشعار: نافذة الطباعة من نوع about:blank فلا تتعرّف على المسار النسبي "/logo.png"
-  const fixedHtml = String(html).replace(/src="\/logo\.png"/g, 'src="' + location.origin + '/logo.png"');
-  const win = window.open('','_blank','width=960,height=720');
-  if(!win){ alert('تعذّر فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) لهذا الموقع ثم إعادة المحاولة.'); return; }
-  win.document.open();
-  win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>طباعة — عمادة شؤون الطلبة</title><style>
+// طباعة موثوقة عبر إطار مخفي (iframe) — تعمل على Chrome وEdge دون الاعتماد على النوافذ المنبثقة
+function printDocument(fullDoc) {
+  // تصحيح مسار الشعار ليكون رابطاً مطلقاً (الإطار قد لا يتعرّف على المسار النسبي)
+  fullDoc = String(fullDoc).replace(/src="\/logo\.png"/g, 'src="' + location.origin + '/logo.png"');
+
+  const old = document.getElementById('__print_frame__');
+  if (old) old.remove();
+
+  const iframe = document.createElement('iframe');
+  iframe.id = '__print_frame__';
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(iframe);
+
+  let printed = false;
+  const doPrint = () => {
+    if (printed) return;
+    printed = true;
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+    catch (e) { console.error('Print error:', e); }
+    setTimeout(() => { try { iframe.remove(); } catch (e) {} }, 3000);
+  };
+
+  const win = iframe.contentWindow;
+  const d = win.document;
+  d.open();
+  d.write(fullDoc);
+  d.close();
+
+  // اطبع بعد اكتمال تحميل الصور داخل الإطار، مع مهلة احتياطية تضمن الطباعة دائماً
+  try {
+    const imgs = d.images;
+    if (imgs && imgs.length) {
+      let remaining = 0;
+      Array.prototype.forEach.call(imgs, im => {
+        if (!im.complete) {
+          remaining++;
+          const done = () => { remaining--; if (remaining <= 0) doPrint(); };
+          im.addEventListener('load', done);
+          im.addEventListener('error', done);
+        }
+      });
+      if (remaining === 0) setTimeout(doPrint, 200);
+    } else {
+      setTimeout(doPrint, 200);
+    }
+  } catch (e) {
+    setTimeout(doPrint, 400);
+  }
+  setTimeout(doPrint, 2500); // احتياطي نهائي
+}
+
+const PRINT_STYLES = `
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
-    body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt}
+    body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
     .ph2{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1B6B3A;padding-bottom:7px;margin-bottom:9px}
     .plogo{width:62px;height:62px;object-fit:contain}
     .puni{text-align:center;flex:1}.puni .ar{font-size:14pt;font-weight:700;color:#1B6B3A}.puni .en{font-size:8.5pt;color:#555}.puni .dep{font-size:9pt;color:#333;font-weight:600;margin-top:2px}
@@ -69,25 +115,11 @@ function openPrint(html) {
     .ptbl th{background:#1B6B3A;color:#fff;padding:4px 5px;text-align:right;border:1px solid #ccc}
     .ptbl td{padding:3px 5px;border:1px solid #ccc;min-height:18px}
     .ptbl tr:nth-child(even) td{background:#F0FAF4}
-    .no-print{text-align:center;margin-bottom:10px}
-    @media print{.no-print{display:none}@page{margin:5mm 8mm}}
-  </style></head><body>
-  <div class="no-print">
-    <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
-    <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
-  </div>
-  ${fixedHtml}
-  <script>
-    (function(){
-      var done=false;
-      function go(){ if(done) return; done=true; try{ window.focus(); }catch(e){} window.print(); }
-      if(document.readyState==='complete'){ setTimeout(go,300); }
-      else { window.addEventListener('load', function(){ setTimeout(go,200); }); }
-      setTimeout(go,1800); // احتياطي في حال تأخّر تحميل صورة الشعار
-    })();
-  <\/script>
-  </body></html>`);
-  win.document.close();
+    @media print{@page{margin:5mm 8mm}}`;
+
+function openPrint(html) {
+  const fullDoc = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>طباعة — عمادة شؤون الطلبة</title><style>${PRINT_STYLES}</style></head><body>${html}</body></html>`;
+  printDocument(fullDoc);
 }
 const badge = act => { const[bg,fg]=ACOLORS[act]||['#eee','#555']; return `<span class="ab" style="background:${bg};color:${fg}">${act}</span>`; };
 const stBadge = st => { const m={pending:'🟡 قيد الانتظار',approved:'✅ معتمد',rejected:'❌ مرفوض'}; const c={pending:'st-p',approved:'st-a',rejected:'st-r'}; return `<span class="st ${c[st]||'st-p'}">${m[st]||'🟡 قيد الانتظار'}</span>`; };

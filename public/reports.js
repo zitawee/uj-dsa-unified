@@ -406,11 +406,8 @@ function printCommitteeReport() {
     alert('لا يوجد تقرير للطباعة');
     return;
   }
-  const win = window.open('', '_blank', 'width=960,height=720');
-  if(!win){ alert('تعذّر فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) لهذا الموقع ثم إعادة المحاولة.'); return; }
-  const body = content.innerHTML.replace(/src="\/logo\.png"/g, 'src="' + location.origin + '/logo.png"');
-  win.document.open();
-  win.document.write(`<!DOCTYPE html>
+  const body = content.innerHTML;
+  const fullDoc = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -423,27 +420,13 @@ function printCommitteeReport() {
   th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
   td{padding:4px 6px;border:1px solid #ccc}
   tr:nth-child(even) td{background:#F0FAF4}
-  .no-print{text-align:center;margin-bottom:12px}
-  @media print{.no-print{display:none}@page{margin:5mm 8mm}}
+  @media print{@page{margin:5mm 8mm}}
 </style>
 </head>
 <body>
-<div class="no-print">
-  <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
-  <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
-</div>
 ${body}
-<script>
-  (function(){
-    var done=false;
-    function go(){ if(done) return; done=true; try{ window.focus(); }catch(e){} window.print(); }
-    if(document.readyState==='complete'){ setTimeout(go,300); }
-    else { window.addEventListener('load', function(){ setTimeout(go,200); }); }
-    setTimeout(go,1800);
-  })();
-<\/script>
-</body></html>`);
-  win.document.close();
+</body></html>`;
+  printDocument(fullDoc);
 }
 
 // ══════════════════════════════════════════
@@ -546,11 +529,8 @@ function printReport() {
     alert('يرجى توليد التقرير أولاً');
     return;
   }
-  const win = window.open('','_blank','width=960,height=720');
-  if(!win){ alert('تعذّر فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) لهذا الموقع ثم إعادة المحاولة.'); return; }
-  const body = content.innerHTML.replace(/src="\/logo\.png"/g, 'src="' + location.origin + '/logo.png"');
-  win.document.open();
-  win.document.write(`<!DOCTYPE html>
+  const body = content.innerHTML;
+  const fullDoc = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -563,25 +543,11 @@ function printReport() {
   th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
   td{padding:4px 6px;border:1px solid #ccc}
   tr:nth-child(even) td{background:#F0FAF4}
-  .no-print{text-align:center;margin-bottom:12px}
-  @media print{.no-print{display:none}@page{margin:5mm 8mm}}
+  @media print{@page{margin:5mm 8mm}}
 </style>
 </head>
 <body>
-<div class="no-print">
-  <button onclick="window.print()" style="background:#1B6B3A;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer;margin-left:8px">🖨️ طباعة / حفظ PDF</button>
-  <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:7px 22px;border-radius:6px;font-size:13px;cursor:pointer">✕ إغلاق</button>
-</div>
 ${body}
-<script>
-  (function(){
-    var done=false;
-    function go(){ if(done) return; done=true; try{ window.focus(); }catch(e){} window.print(); }
-    if(document.readyState==='complete'){ setTimeout(go,300); }
-    else { window.addEventListener('load', function(){ setTimeout(go,200); }); }
-    setTimeout(go,1800);
-  })();
-<\/script>
-</body></html>`);
-  win.document.close();
+</body></html>`;
+  printDocument(fullDoc);
 }
