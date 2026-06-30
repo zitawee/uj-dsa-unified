@@ -90,25 +90,40 @@ function showARForm() {
   f.scrollIntoView({behavior:'smooth'});
 }
 
+// إيجاد تصنيفات الطلب من سجل «الأنشطة الطلابية» المرتبط (المصدر الأصح)، مع التراجع لنسخة الطلب
+function resolveReqCategories(req, saList){
+  const fallback = Array.isArray(req.categories) ? req.categories : [];
+  if(!Array.isArray(saList)) return fallback;
+  const rid = String(req.id || req._id || '');
+  if(!rid) return fallback;
+  let sa = saList.find(s => String(s.request_id||'') === rid);
+  if(!sa) sa = saList.find(s => s.source && String(s.source).includes('رقم '+rid)); // السجلات القديمة
+  if(sa && Array.isArray(sa.categories)) return sa.categories;
+  return fallback;
+}
+
 async function filterAR() {
   const q=g('arf-q'), st=g('arf-st');
   const p=new URLSearchParams(); if(q)p.set('q',q);
   const rows=await api('/api/activity_requests?'+p);
+  const saList=await api('/api/student_activities'); // المصدر الأصح للتصنيفات
   const isAdmin=ME?.role==='admin';
   const canEdit=ME?.role!=='viewer';
   const filtered=(rows||[]).filter(r=>!st||(r.status||'pending')===st);
-  document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>`<tr>
+  document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>{
+    const cats=resolveReqCategories(r, saList);
+    return `<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
     <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
     <td>${stBadge(r.status||'pending')}</td>
-    <td style="font-size:11px;color:var(--g)">${(r.categories&&r.categories.length)?r.categories.map(c=>`• ${c}`).join('<br>'):'-'}</td>
+    <td style="font-size:11px;color:var(--g)">${(cats&&cats.length)?cats.map(c=>`• ${c}`).join('<br>'):'-'}</td>
     <td><div class="rb">
       ${isAdmin&&(!r.status||r.status==='pending')?`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r.id}')">❌ رفض</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('activity_requests','${r.id}',filterAR)">🗑</button>`:''}
     </div></td>
-  </tr>`).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات</td></tr>`;
+  </tr>`;}).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات</td></tr>`;
   const cnt=document.getElementById('c-activity_requests'); if(cnt) cnt.textContent=filtered.length;
 }
 

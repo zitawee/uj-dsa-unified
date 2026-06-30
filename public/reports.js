@@ -33,8 +33,10 @@ function prtApproval() {
 
 async function printAR(id) {
   const r=await api('/api/activity_requests/'+id); if(!r||r.error)return;
+  const saList=await api('/api/student_activities');
+  const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
   const html=prtHeader('نموذج طلب إقامة نشاط','DSA-02-01-05')+`
-  <div class="fr"><span class="fl">نوع النشاط:</span><div style="display:flex;gap:10px;flex:1;font-size:8pt">${['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','أخرى'].map(t=>`<span><span class="chk">${r.type===t?'✓':''}</span> ${t}</span>`).join('')}</div></div>
+  <div class="fr"><span class="fl">نوع النشاط:</span><div style="display:flex;gap:10px;flex:1;font-size:8pt;flex-wrap:wrap">${['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','جلسة','حملة','أخرى'].map(t=>`<span><span class="chk">${r.type===t?'✓':''}</span> ${t}</span>`).join('')}</div></div>
   <div class="fr"><span class="fl">اسم / عنوان الفعالية:</span><span class="fv">${r.title||''}</span></div>
   <div class="fr"><span class="fl">اسم الفعالية في الإعلان:</span><span class="fv">${r.ad_title||''}</span></div>
   <div class="fr" style="min-height:42px"><span class="fl">وصف النشاط:</span><span class="fv">${r.description||''}</span></div>
@@ -42,7 +44,7 @@ async function printAR(id) {
   <div class="fr"><span class="fl">نوع الحضور:</span><span class="fv">${r.audience||''}</span></div>
   <div class="fr"><span class="fl">التكلفة المالية:</span><span class="fv">${r.cost||''}</span></div>
   <div class="fr"><span class="fl">الجهة المنظمة:</span><span class="fv" style="color:#1B6B3A;font-weight:600">${r.organizer||''}</span></div>
-  ${(r.categories&&r.categories.length)?`<div class="fr" style="min-height:30px"><span class="fl">تصنيفات الجودة المعتمدة:</span><span class="fv" style="white-space:normal">${r.categories.map((c,i)=>`${i+1}. ${c}`).join('<br>')}</span></div>`:''}
+  ${(cats&&cats.length)?`<div class="fr" style="min-height:30px"><span class="fl">تصنيفات الجودة المعتمدة:</span><span class="fv" style="white-space:normal">${cats.map((c,i)=>`${i+1}. ${c}`).join('<br>')}</span></div>`:''}
   <div class="fg2">
     <div class="fr"><span class="fl">اسم مقدم الطلب:</span><span class="fv">${r.student_name||''}</span></div>
     <div class="fr"><span class="fl">تاريخ التقديم:</span><span class="fv">${r.submit_date||''}</span></div>
