@@ -17,7 +17,7 @@ async function loadAR() {
     <div class="card">
       <div class="ct"><i class="ti ti-info-circle"></i>بيانات النشاط</div>
       <div class="g2">
-        <div class="fg"><label>نوع النشاط *</label><select id="ar-type"><option value="">اختر...</option><option>مبادرة</option><option>محاضرة</option><option>دورة تدريبية</option><option>ورشة</option><option>معرض</option><option>مسابقة</option><option>أخرى</option></select></div>
+        <div class="fg"><label>نوع النشاط *</label><select id="ar-type"><option value="">اختر...</option><option>مبادرة</option><option>محاضرة</option><option>دورة تدريبية</option><option>ورشة</option><option>معرض</option><option>مسابقة</option><option>جلسة</option><option>حملة</option><option>أخرى</option></select></div>
         <div class="fg"><label>اسم / عنوان الفعالية *</label><input id="ar-title" type="text"></div>
         <div class="fg full"><label>اسم الفعالية في الإعلان (إن اختلف)</label><input id="ar-adtitle" type="text"></div>
         <div class="fg full"><label>وصف النشاط *</label><textarea id="ar-desc"></textarea></div>
@@ -30,7 +30,7 @@ async function loadAR() {
       <div class="ct"><i class="ti ti-user"></i>مقدم الطلب</div>
       <div class="g3">
         <div class="fg full"><label>الجهة المنظمة *</label><select id="ar-org"><option value="">اختر الجهة المنظمة (دائرة العمادة)...</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select></div>
-        <div class="fg"><label>اسم الطالب مقدم النشاط *</label><input id="ar-sname" type="text"></div>
+        <div class="fg"><label>اسم الطالب مقدم النشاط</label><input id="ar-sname" type="text"></div>
         <div class="fg"><label>الرقم الجامعي</label><input id="ar-sid" type="text"></div>
         <div class="fg"><label>رقم الهاتف</label><input id="ar-phone" type="text"></div>
         <div class="fg"><label>الكلية</label><select id="ar-col"><option value="">اختر الكلية...</option>${colOpts()}</select></div>
@@ -51,7 +51,7 @@ async function loadAR() {
       <div class="ct"><i class="ti ti-user-check"></i>مشرف النشاط</div>
       <div class="g3">
         <div class="fg"><label>اسم المشرف *</label><input id="ar-sup" type="text"></div>
-        <div class="fg"><label>الكلية</label><input id="ar-supcol" type="text"></div>
+        <div class="fg"><label>الكلية</label><select id="ar-supcol"><option value="">اختر الكلية...</option>${colOpts()}</select></div>
         <div class="fg"><label>رقم الهاتف</label><input id="ar-supph" type="text"></div>
       </div>
     </div>
@@ -125,7 +125,7 @@ async function saveAR() {
     guests:g('ar-guest'),ext_name:g('ar-ext-name'),ext_people:document.getElementById('ar-ext-people')?.value||'',
     status:'pending'
   };
-  if (!data.title||!data.student_name){showMsg('msg-ar','يرجى ملء الحقول الإلزامية',true);return null;}
+  if (!data.title){showMsg('msg-ar','يرجى ملء عنوان الفعالية (حقل إلزامي)',true);return null;}
   const r=await api('/api/activity_requests','POST',data);
   if(r.error){showMsg('msg-ar',r.error,true);return null;}
   showMsg('msg-ar','تم حفظ الطلب بنجاح ✓');

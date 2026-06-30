@@ -431,6 +431,109 @@ ${body}
 }
 
 // ══════════════════════════════════════════
+// تقرير الأنشطة الطلابية (تجميع حسب التصنيفات)
+// ══════════════════════════════════════════
+let _saReportData = [];
+
+async function loadStudentActivitiesReport() {
+  const panel = document.getElementById('panel-sa_report');
+  panel.innerHTML = `
+  <div class="ph">
+    <div><div class="pt"><i class="ti ti-confetti"></i> تقرير الأنشطة الطلابية</div><div class="ps">عدد الأنشطة المُسجَّلة ضمن كل تصنيف من تصنيفات الجودة</div></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-b" onclick="printStudentActivitiesReport()"><i class="ti ti-printer"></i>طباعة / PDF</button>
+    </div>
+  </div>
+  <div class="card" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div class="fg" style="margin:0"><label>من تاريخ</label><input type="date" id="sar-from" onchange="renderSAReport()"></div>
+    <div class="fg" style="margin:0"><label>إلى تاريخ</label><input type="date" id="sar-to" onchange="renderSAReport()"></div>
+    <button class="btn" onclick="document.getElementById('sar-from').value='';document.getElementById('sar-to').value='';renderSAReport()" style="margin-bottom:0"><i class="ti ti-list"></i>عرض كل الفترات</button>
+    <div style="font-size:11px;color:var(--muted);padding-bottom:8px">النشاط الذي يحمل أكثر من تصنيف يُحتسب ضمن كل تصنيف اختير له.</div>
+  </div>
+  <div id="sar-out"><div style="padding:20px;text-align:center;color:var(--muted)">جارٍ التحميل...</div></div>`;
+
+  _saReportData = (await api('/api/student_activities')) || [];
+  renderSAReport();
+}
+
+function renderSAReport() {
+  const from = document.getElementById('sar-from')?.value || '';
+  const to   = document.getElementById('sar-to')?.value || '';
+  let rows = Array.isArray(_saReportData) ? _saReportData.slice() : [];
+  if(from) rows = rows.filter(r => (r.date||'') >= from);
+  if(to)   rows = rows.filter(r => (r.date||'') <= to);
+
+  // عدّ الأنشطة ضمن كل تصنيف (النشاط متعدد التصنيفات يُحسب في كل تصنيف)
+  const cats = (typeof ACTIVITY_CATEGORIES!=='undefined') ? ACTIVITY_CATEGORIES : [];
+  const counts = {}; cats.forEach(c => counts[c] = 0);
+  let uncategorized = 0;
+  rows.forEach(r => {
+    const rc = Array.isArray(r.categories) ? r.categories : [];
+    if(!rc.length){ uncategorized++; return; }
+    rc.forEach(c => { if(counts[c]===undefined) counts[c]=0; counts[c]++; });
+  });
+  const totalActs   = rows.length;
+  const totalAssign = Object.values(counts).reduce((a,b)=>a+b,0);
+  const pLabel = from&&to ? `من ${from} إلى ${to}` : from ? `من ${from}` : to ? `حتى ${to}` : 'جميع الفترات';
+
+  document.getElementById('sar-out').innerHTML = `
+  <div style="background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:18px">
+    <div style="text-align:center;padding:16px;border-bottom:3px solid var(--g);margin-bottom:14px">
+      <img src="/logo.png" style="width:68px;height:68px;object-fit:contain;margin-bottom:7px">
+      <div style="font-size:20px;font-weight:700;color:var(--g)">الجامعة الأردنية</div>
+      <div style="font-size:13px;font-weight:600;color:#333;margin:3px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
+      <div style="background:var(--g);color:#fff;padding:7px 22px;border-radius:7px;display:inline-block;margin:9px 0;font-size:15px;font-weight:700">تقرير الأنشطة الطلابية حسب التصنيف</div>
+      <div style="font-size:12px;color:#333;font-weight:600;margin-top:2px">الفترة: ${pLabel}</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">تاريخ الإصدار: ${today()}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+      <div style="background:#F0FAF4;border:1px solid #C6E8D3;border-radius:var(--r);padding:10px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--g)">${totalActs}</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">عدد الأنشطة الفعلية</div></div>
+      <div style="background:#F0FAF4;border:1px solid #C6E8D3;border-radius:var(--r);padding:10px;text-align:center"><div style="font-size:22px;font-weight:700;color:#1B5E9A">${totalAssign}</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">إجمالي الإسناد للتصنيفات</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#F0FAF4">
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">#</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:right">التصنيف</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;color:var(--g);text-align:center">عدد الأنشطة</th>
+      </tr></thead>
+      <tbody>
+        ${cats.map((c,i)=>`<tr style="background:${i%2?'#F9FAFB':'#fff'}">
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center">${i+1}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border)">${c}</td>
+          <td style="padding:5px 9px;border:1px solid var(--border);text-align:center;font-weight:700;color:var(--g)">${counts[c]||0}</td>
+        </tr>`).join('')}
+        ${uncategorized?`<tr style="background:#FFF7ED"><td style="padding:5px 9px;border:1px solid var(--border);text-align:center">—</td><td style="padding:5px 9px;border:1px solid var(--border);color:#9A6A1B">أنشطة بدون تصنيف</td><td style="padding:5px 9px;border:1px solid var(--border);text-align:center;font-weight:700;color:#9A6A1B">${uncategorized}</td></tr>`:''}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function printStudentActivitiesReport() {
+  const content = document.getElementById('sar-out');
+  if(!content || !content.innerHTML.trim() || content.innerHTML.includes('جارٍ التحميل')){ alert('لا يوجد تقرير للطباعة'); return; }
+  const fullDoc = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير الأنشطة الطلابية — عمادة شؤون الطلبة</title>
+<style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
+  img{max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+  th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
+  td{padding:4px 6px;border:1px solid #ccc}
+  tr:nth-child(even) td{background:#F0FAF4}
+  @media print{@page{margin:5mm 8mm}}
+</style>
+</head>
+<body>
+${content.innerHTML}
+</body></html>`;
+  printDocument(fullDoc);
+}
+
+// ══════════════════════════════════════════
 // البحث الشامل
 // ══════════════════════════════════════════
 async function loadSearch() {

@@ -151,18 +151,6 @@ function showQForm(table, record=null) {
         el.value = (record[fd.id] !== undefined && record[fd.id] !== null) ? record[fd.id] : '';
       }
     });
-    // عرض تصنيفات الجودة المعتمدة (تظهر أسفل النموذج عند استكمال البيانات)
-    if(Array.isArray(record.categories) && record.categories.length){
-      const card=f.querySelector('.card');
-      if(card){
-        const div=document.createElement('div');
-        div.id='qf-cats-'+table;
-        div.style.cssText='background:#F0FAF4;border:1px solid #C6E8D3;border-radius:var(--r);padding:10px;margin-top:8px';
-        div.innerHTML='<div style="font-weight:700;color:var(--g);font-size:12px;margin-bottom:6px">تصنيفات الجودة المعتمدة لهذا النشاط:</div>'+record.categories.map((c,i)=>`<div style="font-size:12px;padding:2px 0">${i+1}. ${c}</div>`).join('');
-        const btns=card.querySelector('div[style*="justify-content:flex-end"]');
-        if(btns) card.insertBefore(div,btns); else card.appendChild(div);
-      }
-    }
     // حفظ ID
     f.dataset.editId = String(record.id || record._id || '');
     const btn=f.querySelector('button.btn-g');
@@ -176,6 +164,20 @@ function showQForm(table, record=null) {
     delete f.dataset.editId;
     const btn=f.querySelector('button.btn-g');
     if(btn){btn.textContent='✔ حفظ';btn.setAttribute('onclick',`saveQ('${table}')`);}
+  }
+  // تصنيفات الجودة القابلة للتعديل (للأنشطة الطلابية فقط) — تظهر كل التصنيفات مع تحديد المعتمَد سابقاً
+  if(table==='student_activities' && typeof ACTIVITY_CATEGORIES!=='undefined'){
+    const selected = Array.isArray(record?.categories) ? record.categories : [];
+    const card=f.querySelector('.card');
+    if(card){
+      const div=document.createElement('div');
+      div.id='qf-cats-'+table;
+      div.style.cssText='grid-column:1/-1;background:#F0FAF4;border:1px solid #C6E8D3;border-radius:var(--r);padding:10px;margin-top:8px';
+      div.innerHTML='<div style="font-weight:700;color:var(--g);font-size:12px;margin-bottom:8px">تصنيفات الجودة لهذا النشاط (يمكن اختيار أكثر من تصنيف):</div>'+
+        ACTIVITY_CATEGORIES.map(c=>`<label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;cursor:pointer"><input type="checkbox" class="qcat-${table}" value="${c.replace(/"/g,'&quot;')}" ${selected.includes(c)?'checked':''} style="width:15px;height:15px;cursor:pointer"><span>${c}</span></label>`).join('');
+      const btns=card.querySelector('div[style*="justify-content:flex-end"]');
+      if(btns) card.insertBefore(div,btns); else card.appendChild(div);
+    }
   }
   f.scrollIntoView({behavior:'smooth'});
 }
@@ -206,6 +208,10 @@ async function saveQ(table) {
   }
   const form=document.getElementById('qform-'+table);
   const editId=form?.dataset.editId;
+  // جمع تصنيفات الجودة المختارة (للأنشطة الطلابية)
+  if(table==='student_activities'){
+    data.categories = Array.from(document.querySelectorAll('.qcat-'+table+':checked')).map(el=>el.value);
+  }
   let r;
   if(editId){
     // تعديل سجل موجود
