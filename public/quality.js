@@ -96,7 +96,7 @@ async function loadQ(table) {
     <span style="font-size:11px;color:var(--muted)">من — إلى</span>
   </div>
   <div id="qcnt-${table}" style="font-size:11px;color:var(--muted);margin-bottom:5px"></div>
-  <div class="tw"><table><thead><tr><th>#</th>${cfg.heads.map(h=>`<th>${h}</th>`).join('')}<th>المصدر / الكشف</th>${canEdit?'<th></th>':''}</tr></thead>
+  <div class="tw"><table><thead><tr><th>#</th>${cfg.heads.map(h=>`<th>${h}</th>`).join('')}${table==='student_activities'?'<th>التصنيفات المعتمدة</th>':''}<th>المصدر / الكشف</th>${canEdit?'<th></th>':''}</tr></thead>
   <tbody id="qtbl-${table}"></tbody></table></div>`;
   loadQData(table);
 }
@@ -114,6 +114,7 @@ async function loadQData(table) {
   tbody.innerHTML=(rows||[]).map((r,i)=>`<tr style="${r.source&&!r.completed?'background:#FFFBF0':''}">
     <td>${i+1}</td>
     ${cfg.cols.map(c=>`<td>${r[c]||'-'}</td>`).join('')}
+    ${table==='student_activities'?`<td style="font-size:10.5px;color:var(--g)">${(Array.isArray(r.categories)&&r.categories.length)?r.categories.map(c=>`• ${c}`).join('<br>'):'<span style="color:#bbb">— لم تُحدَّد</span>'}</td>`:''}
     <td style="font-size:10px">
       ${r.source?`<span class="st st-p" style="font-size:10px">مرحَّل</span>`:'-'}
       ${r.attached_participant_id?`<span class="st st-a" style="font-size:10px;margin-right:4px;cursor:pointer" onclick="printPart('${r.attached_participant_id}')">📄 كشف أسماء 🖨️</span>`:''}
@@ -125,7 +126,7 @@ async function loadQData(table) {
       ${['student_activities','community_svc'].includes(table)?`<button class="btn btn-sm" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="openAttachModal('${table}','${r.id}','${r.name||r.title||''}')">${r.attached_participant_id?'📄 كشف مرفق':'📎 إرفاق كشف'}</button>`:''}
       <button class="btn btn-r" onclick="delRec('${table}','${r.id}',()=>loadQData('${table}'))">🗑</button>
     </div></td>`:''}
-  </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3}">لا توجد سجلات</td></tr>`;
+  </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3+(table==='student_activities'?1:0)}">لا توجد سجلات</td></tr>`;
   const c=document.getElementById('c-'+table); if(c) c.textContent=rows?.length||0;
 }
 
