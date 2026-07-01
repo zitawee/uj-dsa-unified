@@ -53,7 +53,7 @@ async function loadStudents() {
   </div>
   <div id="stud-form" style="display:none">
     <div class="card">
-      <div class="ct"><i class="ti ti-user-plus"></i>تسجيل طالب جديد</div>
+      <div class="ct" id="stud-form-title"><i class="ti ti-user-plus"></i>تسجيل طالب جديد</div>
       <div id="msg-students" class="msg"></div>
       <div class="g3">
         <div class="fg"><label>الرقم الجامعي *</label><input id="fs-id" type="text"></div>
@@ -70,7 +70,7 @@ async function loadStudents() {
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
         <button class="btn" onclick="document.getElementById('stud-form').style.display='none'">إلغاء</button>
-        <button class="btn btn-g" onclick="saveStudent()">✔ تسجيل</button>
+        <button class="btn btn-g" id="stud-save-btn" onclick="saveStudent()">✔ تسجيل</button>
       </div>
     </div>
   </div>
@@ -91,7 +91,25 @@ async function loadStudents() {
 function showStudForm() {
   const f = document.getElementById('stud-form'); f.style.display='block';
   f.querySelectorAll('input:not([type=file]),select').forEach(el=>el.value='');
+  delete f.dataset.editId;
+  const t=document.getElementById('stud-form-title'); if(t) t.innerHTML='<i class="ti ti-user-plus"></i>تسجيل طالب جديد';
+  const b=document.getElementById('stud-save-btn'); if(b) b.textContent='✔ تسجيل';
   document.getElementById('fs-join').valueAsDate = new Date();
+  f.scrollIntoView({behavior:'smooth'});
+}
+
+function editStudent(r) {
+  const f = document.getElementById('stud-form'); f.style.display='block';
+  f.querySelectorAll('input:not([type=file]),select').forEach(el=>el.value='');
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v!==undefined&&v!==null)?v:''; };
+  set('fs-id',r.student_id); set('fs-name',r.name); set('fs-gender',r.gender);
+  set('fs-nat',r.nationality); set('fs-col',r.college); set('fs-major',r.major);
+  set('fs-year',r.admit_year); set('fs-admit',r.admit_type); set('fs-phone',r.phone);
+  set('fs-act',r.activity); set('fs-join',r.join_date);
+  f.dataset.editId = String(r.id || r._id || '');
+  const t=document.getElementById('stud-form-title'); if(t) t.innerHTML='<i class="ti ti-edit"></i>تعديل بيانات الطالب';
+  const b=document.getElementById('stud-save-btn'); if(b) b.textContent='✔ حفظ التعديل';
+  const msg=document.getElementById('msg-students'); if(msg){msg.textContent='';msg.className='msg';}
   f.scrollIntoView({behavior:'smooth'});
 }
 
@@ -109,18 +127,27 @@ async function filterStudents() {
     <td style="font-size:11px">${r.college||'-'}</td><td>${r.major||'-'}</td>
     <td>${r.admit_type||'-'}</td>
     <td>${badge(r.activity||'')}</td><td>${r.join_date||'-'}</td><td>${r.phone||'-'}</td>
-    ${canEdit?`<td><button class="btn btn-r" onclick="delRec('students','${r.id}',filterStudents)">🗑</button></td>`:''}
+    ${canEdit?`<td><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm btn-b" onclick='editStudent(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️ تعديل</button><button class="btn btn-r" onclick="delRec('students','${r.id}',filterStudents)">🗑</button></div></td>`:''}
   </tr>`).join('') || `<tr class="erow"><td colspan="12">لا توجد نتائج</td></tr>`;
   const cnt = document.getElementById('c-students'); if(cnt) cnt.textContent=rows?.length||0;
 }
 
 async function saveStudent() {
+  const f=document.getElementById('stud-form');
+  const editId=f?.dataset.editId;
   const data = {student_id:g('fs-id'),name:g('fs-name'),gender:g('fs-gender'),nationality:g('fs-nat'),college:g('fs-col'),major:g('fs-major'),admit_year:g('fs-year'),admit_type:g('fs-admit'),phone:g('fs-phone'),activity:g('fs-act'),join_date:g('fs-join')};
   if (!data.student_id||!data.name||!data.gender||!data.college||!data.major||!data.admit_year||!data.activity||!data.join_date)
     {showMsg('msg-students','يرجى ملء جميع الحقول الإلزامية',true);return;}
-  const r = await api('/api/students','POST',data);
+  let r;
+  if(editId){
+    const old=await api('/api/students/'+editId);
+    r=await api('/api/students/'+editId,'PUT',{...old,...data});
+  } else {
+    r=await api('/api/students','POST',data);
+  }
   if (r.error) {showMsg('msg-students',r.error,true);return;}
-  showMsg('msg-students','تم التسجيل بنجاح ✓');
+  showMsg('msg-students', editId?'تم تحديث بيانات الطالب ✓':'تم التسجيل بنجاح ✓');
+  delete f.dataset.editId;
   document.getElementById('stud-form').style.display='none';
   filterStudents(); loadDash();
 }
