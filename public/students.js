@@ -47,7 +47,7 @@ async function loadStudents() {
     <div><div class="pt"><i class="ti ti-users"></i> الطلبة المسجلون في الأنشطة</div></div>
     <div style="display:flex;gap:6px">
       ${canEdit ? `<button class="btn btn-g" onclick="showStudForm()"><i class="ti ti-plus"></i>تسجيل طالب</button>` : ''}
-      ${canEdit ? `<button class="btn" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="document.getElementById('stud-import-file').click()"><i class="ti ti-upload"></i>استيراد CSV</button><input type="file" id="stud-import-file" accept=".csv,text/csv" style="display:none" onchange="importStudentsCSV(this)"><button class="btn" onclick="downloadStudentTemplate()"><i class="ti ti-file-download"></i>قالب</button>` : ''}
+      ${canEdit ? `<button class="btn" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="document.getElementById('stud-import-file').click()"><i class="ti ti-upload"></i>استيراد Excel/CSV</button><input type="file" id="stud-import-file" accept=".csv,.xlsx,.xls,text/csv" style="display:none" onchange="importStudentsCSV(this)"><button class="btn" onclick="downloadStudentTemplate()"><i class="ti ti-file-download"></i>قالب</button>` : ''}
       <button class="btn" onclick="exportCSV('students')"><i class="ti ti-download"></i>CSV</button>
     </div>
   </div>
@@ -201,17 +201,35 @@ async function importStudentsCSV(input){
   const file=input.files&&input.files[0];
   input.value=''; // للسماح بإعادة اختيار الملف نفسه لاحقاً
   if(!file) return;
-  let text;
-  try{ text=await file.text(); }catch(e){ alert('تعذّرت قراءة الملف'); return; }
-  const rows=parseCSV(text).filter(r=>r.some(c=>(c||'').trim()!==''));
+  const name=(file.name||'').toLowerCase();
+  const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+
+  let rows;
+  try{
+    if(isExcel){
+      if(typeof XLSX==='undefined'){
+        alert('تعذّر تحميل مكتبة قراءة Excel (قد تكون الشبكة تحجب المصادر الخارجية).\n\nالحل: افتحي الملف في Excel أو Google Sheets واحفظيه بصيغة CSV ثم استوردي ملف الـCSV.');
+        return;
+      }
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+    } else {
+      const text=await file.text();
+      rows=parseCSV(text);
+    }
+  }catch(e){ alert('تعذّرت قراءة الملف. تأكّدي من صحته وأعيدي المحاولة.'); return; }
+
+  rows=(rows||[]).filter(r=>Array.isArray(r) && r.some(c=>String(c==null?'':c).trim()!==''));
   if(rows.length<2){ alert('الملف فارغ أو لا يحتوي على بيانات كافية.'); return; }
-  const headers=rows[0].map(h=>(h||'').trim());
+  const headers=rows[0].map(h=>String(h==null?'':h).trim());
   const idx={}; headers.forEach((h,i)=>{ const f=STUD_HMAP[h]; if(f && idx[f]===undefined) idx[f]=i; });
   if(idx.name===undefined || idx.student_id===undefined){
-    alert('تعذّر التعرّف على الأعمدة.\nتأكّد أن الصف الأول يحتوي على عناوين الأعمدة، وأن من بينها «الاسم» و«الرقم الجامعي».\n\nيمكنك تنزيل القالب الجاهز من زر «قالب» ثم تعبئته.');
+    alert('تعذّر التعرّف على الأعمدة.\nتأكّدي أن الصف الأول يحتوي على عناوين الأعمدة، وأن من بينها «الاسم» و«الرقم الجامعي».\n\nيمكنكِ تنزيل القالب الجاهز من زر «قالب» ثم تعبئته.');
     return;
   }
-  const get=(r,f)=> idx[f]!==undefined ? (r[idx[f]]||'').trim() : '';
+  const get=(r,f)=> idx[f]!==undefined ? String(r[idx[f]]==null?'':r[idx[f]]).trim() : '';
   let ok=0, skipped=0;
   for(let i=1;i<rows.length;i++){
     const r=rows[i];
