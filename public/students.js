@@ -47,6 +47,7 @@ async function loadStudents() {
     <div><div class="pt"><i class="ti ti-users"></i> الطلبة المسجلون في الأنشطة</div></div>
     <div style="display:flex;gap:6px">
       ${canEdit ? `<button class="btn btn-g" onclick="showStudForm()"><i class="ti ti-plus"></i>تسجيل طالب</button>` : ''}
+      ${canEdit ? `<button class="btn" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="document.getElementById('stud-import-file').click()"><i class="ti ti-upload"></i>استيراد CSV</button><input type="file" id="stud-import-file" accept=".csv,text/csv" style="display:none" onchange="importStudentsCSV(this)"><button class="btn" onclick="downloadStudentTemplate()"><i class="ti ti-file-download"></i>قالب</button>` : ''}
       <button class="btn" onclick="exportCSV('students')"><i class="ti ti-download"></i>CSV</button>
     </div>
   </div>
@@ -61,11 +62,10 @@ async function loadStudents() {
         <div class="fg"><label>الجنسية</label><input id="fs-nat" type="text" placeholder="أردني..."></div>
         <div class="fg"><label>الكلية *</label><select id="fs-col"><option value="">اختر الكلية...</option>${colOpts()}</select></div>
         <div class="fg"><label>التخصص *</label><input id="fs-major" type="text"></div>
-        <div class="fg"><label>المستوى الدراسي</label><select id="fs-level"><option value="">اختر...</option>${selOpts(YEARS)}</select></div>
         <div class="fg"><label>سنة القبول *</label><input id="fs-year" type="number" placeholder="2024"></div>
         <div class="fg"><label>نوع القبول</label><select id="fs-admit"><option value="">اختر...</option>${selOpts(ADMIT)}</select></div>
         <div class="fg"><label>رقم الهاتف</label><input id="fs-phone" type="tel"></div>
-        <div class="fg"><label>النشاط *</label><select id="fs-act"><option value="">اختر النشاط...</option>${actOpts()}</select></div>
+        <div class="fg"><label>نوع النشاط *</label><select id="fs-act"><option value="">اختر النشاط...</option>${actOpts()}</select></div>
         <div class="fg"><label>تاريخ الالتحاق *</label><input id="fs-join" type="date"></div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
@@ -82,7 +82,7 @@ async function loadStudents() {
   </div>
   <div id="stud-cnt" style="font-size:11px;color:var(--muted);margin-bottom:5px"></div>
   <div class="tw"><table><thead><tr>
-    <th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>المستوى</th><th>نوع القبول</th><th>النشاط</th><th>تاريخ الالتحاق</th><th>الهاتف</th>${canEdit?'<th></th>':''}
+    <th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>نوع القبول</th><th>نوع النشاط</th><th>تاريخ الالتحاق</th><th>الهاتف</th>${canEdit?'<th></th>':''}
   </tr></thead><tbody id="tbl-students"></tbody></table></div>`;
   document.getElementById('fs-join').valueAsDate = new Date();
   filterStudents();
@@ -107,15 +107,15 @@ async function filterStudents() {
     <td><strong>${r.student_id||'-'}</strong></td><td>${r.name||'-'}</td>
     <td>${r.gender||'-'}</td><td>${r.nationality||'-'}</td>
     <td style="font-size:11px">${r.college||'-'}</td><td>${r.major||'-'}</td>
-    <td>${r.study_level||'-'}</td><td>${r.admit_type||'-'}</td>
+    <td>${r.admit_type||'-'}</td>
     <td>${badge(r.activity||'')}</td><td>${r.join_date||'-'}</td><td>${r.phone||'-'}</td>
     ${canEdit?`<td><button class="btn btn-r" onclick="delRec('students','${r.id}',filterStudents)">🗑</button></td>`:''}
-  </tr>`).join('') || `<tr class="erow"><td colspan="13">لا توجد نتائج</td></tr>`;
+  </tr>`).join('') || `<tr class="erow"><td colspan="12">لا توجد نتائج</td></tr>`;
   const cnt = document.getElementById('c-students'); if(cnt) cnt.textContent=rows?.length||0;
 }
 
 async function saveStudent() {
-  const data = {student_id:g('fs-id'),name:g('fs-name'),gender:g('fs-gender'),nationality:g('fs-nat'),college:g('fs-col'),major:g('fs-major'),study_level:g('fs-level'),admit_year:g('fs-year'),admit_type:g('fs-admit'),phone:g('fs-phone'),activity:g('fs-act'),join_date:g('fs-join')};
+  const data = {student_id:g('fs-id'),name:g('fs-name'),gender:g('fs-gender'),nationality:g('fs-nat'),college:g('fs-col'),major:g('fs-major'),admit_year:g('fs-year'),admit_type:g('fs-admit'),phone:g('fs-phone'),activity:g('fs-act'),join_date:g('fs-join')};
   if (!data.student_id||!data.name||!data.gender||!data.college||!data.major||!data.admit_year||!data.activity||!data.join_date)
     {showMsg('msg-students','يرجى ملء جميع الحقول الإلزامية',true);return;}
   const r = await api('/api/students','POST',data);
@@ -123,6 +123,97 @@ async function saveStudent() {
   showMsg('msg-students','تم التسجيل بنجاح ✓');
   document.getElementById('stud-form').style.display='none';
   filterStudents(); loadDash();
+}
+
+// ══ استيراد الطلبة من ملف CSV ══
+// مطابقة عناوين الأعمدة العربية بالحقول (مع قبول بدائل شائعة)
+const STUD_HMAP = {
+  'الاسم':'name','الاسم الكامل':'name',
+  'الرقم الجامعي':'student_id','الرقم':'student_id',
+  'الجنس':'gender',
+  'الجنسية':'nationality',
+  'الكلية':'college',
+  'التخصص':'major',
+  'سنة القبول':'admit_year',
+  'نوع القبول':'admit_type',
+  'نوع النشاط':'activity','النشاط':'activity',
+  'تاريخ الالتحاق بالنشاط':'join_date','تاريخ الالتحاق':'join_date',
+  'الهاتف':'phone','رقم الهاتف':'phone'
+};
+
+function parseCSV(text){
+  text = text.replace(/^\uFEFF/,''); // إزالة BOM
+  const rows=[]; let cur=[]; let field=''; let inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inQ){
+      if(ch==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else inQ=false; }
+      else field+=ch;
+    } else {
+      if(ch==='"') inQ=true;
+      else if(ch===','){ cur.push(field); field=''; }
+      else if(ch==='\n'){ cur.push(field); rows.push(cur); cur=[]; field=''; }
+      else if(ch==='\r'){ /* تجاهل */ }
+      else field+=ch;
+    }
+  }
+  if(field.length||cur.length){ cur.push(field); rows.push(cur); }
+  return rows;
+}
+
+function normDate(v){
+  v=(v||'').trim(); if(!v) return '';
+  let m=v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);   // dd/mm/yyyy
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  m=v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);       // yyyy/mm/dd
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return v;
+}
+
+async function importStudentsCSV(input){
+  const file=input.files&&input.files[0];
+  input.value=''; // للسماح بإعادة اختيار الملف نفسه لاحقاً
+  if(!file) return;
+  let text;
+  try{ text=await file.text(); }catch(e){ alert('تعذّرت قراءة الملف'); return; }
+  const rows=parseCSV(text).filter(r=>r.some(c=>(c||'').trim()!==''));
+  if(rows.length<2){ alert('الملف فارغ أو لا يحتوي على بيانات كافية.'); return; }
+  const headers=rows[0].map(h=>(h||'').trim());
+  const idx={}; headers.forEach((h,i)=>{ const f=STUD_HMAP[h]; if(f && idx[f]===undefined) idx[f]=i; });
+  if(idx.name===undefined || idx.student_id===undefined){
+    alert('تعذّر التعرّف على الأعمدة.\nتأكّد أن الصف الأول يحتوي على عناوين الأعمدة، وأن من بينها «الاسم» و«الرقم الجامعي».\n\nيمكنك تنزيل القالب الجاهز من زر «قالب» ثم تعبئته.');
+    return;
+  }
+  const get=(r,f)=> idx[f]!==undefined ? (r[idx[f]]||'').trim() : '';
+  let ok=0, skipped=0;
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];
+    const rec={
+      name:get(r,'name'), student_id:get(r,'student_id'),
+      gender:get(r,'gender'), nationality:get(r,'nationality'),
+      college:get(r,'college'), major:get(r,'major'),
+      admit_year:get(r,'admit_year'), admit_type:get(r,'admit_type'),
+      activity:get(r,'activity'), join_date:normDate(get(r,'join_date')),
+      phone:get(r,'phone')
+    };
+    if(!rec.name || !rec.student_id){ skipped++; continue; }
+    try{
+      const res=await api('/api/students','POST',rec);
+      if(res && res.error) skipped++; else ok++;
+    }catch(e){ skipped++; }
+  }
+  let msg=`تم استيراد ${ok} طالب بنجاح.`;
+  if(skipped) msg+=`\nتم تخطّي ${skipped} صفاً (فارغ أو بلا اسم/رقم جامعي).`;
+  alert(msg);
+  filterStudents(); loadDash();
+}
+
+function downloadStudentTemplate(){
+  const headers=['الاسم','الرقم الجامعي','الجنس','الجنسية','الكلية','التخصص','سنة القبول','نوع القبول','نوع النشاط','تاريخ الالتحاق بالنشاط','الهاتف'];
+  const csv='\uFEFF'+headers.join(',')+'\n';
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='قالب_استيراد_الطلبة.csv'; document.body.appendChild(a); a.click(); a.remove();
 }
 
 // ══════════════════════════════════════════
@@ -285,7 +376,6 @@ function printStudent(r) {
     <div class="fr"><span class="fl">الجنسية:</span><span class="fv">${r.nationality||''}</span></div>
     <div class="fr"><span class="fl">الكلية:</span><span class="fv">${r.college||''}</span></div>
     <div class="fr"><span class="fl">التخصص:</span><span class="fv">${r.major||''}</span></div>
-    <div class="fr"><span class="fl">المستوى الدراسي:</span><span class="fv">${r.study_level||''}</span></div>
     <div class="fr"><span class="fl">سنة القبول:</span><span class="fv">${r.admit_year||''}</span></div>
     <div class="fr"><span class="fl">نوع القبول:</span><span class="fv">${r.admit_type||''}</span></div>
     <div class="fr"><span class="fl">رقم الهاتف:</span><span class="fv">${r.phone||''}</span></div>
