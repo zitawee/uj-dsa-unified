@@ -45,8 +45,15 @@ async function api(url, method='GET', body=null) {
   try {
     const r = await fetch(url, opts);
     const t = await r.text();
-    try { return JSON.parse(t); } catch { return {error:t}; }
-  } catch(e) { return {error:'تعذر الاتصال'}; }
+    try { return JSON.parse(t); }
+    catch {
+      // رد غير JSON — غالباً خطأ بوابة/وسيط (Railway) مثل "upstream error"
+      if (r.status===502 || r.status===503 || r.status===504 || /upstream|gateway|<html/i.test(t)) {
+        return {error:'تعذّر الوصول إلى الخادم مؤقتاً (قد يكون قيد الإيقاظ). يرجى الانتظار بضع ثوانٍ ثم إعادة المحاولة.'};
+      }
+      return {error: (t && t.trim()) ? t : ('خطأ في الخادم ('+r.status+')')};
+    }
+  } catch(e) { return {error:'تعذّر الاتصال بالخادم. تحقّقي من الإنترنت ثم أعيدي المحاولة.'}; }
 }
 const g = id => { const el=document.getElementById(id); return el?el.value.trim():''; };
 const sg = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
