@@ -426,6 +426,7 @@ function printCommitteeReport() {
 <title>تقرير اجتماعات اللجان — عمادة شؤون الطلبة</title>
 <style>
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  :root{--g:#1B6B3A;--g2:#145229;--muted:#6B7280;--border:#E5E7EB;--r:8px;--rl:12px;--blue:#1B5E9A}
   body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
   img{max-width:100%}
   table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
@@ -529,6 +530,7 @@ function printStudentActivitiesReport() {
 <title>تقرير الأنشطة الطلابية — عمادة شؤون الطلبة</title>
 <style>
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  :root{--g:#1B6B3A;--g2:#145229;--muted:#6B7280;--border:#E5E7EB;--r:8px;--rl:12px;--blue:#1B5E9A}
   body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
   img{max-width:100%}
   table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
@@ -636,6 +638,7 @@ function printCategoryReport() {
 <title>تقرير حسب التصنيف — عمادة شؤون الطلبة</title>
 <style>
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  :root{--g:#1B6B3A;--g2:#145229;--muted:#6B7280;--border:#E5E7EB;--r:8px;--rl:12px;--blue:#1B5E9A}
   body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
   img{max-width:100%}
   table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
@@ -759,6 +762,7 @@ function printReport() {
 <title>التقرير الشامل — عمادة شؤون الطلبة</title>
 <style>
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  :root{--g:#1B6B3A;--g2:#145229;--muted:#6B7280;--border:#E5E7EB;--r:8px;--rl:12px;--blue:#1B5E9A}
   body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
   img{max-width:100%}
   table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
