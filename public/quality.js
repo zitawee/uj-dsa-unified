@@ -341,6 +341,7 @@ async function loadFData(table) {
       ${table==='meeting_invites'?`<button class="btn btn-sm btn-b" onclick="printInvite('${r.id}')">🖨️ طباعة</button>`:''}
       ${table==='meeting_minutes'?`<button class="btn btn-sm btn-b" onclick="printMinutes('${r.id}')">🖨️ طباعة</button>`:''}
       ${table==='meeting_minutes'&&(r.source&&!r.completed)?`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editMinutes('${r.id}')">✏️ تعديل</button>`:''}
+      ${table==='meeting_minutes'&&(r.source&&r.completed)?`<button class="btn btn-sm" style="color:#8B6914;border-color:#8B6914" onclick="reopenMinutes('${r.id}')">↩️ إعادة فتح للتعديل</button>`:''}
       <button class="btn btn-r" onclick="delRec('${table}','${r.id}',()=>loadFData('${table}'))">🗑</button>
     </div></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3}">لا توجد سجلات</td></tr>`;
@@ -751,15 +752,26 @@ async function saveEditedMinutes2(id) {
     absent:   getV('em-absent'),
     items:    getV('em-items'),
     end_time: getV('em-end'),
-    completed: true
+    completed: false
   };
 
   const r = await api('/api/meeting_minutes/'+id,'PUT',data);
   if(r.error){alert('خطأ في الحفظ: '+r.error);return;}
 
   document.getElementById('edit-minutes-form')?.remove();
-  alert('✅ تم حفظ المحضر بنجاح');
+  alert('✅ تم حفظ المحضر. يمكنك التعديل مجدداً، واضغط «مكتمل» عند الانتهاء.');
   loadFData('meeting_minutes');
+}
+
+// إعادة فتح محضر مكتمل للتعديل (يُرجعه لحالة غير مكتمل)
+async function reopenMinutes(id) {
+  if(!confirm('إعادة فتح هذا المحضر للتعديل؟ سيعود إلى حالة «غير مكتمل» حتى تضغط «مكتمل» مجدداً.')) return;
+  const record = await api('/api/meeting_minutes/'+id);
+  if(!record||record.error){alert('تعذر تحميل السجل');return;}
+  const r = await api('/api/meeting_minutes/'+id,'PUT',{...record,completed:false});
+  if(r.error){alert('خطأ: '+r.error);return;}
+  loadFData('meeting_minutes');
+  editMinutes(id);
 }
 
 async function saveEditedMinutes(oldId) {
