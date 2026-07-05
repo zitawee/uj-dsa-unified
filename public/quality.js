@@ -456,7 +456,7 @@ async function loadParticipants() {
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px">
       <button class="btn" onclick="document.getElementById('part-form').style.display='none'">إلغاء</button>
       <button class="btn btn-b" onclick="saveAndPrintPart()"><i class="ti ti-printer"></i>حفظ وطباعة</button>
-      <button class="btn btn-g" onclick="savePart()"><i class="ti ti-device-floppy"></i>حفظ فقط</button>
+      <button class="btn btn-g" id="pf-savebtn" onclick="savePart()"><i class="ti ti-device-floppy"></i>حفظ فقط</button>
     </div>
   </div>
   <div class="fb"><input type="text" id="ptf-q" placeholder="بحث..." oninput="filterPart()"></div>
@@ -467,10 +467,32 @@ async function loadParticipants() {
 
 function showPForm() {
   const f=document.getElementById('part-form'); f.style.display='block';
+  delete f.dataset.editId;
   f.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>el.value='');
   document.getElementById('part-rows').innerHTML='';
   document.getElementById('pf-cnt').textContent='';
+  const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ فقط';
   addPartRow(); f.scrollIntoView({behavior:'smooth'});
+}
+
+async function editPart(id) {
+  const r = await api('/api/participants/'+id);
+  if(!r||r.error){alert('تعذر تحميل السجل');return;}
+  const f=document.getElementById('part-form'); f.style.display='block';
+  f.dataset.editId=id;
+  document.getElementById('pf-act').value=r.activity||'';
+  document.getElementById('pf-date').value=r.date||'';
+  document.getElementById('pf-org').value=r.organizer||'';
+  document.getElementById('pf-eval').value=r.eval_num||'';
+  document.getElementById('pf-sups').value=r.supervisors||'';
+  document.getElementById('pf-staff').value=r.staff||'';
+  const c=document.getElementById('part-rows'); c.innerHTML='';
+  (r.students&&r.students.length?r.students:[{}]).forEach(s=>{
+    const div=document.createElement('div'); div.innerHTML=partRowHTML(s); c.appendChild(div.firstElementChild);
+  });
+  updatePartCnt();
+  const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
+  f.scrollIntoView({behavior:'smooth'});
 }
 
 function partRowHTML(s={}) {
@@ -541,11 +563,13 @@ async function importPart(input) {
 async function savePart() {
   const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
   if(!data.activity){showMsg('msg-participants','يرجى إدخال اسم النشاط',true);return null;}
-  const r=await api('/api/participants','POST',data);
+  const f=document.getElementById('part-form'); const editId=f.dataset.editId;
+  const r = editId ? await api('/api/participants/'+editId,'PUT',data) : await api('/api/participants','POST',data);
   if(r.error){showMsg('msg-participants',r.error,true);return null;}
   showMsg('msg-participants','تم الحفظ بنجاح ✓');
   document.getElementById('part-form').style.display='none';
-  filterPart(); return r.id;
+  delete f.dataset.editId;
+  filterPart(); return editId||r.id;
 }
 
 async function saveAndPrintPart() {
@@ -560,6 +584,7 @@ async function filterPart() {
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
     <td>${r.organizer||'-'}</td><td>${(r.students||[]).length||0}</td>
     <td><div class="rb">
+      ${canEdit?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
