@@ -126,10 +126,12 @@ async function loadQData(table) {
       <button class="btn btn-sm btn-b" onclick="editQRow('${table}','${r.id}')">✏️ تعديل</button>
       <button class="btn btn-sm btn-b" onclick="printQRow('${table}','${r.id}')">🖨️ طباعة</button>
       ${['student_activities','community_svc'].includes(table)?`<button class="btn btn-sm" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="openAttachModal('${table}','${r.id}','${r.name||r.title||''}')">${r.attached_participant_id?'📄 كشف مرفق':'📎 إرفاق كشف'}</button>`:''}
+      ${LA_TABLES.includes(table)?`<button class="btn btn-sm" id="la-badge-${table}-${r.id}" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openLocalAttachModal('${table}','${r.id}','${laEsc(laLabel(r))}')">📎 إرفاق محلي</button>`:''}
       <button class="btn btn-r" onclick="delRec('${table}','${r.id}',()=>loadQData('${table}'))">🗑</button>
     </div></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3+(table==='student_activities'?1:0)}">لا توجد سجلات</td></tr>`;
   const c=document.getElementById('c-'+table); if(c) c.textContent=rows?.length||0;
+  if(LA_TABLES.includes(table) && typeof laRefreshBadges==='function') laRefreshBadges(table,(rows||[]).map(r=>r.id));
 }
 
 async function markCompleteQ(table,id) {
@@ -344,10 +346,12 @@ async function loadFData(table) {
       ${table==='meeting_minutes'?`<button class="btn btn-sm btn-b" onclick="printMinutes('${r.id}')">🖨️ طباعة</button>`:''}
       ${table==='meeting_minutes'&&(r.source&&!r.completed)?`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editMinutes('${r.id}')">✏️ تعديل</button>`:''}
       ${table==='meeting_minutes'&&(r.source&&r.completed)?`<button class="btn btn-sm" style="color:#8B6914;border-color:#8B6914" onclick="reopenMinutes('${r.id}')">↩️ إعادة فتح للتعديل</button>`:''}
+      ${table==='committees'?`<button class="btn btn-sm" id="la-badge-${table}-${r.id}" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openLocalAttachModal('${table}','${r.id}','${laEsc(r.name||'')}')">📎 إرفاق محلي</button>`:''}
       <button class="btn btn-r" onclick="delRec('${table}','${r.id}',()=>loadFData('${table}'))">🗑</button>
     </div></td>`:''}
   </tr>`).join('')||`<tr class="erow"><td colspan="${cfg.cols.length+3}">لا توجد سجلات</td></tr>`;
   const c=document.getElementById('c-'+table); if(c)c.textContent=rows?.length||0;
+  if(table==='committees' && typeof laRefreshBadges==='function') laRefreshBadges(table,(rows||[]).map(r=>r.id));
 }
 
 function showFF(table) {
