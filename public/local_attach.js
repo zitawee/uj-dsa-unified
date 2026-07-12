@@ -137,8 +137,8 @@ async function renderLaList(table, id, label) {
     ? '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد مرفقات محلية بعد</div>'
     : files.map(f => `
     <div style="padding:9px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div style="min-width:0">
-        <div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+      <div style="min-width:0;cursor:pointer" onclick="laOpenFile(${f.fid})" title="فتح الملف في نافذة جديدة">
+        <div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1B5E9A;text-decoration:underline">${f.name}</div>
         <div style="font-size:10.5px;color:var(--muted)">${laFmtSize(f.size)} — ${laFmtDate(f.addedAt)}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
@@ -147,6 +147,18 @@ async function renderLaList(table, id, label) {
       </div>
     </div>`).join('');
   laUpdateBadge(table, id, files.length);
+}
+
+async function laOpenFile(fid) {
+  const db = await laOpenDB();
+  const tx = db.transaction(LA_STORE, 'readonly');
+  const req = tx.objectStore(LA_STORE).get(fid);
+  req.onsuccess = () => {
+    const rec = req.result; if (!rec) return;
+    const url = URL.createObjectURL(rec.file);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
 }
 
 async function laDownload(fid) {
