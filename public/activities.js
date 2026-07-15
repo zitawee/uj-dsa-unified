@@ -16,6 +16,7 @@ async function loadAR() {
   </div>
   <div id="ar-form" style="display:none">
     <div id="msg-ar" class="msg"></div>
+    <div id="ar-form-title" style="font-size:14px;font-weight:700;color:var(--g);margin-bottom:10px">طلب جديد</div>
     <div class="card">
       <div class="ct"><i class="ti ti-info-circle"></i>بيانات النشاط</div>
       <div class="g2">
@@ -65,10 +66,14 @@ async function loadAR() {
         <div class="fg full"><label>أسماء المشاركين من الخارج</label><textarea id="ar-ext-people" rows="3" style="resize:vertical;font-family:inherit;width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r)" placeholder="الاسم الأول&#10;الاسم الثاني&#10;..."></textarea></div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px">
+    <div id="ar-savebtns" style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px">
       <button class="btn" onclick="document.getElementById('ar-form').style.display='none'">إلغاء</button>
       <button class="btn btn-b" onclick="saveAndPrintAR()"><i class="ti ti-printer"></i>حفظ وطباعة</button>
       <button class="btn btn-g" onclick="saveAR()"><i class="ti ti-device-floppy"></i>حفظ فقط</button>
+    </div>
+    <div id="ar-editbtns" style="display:none;gap:8px;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn" onclick="document.getElementById('ar-form').style.display='none'">إلغاء</button>
+      <button class="btn btn-g" onclick="saveEditAR()"><i class="ti ti-device-floppy"></i>حفظ التعديلات</button>
     </div>
   </div>
   <div class="fb">
@@ -86,10 +91,56 @@ async function loadAR() {
 
 function showARForm() {
   const f=document.getElementById('ar-form'); f.style.display='block';
+  delete f.dataset.editId;
   f.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>el.value='');
   document.getElementById('ar-sdate').valueAsDate=new Date();
   document.getElementById('ar-date').valueAsDate=new Date();
+  const t=document.getElementById('ar-form-title'); if(t) t.textContent='طلب جديد';
+  document.getElementById('ar-savebtns').style.display='flex';
+  document.getElementById('ar-editbtns').style.display='none';
   f.scrollIntoView({behavior:'smooth'});
+}
+
+// ══ تعديل بيانات النشاط (متاح لمنسّق الفعالية/المدير أثناء مرحلتهما فقط، للتصحيح بعد الإرجاع) ══
+async function editContentAR(id) {
+  const r=await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات الطلب');return;}
+  const f=document.getElementById('ar-form'); f.style.display='block';
+  f.dataset.editId=id;
+  const set=(id2,val)=>{ const el=document.getElementById(id2); if(el) el.value=val||''; };
+  set('ar-type',r.type); set('ar-title',r.title); set('ar-adtitle',r.ad_title);
+  set('ar-desc',r.description); set('ar-goals',r.goals); set('ar-aud',r.audience); set('ar-cost',r.cost);
+  set('ar-org',r.organizer); set('ar-sname',r.student_name); set('ar-sid',r.student_id);
+  set('ar-phone',r.phone); set('ar-col',r.college); set('ar-sdate',r.submit_date);
+  set('ar-date',r.activity_date); set('ar-tfrom',r.time_from); set('ar-tto',r.time_to);
+  set('ar-loc',r.location); set('ar-srv',r.services);
+  set('ar-sup',r.supervisor); set('ar-supcol',r.sup_college); set('ar-supph',r.sup_phone);
+  set('ar-guest',r.guests); set('ar-ext-name',r.ext_name); set('ar-ext-people',r.ext_people);
+  const t=document.getElementById('ar-form-title'); if(t) t.textContent='✏️ تعديل بيانات الطلب — '+(r.ref_code||'');
+  document.getElementById('ar-savebtns').style.display='none';
+  document.getElementById('ar-editbtns').style.display='flex';
+  f.scrollIntoView({behavior:'smooth'});
+}
+
+async function saveEditAR() {
+  const f=document.getElementById('ar-form'); const id=f.dataset.editId;
+  if(!id) return;
+  const data = {
+    type:g('ar-type'),title:g('ar-title'),ad_title:g('ar-adtitle'),
+    description:g('ar-desc'),goals:g('ar-goals'),audience:g('ar-aud'),cost:g('ar-cost'),
+    organizer:g('ar-org'),
+    student_name:g('ar-sname'),student_id:g('ar-sid'),phone:g('ar-phone'),
+    college:g('ar-col'),submit_date:g('ar-sdate'),
+    activity_date:g('ar-date'),time_from:g('ar-tfrom'),time_to:g('ar-tto'),
+    location:g('ar-loc'),services:g('ar-srv'),
+    supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),
+    guests:g('ar-guest'),ext_name:g('ar-ext-name'),ext_people:document.getElementById('ar-ext-people')?.value||''
+  };
+  if (!data.title){showMsg('msg-ar','يرجى ملء عنوان الفعالية (حقل إلزامي)',true);return;}
+  const r=await api(`/api/activity_requests/${id}/edit-content`,'POST',data);
+  if(r.error){showMsg('msg-ar',r.error,true);return;}
+  showMsg('msg-ar','تم حفظ التعديلات بنجاح ✓');
+  f.style.display='none'; delete f.dataset.editId;
+  filterAR(); loadDash();
 }
 
 // إيجاد تصنيفات الطلب من سجل «الأنشطة الطلابية» المرتبط (المصدر الأصح)، مع التراجع لنسخة الطلب
@@ -118,10 +169,10 @@ async function filterAR() {
     const status=r.status||'pending';
     let actions='';
     if(status==='pending' && ['coordinator','admin'].includes(role)){
-      actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول وتمرير</button><button class="btn btn-sm btn-r" onclick="coordDecision('${r.id}','reject')">❌ رفض</button>`;
+      actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول وتمرير</button><button class="btn btn-sm btn-r" onclick="coordDecision('${r.id}','reject')">❌ رفض</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️ تعديل</button>`;
     }
     if(status==='awaiting_manager' && ['manager','admin'].includes(role)){
-      actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة وتمرير</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button>`;
+      actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة وتمرير</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="mgrReturn('${r.id}')">↩️ إرجاع للمنسّق</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️ تعديل</button>`;
     }
     if(status==='awaiting_dean' && ['dean','admin'].includes(role)){
       actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد نهائي</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع للمدير</button>`;
@@ -129,13 +180,14 @@ async function filterAR() {
     if(isAdmin && !['approved','rejected'].includes(status)){
       actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 اعتماد مباشر</button>`;
     }
+    const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
     const returnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
     const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
     return `<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong>${r.ref_code?`<div style="font-size:10.5px;color:var(--muted)">${r.ref_code}${r.submitted_via==='public_link'?' · <span style="color:#8A4B0F">🌐 من الرابط العام</span>':''}</div>`:''}</td><td>${r.type||'-'}</td>
     <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
-    <td>${stBadge(status)}${returnNote}${rejNote}</td>
+    <td>${stBadge(status)}${mgrReturnNote}${returnNote}${rejNote}</td>
     <td style="font-size:11px;color:var(--g)">${(cats&&cats.length)?cats.map(c=>`• ${c}`).join('<br>'):'-'}</td>
     <td><div class="rb">
       ${actions}
@@ -230,7 +282,14 @@ async function coordDecision(id, action) {
   filterAR(); loadDash();
 }
 
-// ══ المدير: موافقة وتمرير / رفض نهائي ══
+// ══ المدير: إرجاع الطلب للمنسّق لإجراء تعديل على بيانات النشاط ══
+async function mgrReturn(id) {
+  const note=prompt('سبب الإرجاع لمنسّق الفعالية (سيظهر له لإجراء التعديل اللازم):','');
+  if(note===null) return;
+  const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'return', note});
+  if(r.error){alert(r.error);return;}
+  filterAR(); loadDash();
+}
 async function mgrDecision(id, action) {
   let note='';
   if(action==='reject'){
@@ -312,6 +371,7 @@ async function viewAR(id) {
 
     ${vsec('مسار الاعتماد')}
     ${vrow('منسّق الفعالية', r.coordinator_by ? `${r.coordinator_by} — ${(r.coordinator_at||'').split('T')[0]||r.coordinator_at}` : '')}
+    ${vrow('إرجاع المدير للمنسّق', r.manager_return_note ? `${r.manager_return_by||''} — ${r.manager_return_note}` : '', '#8A4B0F')}
     ${vrow('المدير', r.manager_by ? `${r.manager_by} — ${(r.manager_at||'').split('T')[0]||r.manager_at}` : '')}
     ${vrow('العميد (الاعتماد النهائي)', r.approved_by ? `${r.approved_by} — ${(r.approved_at||'').split('T')[0]||r.approved_at}` : '', '#27500A')}
     ${vrow('إرجاع العميد للمدير', r.dean_return_note ? `${r.dean_return_by||''} — ${r.dean_return_note}` : '', '#8A4B0F')}
