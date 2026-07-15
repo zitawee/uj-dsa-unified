@@ -6,8 +6,8 @@ const COLS = ['كلية الآداب','كلية الأعمال','كلية الش
 const ADMIT = ['تنافس','موازي','دولي','تحويل','تفوق فني'];
 const YEARS = ['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
 const ACOLORS = {'المرسم الجامعي':['#EEEDFE','#3C3489'],'الموسيقى':['#E1F5EE','#085041'],'الخط العربي':['#FAEEDA','#633806'],'الحرف اليدوية':['#FAECE7','#712B13'],'المسرح الجامعي':['#FBE8F5','#5D1A4A'],'الأداء الحركي':['#EAF3DE','#27500A'],'المناظرات':['#E8F4FD','#0A4A6B'],'الأنشطة الحزبية':['#FBEAF0','#72243E']};
-const RLABELS = {admin:'مدير',editor:'مدخل بيانات',viewer:'عرض فقط'};
-const RCLS = {admin:'r-admin',editor:'r-editor',viewer:'r-viewer'};
+const RLABELS = {admin:'مدير النظام',editor:'مدخل بيانات',viewer:'عرض فقط',coordinator:'منسّق الفعالية',manager:'مدير عمادة شؤون الطلبة',dean:'العميد'};
+const RCLS = {admin:'r-admin',editor:'r-editor',viewer:'r-viewer',coordinator:'r-editor',manager:'r-admin',dean:'r-admin'};
 // التصنيفات التسعة للأنشطة (يختارها مدير النظام عند الاعتماد) — قابلة للإضافة عليها لاحقاً
 const ACTIVITY_CATEGORIES = [
   'الدورات وورش العمل والمحاضرات والبرامج',
@@ -142,7 +142,10 @@ function openPrint(html) {
   printDocument(fullDoc);
 }
 const badge = act => { const[bg,fg]=ACOLORS[act]||['#eee','#555']; return `<span class="ab" style="background:${bg};color:${fg}">${act}</span>`; };
-const stBadge = st => { const m={pending:'🟡 قيد الانتظار',approved:'✅ معتمد',rejected:'❌ مرفوض'}; const c={pending:'st-p',approved:'st-a',rejected:'st-r'}; return `<span class="st ${c[st]||'st-p'}">${m[st]||'🟡 قيد الانتظار'}</span>`; };
+const stBadge = st => { const m={pending:'🟡 قيد مراجعة المنسّق',awaiting_manager:'🟠 قيد مراجعة المدير',awaiting_dean:'🔵 قيد اعتماد العميد',approved:'✅ معتمد',rejected:'❌ مرفوض'}; const c={pending:'st-p',awaiting_manager:'st-m',awaiting_dean:'st-d',approved:'st-a',rejected:'st-r'}; return `<span class="st ${c[st]||'st-p'}">${m[st]||'🟡 قيد مراجعة المنسّق'}</span>`; };
+// صلاحية الإضافة/التعديل العامة: مقصورة فعلياً على admin/editor في الخادم.
+// منسّق الفعالية/المدير/العميد لهم صلاحيات محدودة ضمن مسار اعتماد النشاط فقط، وليس تعديلاً عاماً على الجداول.
+function canEditGlobal() { return ['admin','editor'].includes(ME?.role); }
 const colOpts = (val='') => COLS.map(c=>`<option${c===val?' selected':''}>${c}</option>`).join('');
 const actOpts = (val='') => ACTS.map(a=>`<option${a===val?' selected':''}>${a}</option>`).join('');
 const selOpts = (arr,val='') => arr.map(v=>`<option${v===val?' selected':''}>${v}</option>`).join('');
@@ -287,7 +290,8 @@ async function loadDash() {
   const incEl=document.getElementById('c-inc');
   if(incEl) incEl.textContent = stats.incomplete||0;
 
-  const pending = await api('/api/activity_requests?status=pending');
+  const pendingAll = await api('/api/activity_requests');
+  const pending = (pendingAll||[]).filter(r=>!['approved','rejected'].includes(r.status||'pending'));
   const studs = await api('/api/students');
   const byAct = {}; ACTS.forEach(a=>byAct[a]=0);
   (studs||[]).forEach(s=>{ if(byAct[s.activity]!==undefined) byAct[s.activity]++; });
@@ -298,17 +302,24 @@ async function loadDash() {
     ${[[stats.students||0,'طلبة مسجلون','#1B6B3A'],[stats.achievements||0,'إنجازات','#1B5E9A'],[stats.pending_requests||0,'طلبات معلقة','#633806'],[stats.incomplete||0,'غير مكتملة','#8B6914']].map(([n,l,c])=>`<div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center"><div style="font-size:26px;font-weight:700;color:${c}">${n}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${l}</div></div>`).join('')}
   </div>
   ${(pending||[]).length ? `
-  <div class="card"><div class="ct" style="color:#633806"><i class="ti ti-clock"></i>طلبات تنتظر الاعتماد (${pending.length})</div>
-  <div class="tw"><table><thead><tr><th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th></th></tr></thead>
-  <tbody>${(pending||[]).slice(0,6).map((r,i)=>`<tr>
+  <div class="card"><div class="ct" style="color:#633806"><i class="ti ti-clock"></i>طلبات قيد المعالجة (${pending.length})</div>
+  <div class="tw"><table><thead><tr><th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>المرحلة</th><th></th></tr></thead>
+  <tbody>${(pending||[]).slice(0,6).map((r,i)=>{
+    const status=r.status||'pending'; const role=ME?.role; let actions='';
+    if(status==='pending' && ['coordinator','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول</button>`;
+    if(status==='awaiting_manager' && ['manager','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة</button>`;
+    if(status==='awaiting_dean' && ['dean','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد</button>`;
+    if(role==='admin') actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 تجاوز</button>`;
+    return `<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
     <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
+    <td>${stBadge(status)}</td>
     <td><div class="rb">
-      ${ME?.role==='admin'?`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r.id}')">❌ رفض</button>`:''}
+      ${actions}
       <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️</button>
     </div></td>
-  </tr>`).join('')}</tbody></table></div></div>` : ''}
+  </tr>`;}).join('')}</tbody></table></div></div>` : ''}
   <div class="card"><div class="ct"><i class="ti ti-chart-bar"></i>توزيع الطلبة على الأنشطة الجامعية</div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
     ${ACTS.map(a=>{ const[bg,fg]=ACOLORS[a]; return `<div style="background:${bg};border-radius:var(--r);padding:10px;text-align:center"><div style="font-size:22px;font-weight:700;color:${fg}">${byAct[a]||0}</div><div style="font-size:10.5px;color:${fg};margin-top:2px">${a}</div></div>`; }).join('')}

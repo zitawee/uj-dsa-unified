@@ -713,7 +713,7 @@ async function loadUsers() {
       <div class="fg"><label>اسم المستخدم *</label><input id="u-un" type="text" placeholder="username"></div>
       <div class="fg"><label>الاسم الكامل *</label><input id="u-fn" type="text"></div>
       <div class="fg"><label>كلمة المرور *</label><input id="u-pw" type="password"></div>
-      <div class="fg"><label>الصلاحية *</label><select id="u-role"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="admin">مدير</option></select></div>
+      <div class="fg"><label>الصلاحية *</label><select id="u-role"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">منسّق الفعالية</option><option value="manager">مدير عمادة شؤون الطلبة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option></select></div>
     </div>
     <div style="display:flex;justify-content:flex-end"><button class="btn btn-g" onclick="addUser()">✔ إضافة</button></div>
   </div>

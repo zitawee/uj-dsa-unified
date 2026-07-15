@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تتبع طلب إقامة نشاط — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  .wrap{max-width:480px;margin:0 auto;padding:18px 14px 32px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.6}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input{
+    width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);
+    font-size:16px;margin-bottom:14px;-webkit-appearance:none;appearance:none;min-height:44px
+  }
+  button{width:100%;padding:13px;border:none;border-radius:var(--r);background:var(--g);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px}
+  button:disabled{opacity:.6;cursor:default}
+  #result{margin-top:18px}
+  .st-line{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+  .st-line span{flex-shrink:0;color:var(--muted)}
+  .st-line b{color:var(--g);text-align:left}
+  .note{margin-top:10px;font-size:12px;background:#FFF8E1;border:1px solid #F0D98A;color:#8B6914;border-radius:var(--r);padding:10px 12px;line-height:1.7}
+  .err{margin-top:14px;font-size:12.5px;background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5;border-radius:var(--r);padding:10px 12px}
+</style>
+</head>
+<body>
+<header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap">
+  <div class="card">
+    <h1>تتبّع حالة طلب إقامة نشاط</h1>
+    <p class="sub">أدخل الرقم المرجعي الذي ظهر لك عند تقديم الطلب، مع رقمك الجامعي.</p>
+    <label>الرقم المرجعي</label>
+    <input id="t-ref" type="text" placeholder="مثال: AR-7K3M9P" style="text-transform:uppercase">
+    <label>الرقم الجامعي</label>
+    <input id="t-sid" type="text" placeholder="أدخل رقمك الجامعي">
+    <button id="t-btn" onclick="doTrack()">🔍 تحقق من الحالة</button>
+    <div id="result"></div>
+  </div>
+</div>
+<script>
+async function doTrack(){
+  const ref = document.getElementById('t-ref').value.trim();
+  const sid = document.getElementById('t-sid').value.trim();
+  const btn = document.getElementById('t-btn');
+  const box = document.getElementById('result');
+  box.innerHTML=''; 
+  if(!ref || !sid){ box.innerHTML='<div class="err">يرجى إدخال الرقم المرجعي والرقم الجامعي</div>'; return; }
+  btn.disabled=true; btn.textContent='جارٍ التحقق...';
+  try{
+    const res = await fetch('/api/track?ref='+encodeURIComponent(ref)+'&sid='+encodeURIComponent(sid));
+    const data = await res.json();
+    if(!res.ok){ box.innerHTML = '<div class="err">'+(data.error||'تعذر العثور على الطلب')+'</div>'; return; }
+    let html = `
+      <div class="st-line"><span>عنوان النشاط</span><b>${data.title||'-'}</b></div>
+      <div class="st-line"><span>تاريخ انعقاد النشاط</span><b>${data.activity_date||'-'}</b></div>
+      <div class="st-line"><span>الحالة الحالية</span><b>${data.status_label||'-'}</b></div>
+    `;
+    if(data.rejection_note){ html += `<div class="note">❌ سبب الرفض: ${data.rejection_note}</div>`; }
+    if(data.dean_return_note){ html += `<div class="note">↩️ تمت إعادة الطلب لإجراء تعديل — السبب: ${data.dean_return_note}</div>`; }
+    box.innerHTML = html;
+  }catch(e){
+    box.innerHTML = '<div class="err">تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً</div>';
+  }finally{
+    btn.disabled=false; btn.textContent='🔍 تحقق من الحالة';
+  }
+}
+document.getElementById('t-sid').addEventListener('keydown', e=>{ if(e.key==='Enter') doTrack(); });
+</script>
+</body>
+</html>

@@ -2,14 +2,16 @@
 // طلبات إقامة النشاط — مع نظام الاعتماد والترحيل
 // ══════════════════════════════════════════
 async function loadAR() {
-  const canEdit = ME?.role !== 'viewer';
+  const canEdit = canEditGlobal();
   const isAdmin = ME?.role === 'admin';
   document.getElementById('panel-activity_requests').innerHTML = `
   <div class="ph">
     <div><div class="pt"><i class="ti ti-file-plus"></i> طلبات إقامة نشاط</div><div class="pc">DSA-02-01-05</div></div>
     <div style="display:flex;gap:6px">
-      ${canEdit?`<button class="btn btn-g" onclick="showARForm()"><i class="ti ti-plus"></i>طلب جديد</button>`:''}
+      ${canEditGlobal()?`<button class="btn btn-g" onclick="showARForm()"><i class="ti ti-plus"></i>طلب جديد</button>`:''}
       <button class="btn btn-b" onclick="printBlankAR()"><i class="ti ti-printer"></i>طباعة فارغ</button>
+      <a class="btn" href="/apply.html" target="_blank" style="text-decoration:none">🔗 رابط تقديم عام</a>
+      <a class="btn" href="/track.html" target="_blank" style="text-decoration:none">🔗 رابط تتبّع الطالب</a>
     </div>
   </div>
   <div id="ar-form" style="display:none">
@@ -71,7 +73,7 @@ async function loadAR() {
   </div>
   <div class="fb">
     <input type="text" id="arf-q" placeholder="بحث..." oninput="filterAR()">
-    <select id="arf-st" onchange="filterAR()"><option value="">جميع الحالات</option><option value="pending">🟡 قيد الانتظار</option><option value="approved">✅ معتمد</option><option value="rejected">❌ مرفوض</option></select>
+    <select id="arf-st" onchange="filterAR()"><option value="">جميع الحالات</option><option value="pending">🟡 قيد مراجعة المنسّق</option><option value="awaiting_manager">🟠 قيد مراجعة المدير</option><option value="awaiting_dean">🔵 قيد اعتماد العميد</option><option value="approved">✅ معتمد</option><option value="rejected">❌ مرفوض</option></select>
   </div>
   <div class="tw"><table><thead><tr>
     <th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>الحالة</th><th>التصنيفات المعتمدة</th><th></th>
@@ -107,19 +109,36 @@ async function filterAR() {
   const p=new URLSearchParams(); if(q)p.set('q',q);
   const rows=await api('/api/activity_requests?'+p);
   const saList=await api('/api/student_activities'); // المصدر الأصح للتصنيفات
-  const isAdmin=ME?.role==='admin';
-  const canEdit=ME?.role!=='viewer';
+  const role=ME?.role;
+  const isAdmin=role==='admin';
+  const canEdit=canEditGlobal();
   const filtered=(rows||[]).filter(r=>!st||(r.status||'pending')===st);
   document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>{
     const cats=resolveReqCategories(r, saList);
+    const status=r.status||'pending';
+    let actions='';
+    if(status==='pending' && ['coordinator','admin'].includes(role)){
+      actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول وتمرير</button><button class="btn btn-sm btn-r" onclick="coordDecision('${r.id}','reject')">❌ رفض</button>`;
+    }
+    if(status==='awaiting_manager' && ['manager','admin'].includes(role)){
+      actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة وتمرير</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button>`;
+    }
+    if(status==='awaiting_dean' && ['dean','admin'].includes(role)){
+      actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد نهائي</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع للمدير</button>`;
+    }
+    if(isAdmin && !['approved','rejected'].includes(status)){
+      actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 اعتماد مباشر</button>`;
+    }
+    const returnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
+    const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
     return `<tr>
-    <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
+    <td>${i+1}</td><td><strong>${r.title||'-'}</strong>${r.ref_code?`<div style="font-size:10.5px;color:var(--muted)">${r.ref_code}${r.submitted_via==='public_link'?' · <span style="color:#8A4B0F">🌐 من الرابط العام</span>':''}</div>`:''}</td><td>${r.type||'-'}</td>
     <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
-    <td>${stBadge(r.status||'pending')}</td>
+    <td>${stBadge(status)}${returnNote}${rejNote}</td>
     <td style="font-size:11px;color:var(--g)">${(cats&&cats.length)?cats.map(c=>`• ${c}`).join('<br>'):'-'}</td>
     <td><div class="rb">
-      ${isAdmin&&(!r.status||r.status==='pending')?`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}')">✅ اعتماد</button><button class="btn btn-sm btn-r" onclick="rejectAR('${r.id}')">❌ رفض</button>`:''}
+      ${actions}
       <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('activity_requests','${r.id}',filterAR)">🗑</button>`:''}
     </div></td>
@@ -143,7 +162,7 @@ async function saveAR() {
   if (!data.title){showMsg('msg-ar','يرجى ملء عنوان الفعالية (حقل إلزامي)',true);return null;}
   const r=await api('/api/activity_requests','POST',data);
   if(r.error){showMsg('msg-ar',r.error,true);return null;}
-  showMsg('msg-ar','تم حفظ الطلب بنجاح ✓');
+  showMsg('msg-ar',`تم حفظ الطلب بنجاح ✓ — الرقم المرجعي للمتابعة: ${r.ref_code||'-'}`);
   document.getElementById('ar-form').style.display='none';
   // ترحيل تلقائي لنموذج الإعلانات
   await api('/api/announcements','POST',{
@@ -169,8 +188,10 @@ async function saveAndPrintAR() {
 }
 
 // ══ الاعتماد والترحيل ══
-function openApprove(id) {
-  APPROVE_ID=id;
+let APPROVE_ACTION = 'approve'; // 'approve' (العميد) أو 'admin_approve' (تجاوز مدير النظام)
+
+function openApprove(id, action='approve') {
+  APPROVE_ID=id; APPROVE_ACTION=action;
   // بناء قائمة التصنيفات التسعة كخيارات متعددة
   const box=document.getElementById('approve-cats');
   if(box){
@@ -189,44 +210,41 @@ async function confirmApprove() {
   const checked = Array.from(document.querySelectorAll('.approve-cat:checked')).map(el=>el.value);
   if(!checked.length){alert('يرجى اختيار تصنيف واحد على الأقل من قائمة الأنشطة');return;}
   if(!APPROVE_ID){closeModal();return;}
-  const req=await api('/api/activity_requests/'+APPROVE_ID);
-  if(req.error){alert('تعذر جلب البيانات');return;}
-  await api('/api/activity_requests/'+APPROVE_ID,'PUT',{
-    ...req,status:'approved',transferred_to:'student_activities',categories:checked,
-    approved_by:ME.fullName,approved_at:new Date().toISOString(),approval_note:g('approve-note')
+  const r=await api(`/api/activity_requests/${APPROVE_ID}/decision`,'POST',{
+    action: APPROVE_ACTION, categories: checked, note: g('approve-note')
   });
-  // إنشاء سجل واحد في "الأنشطة الطلابية" يحمل التصنيفات المختارة
-  const qRec=buildStudentActivityRecord(req,checked);
-  await api('/api/student_activities','POST',qRec);
+  if(r.error){alert(r.error);return;}
   closeModal();
-  alert('✅ تم الاعتماد وإنشاء سجل في الأنشطة الطلابية بنجاح!');
+  alert('✅ '+(r.message||'تم الاعتماد وإنشاء سجل في الأنشطة الطلابية بنجاح!'));
   filterAR(); loadDash();
 }
 
-function buildStudentActivityRecord(req, categories) {
-  return {
-    title:          req.title || '',
-    organizer:      req.organizer || '',
-    activity_type:  req.type || '',
-    date:           req.activity_date || '',
-    students_count: '',
-    staff_names:    '',
-    leaders_names:  '',
-    external_party: req.guests==='نعم' ? 'نعم' : 'لا',
-    ext_name:       req.ext_name || '',
-    ext_people:     req.ext_people || '',
-    rating:         '',
-    categories:     categories,
-    request_id:     req.id,
-    source:         `مُرحَّل من طلب نشاط رقم ${req.id} — ${req.title}`,
-    completed:      false
-  };
+// ══ منسّق الفعالية: قبول وتمرير / رفض ══
+async function coordDecision(id, action) {
+  let note='';
+  if(action==='reject'){ note=prompt('سبب الرفض:',''); if(note===null) return; }
+  else if(!confirm('تأكيد قبول الطلب وتمريره إلى المدير؟')) return;
+  const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action, note});
+  if(r.error){alert(r.error);return;}
+  filterAR(); loadDash();
 }
 
-async function rejectAR(id) {
-  const note=prompt('سبب الرفض (اختياري):','');
-  if(note===null)return;
-  const req=await api('/api/activity_requests/'+id);
-  await api('/api/activity_requests/'+id,'PUT',{...req,status:'rejected',rejected_by:ME.fullName,rejected_at:new Date().toISOString(),rejection_note:note});
+// ══ المدير: موافقة وتمرير / رفض نهائي ══
+async function mgrDecision(id, action) {
+  let note='';
+  if(action==='reject'){
+    note=prompt('سبب الرفض النهائي (سيُنهى الطلب ولن يعود لأي مرحلة):',''); if(note===null) return;
+  } else if(!confirm('تأكيد الموافقة وتمرير الطلب إلى العميد؟')) return;
+  const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action, note});
+  if(r.error){alert(r.error);return;}
+  filterAR(); loadDash();
+}
+
+// ══ العميد: إرجاع الطلب للمدير مع سبب (بدون اعتماد) ══
+async function deanReturn(id) {
+  const note=prompt('سبب الإرجاع للمدير (سيظهر له لإجراء التعديل اللازم):','');
+  if(note===null) return;
+  const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'reject', note});
+  if(r.error){alert(r.error);return;}
   filterAR(); loadDash();
 }

@@ -70,7 +70,7 @@ async function autoFillHonor(table) {
 
 async function loadQ(table) {
   const cfg = QCFG[table]; if(!cfg) return;
-  const canEdit = ME?.role !== 'viewer';
+  const canEdit = canEditGlobal();
   document.getElementById('panel-'+table).innerHTML = `
   <div class="ph">
     <div><div class="pt">${cfg.title}</div><div class="ps">بيانات الجودة</div></div>
@@ -110,7 +110,7 @@ async function loadQData(table) {
   const to=document.getElementById('qft-'+table)?.value||'';
   const p=new URLSearchParams(); if(q)p.set('q',q); if(from)p.set('from',from); if(to)p.set('to',to);
   const rows=await api('/api/'+table+'?'+p);
-  const canEdit=ME?.role!=='viewer';
+  const canEdit=canEditGlobal();
   const cnt=document.getElementById('qcnt-'+table); if(cnt)cnt.textContent=`السجلات: ${rows?.length||0}`;
   const tbody=document.getElementById('qtbl-'+table); if(!tbody)return;
   tbody.innerHTML=(rows||[]).map((r,i)=>`<tr style="${r.source&&!r.completed?'background:#FFFBF0':''}">
@@ -302,7 +302,7 @@ async function markFComplete(table, id) {
 
 async function loadForm(table) {
   const cfg=FCFG[table]; if(!cfg) return;
-  const canEdit=ME?.role!=='viewer';
+  const canEdit=canEditGlobal();
   document.getElementById('panel-'+table).innerHTML=`
   <div class="ph">
     <div><div class="pt">${cfg.title}</div>${cfg.code?`<div class="pc">${cfg.code}</div>`:''}</div>
@@ -333,7 +333,7 @@ async function loadFData(table) {
   const q=document.getElementById('ffs-'+table)?.value||'';
   const p=new URLSearchParams(); if(q)p.set('q',q);
   const rows=await api('/api/'+table+'?'+p);
-  const canEdit=ME?.role!=='viewer';
+  const canEdit=canEditGlobal();
   document.getElementById('ftbl-'+table).innerHTML=(rows||[]).map((r,i)=>`<tr style="${r.source&&!r.completed?'background:#FFFBF0':''}">
     <td>${i+1}</td>${cfg.cols.map(c=>`<td>${r[c]||'-'}</td>`).join('')}
     ${r.source&&!r.completed?`<td><span class="st st-p" style="font-size:10px">غير مكتمل</span></td>`:(r.source?`<td><span class="st st-a" style="font-size:10px">مكتمل</span></td>`:'<td></td>')}
@@ -420,7 +420,7 @@ async function saveFF(table) {
 // نموذج أسماء المشاركين
 // ══════════════════════════════════════════
 async function loadParticipants() {
-  const canEdit=ME?.role!=='viewer';
+  const canEdit=canEditGlobal();
   document.getElementById('panel-participants').innerHTML=`
   <div class="ph">
     <div><div class="pt"><i class="ti ti-list-check"></i> أسماء الطلبة المشاركين في النشاط</div><div class="pc">DSA-02-01-02</div></div>
@@ -585,7 +585,7 @@ async function saveAndPrintPart() {
 async function filterPart() {
   const q=g('ptf-q'); const p=new URLSearchParams(); if(q)p.set('q',q);
   const rows=await api('/api/participants?'+p);
-  const canEdit=ME?.role!=='viewer';
+  const canEdit=canEditGlobal();
   document.getElementById('tbl-part').innerHTML=(rows||[]).map((r,i)=>`<tr>
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
     <td>${r.organizer||'-'}</td><td>${(r.students||[]).length||0}</td>

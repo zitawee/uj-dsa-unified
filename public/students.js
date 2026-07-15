@@ -41,7 +41,7 @@ async function goEditQ(table, id) {
 // الطلبة
 // ══════════════════════════════════════════
 async function loadStudents() {
-  const canEdit = ME?.role !== 'viewer';
+  const canEdit = canEditGlobal();
   document.getElementById('panel-students').innerHTML = `
   <div class="ph">
     <div><div class="pt"><i class="ti ti-users"></i> الطلبة المسجلون في الأنشطة</div></div>
@@ -118,7 +118,7 @@ async function filterStudents() {
   const p = new URLSearchParams();
   if(q) p.set('q',q); if(act) p.set('activity',act); if(col) p.set('college',col); if(gen) p.set('gender',gen);
   const rows = await api('/api/students?'+p);
-  const canEdit = ME?.role !== 'viewer';
+  const canEdit = canEditGlobal();
   document.getElementById('stud-cnt').textContent = `النتائج: ${rows?.length||0} طالب`;
   document.getElementById('tbl-students').innerHTML = (rows||[]).map((r,i)=>`<tr>
     <td style="color:var(--muted)">${i+1}</td>
@@ -265,7 +265,7 @@ function downloadStudentTemplate(){
 // الإنجازات والتكريم
 // ══════════════════════════════════════════
 async function loadAchievements() {
-  const canEdit = ME?.role !== 'viewer';
+  const canEdit = canEditGlobal();
   document.getElementById('panel-achievements').innerHTML = `
   <div class="ph">
     <div><div class="pt"><i class="ti ti-trophy"></i> الإنجازات والتكريم</div></div>
@@ -350,7 +350,7 @@ async function filterAch() {
   const q=g('af-q'), act=g('af-act'), hon=g('af-hon');
   const p=new URLSearchParams(); if(q)p.set('q',q); if(act)p.set('activity',act);
   const rows=await api('/api/achievements?'+p);
-  const canEdit=ME?.role!=='viewer';
+  const canEdit=canEditGlobal();
   let filtered=rows||[];
   if(hon==='yes') filtered=filtered.filter(r=>r.honor==='نعم');
   document.getElementById('tbl-ach').innerHTML=filtered.map((r,i)=>`<tr>
