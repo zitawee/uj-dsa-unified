@@ -715,9 +715,9 @@ async function loadUsers() {
       <div class="fg"><label>كلمة المرور *</label><input id="u-pw" type="password"></div>
       <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">منسّق الفعالية</option><option value="manager">مدير عمادة شؤون الطلبة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option></select></div>
       <div class="fg full" id="u-dept-wrap" style="display:none">
-        <label>الجهة المنظمة المرتبطة بالمنسّق (اختياري)</label>
+        <label>الجهة المنظمة المرتبطة (للمنسّق أو المدير)</label>
         <select id="u-dept"><option value="">— بدون تقييد (يرى كل الطلبات) —</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">عند تحديد جهة، سيرى هذا المنسّق فقط طلبات إقامة النشاط (الداخلية والخارجية) الخاصة بهذه الجهة تحديداً.</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">عند تحديد جهة، سيرى هذا المستخدم فقط طلبات إقامة النشاط (الداخلية والخارجية) الخاصة بهذه الجهة تحديداً.</div>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end"><button class="btn btn-g" onclick="addUser()">✔ إضافة</button></div>
@@ -728,7 +728,7 @@ async function loadUsers() {
 }
 
 function toggleUserDept() {
-  const show = g('u-role')==='coordinator';
+  const show = ['coordinator','manager'].includes(g('u-role'));
   document.getElementById('u-dept-wrap').style.display = show ? 'block' : 'none';
 }
 

@@ -205,7 +205,7 @@ async function filterAR() {
   const isAdmin=role==='admin';
   const canEdit=canEditGlobal();
   const filtered=(rows||[]).filter(r=>r.submitted_via!=='public_link').filter(r=>!st||(r.status||'pending')===st)
-    .filter(r=>!(role==='coordinator' && ME.department) || r.organizer===ME.department);
+    .filter(r=>!(['coordinator','manager'].includes(role) && ME.department) || r.organizer===ME.department);
   document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>{
     r._cats=resolveReqCategories(r, saList);
     return buildARRow(r, i, role, isAdmin, canEdit, 'filterAR');
@@ -242,7 +242,7 @@ async function filterARExternal() {
   const isAdmin=role==='admin';
   const canEdit=canEditGlobal();
   const filtered=(rows||[]).filter(r=>r.submitted_via==='public_link').filter(r=>!st||(r.status||'pending')===st)
-    .filter(r=>!(role==='coordinator' && ME.department) || r.organizer===ME.department);
+    .filter(r=>!(['coordinator','manager'].includes(role) && ME.department) || r.organizer===ME.department);
   document.getElementById('tbl-ar-ext').innerHTML=filtered.map((r,i)=>{
     r._cats=resolveReqCategories(r, saList);
     return buildARRow(r, i, role, isAdmin, canEdit, 'filterARExternal');
