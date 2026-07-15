@@ -308,6 +308,8 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
 
     if (status === 'awaiting_manager') {
       if (!['manager','admin'].includes(role)) return res.status(403).json({ error: 'هذا الإجراء مخصص للمدير فقط' });
+      if (role==='manager' && req.user.department && doc.organizer !== req.user.department)
+        return res.status(403).json({ error: 'هذا الطلب لا يتبع الجهة المنظمة المرتبطة بحسابك' });
       if (action === 'forward') {
         await Model.findByIdAndUpdate(doc._id, {
           status: 'awaiting_dean', manager_by: req.user.fullName, manager_at: now,
@@ -368,6 +370,8 @@ app.post('/api/activity_requests/:id/edit-content', auth(), async (req, res) => 
       return res.status(403).json({ error: 'هذا الطلب لا يتبع الجهة المنظمة المرتبطة بحسابك' });
     if (status === 'awaiting_manager' && !['manager','admin'].includes(role))
       return res.status(403).json({ error: 'التعديل في هذه المرحلة مخصص للمدير فقط' });
+    if (status === 'awaiting_manager' && role==='manager' && req.user.department && doc.organizer !== req.user.department)
+      return res.status(403).json({ error: 'هذا الطلب لا يتبع الجهة المنظمة المرتبطة بحسابك' });
     if (!['pending','awaiting_manager'].includes(status) && role !== 'admin')
       return res.status(403).json({ error: 'لا يمكن تعديل بيانات الطلب في هذه المرحلة' });
 
