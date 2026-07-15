@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
   password:   { type: String, required: true },
   fullName:   { type: String, required: true },
   role:       { type: String, required: true },
+  department: { type: String, default: '' },
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
@@ -113,7 +114,7 @@ app.post('/api/login', async (req, res) => {
     if (!user || !bcrypt.compareSync(password, user.password))
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
     const token = Math.random().toString(36).substr(2) + Date.now().toString(36);
-    sessions[token] = { id: user._id, username: user.username, fullName: user.fullName, role: user.role };
+    sessions[token] = { id: user._id, username: user.username, fullName: user.fullName, role: user.role, department: user.department||'' };
     res.json({ token, user: sessions[token] });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -176,12 +177,12 @@ app.get('/api/users', auth(['admin']), async (req, res) => {
 
 app.post('/api/users', auth(['admin']), async (req, res) => {
   try {
-    const { username, password, fullName, role } = req.body;
+    const { username, password, fullName, role, department } = req.body;
     if (!username||!password||!fullName||!role)
       return res.status(400).json({ error: 'يرجى ملء جميع الحقول' });
     const exists = await User.findOne({ username });
     if (exists) return res.status(400).json({ error: 'اسم المستخدم موجود بالفعل' });
-    const user = await User.create({ username, password: bcrypt.hashSync(password,10), fullName, role });
+    const user = await User.create({ username, password: bcrypt.hashSync(password,10), fullName, role, department: department||'' });
     res.json({ id: user._id, message: 'تم إنشاء المستخدم' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -232,7 +233,8 @@ TABLES.forEach(table => {
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
 
-  app.post(`/api/${table}`, auth(['admin','editor']), async (req, res) => {
+  const postRoles = ['activity_requests','announcements'].includes(table) ? ['admin','editor','coordinator','manager'] : ['admin','editor'];
+  app.post(`/api/${table}`, auth(postRoles), async (req, res) => {
     try {
       const body = { ...req.body };
       if (table === 'activity_requests') {
@@ -288,6 +290,8 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
 
     if (status === 'pending') {
       if (!['coordinator','admin'].includes(role)) return res.status(403).json({ error: 'هذا الإجراء مخصص لمنسّق الفعالية فقط' });
+      if (role==='coordinator' && req.user.department && doc.organizer !== req.user.department)
+        return res.status(403).json({ error: 'هذا الطلب لا يتبع الجهة المنظمة المرتبطة بحسابك' });
       if (action === 'forward') {
         await Model.findByIdAndUpdate(doc._id, {
           status: 'awaiting_manager', coordinator_by: req.user.fullName, coordinator_at: now,
@@ -360,6 +364,8 @@ app.post('/api/activity_requests/:id/edit-content', auth(), async (req, res) => 
     const status = doc.status || 'pending';
     if (status === 'pending' && !['coordinator','admin'].includes(role))
       return res.status(403).json({ error: 'التعديل في هذه المرحلة مخصص لمنسّق الفعالية فقط' });
+    if (status === 'pending' && role==='coordinator' && req.user.department && doc.organizer !== req.user.department)
+      return res.status(403).json({ error: 'هذا الطلب لا يتبع الجهة المنظمة المرتبطة بحسابك' });
     if (status === 'awaiting_manager' && !['manager','admin'].includes(role))
       return res.status(403).json({ error: 'التعديل في هذه المرحلة مخصص للمدير فقط' });
     if (!['pending','awaiting_manager'].includes(status) && role !== 'admin')
