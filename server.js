@@ -289,7 +289,10 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
     if (status === 'pending') {
       if (!['coordinator','admin'].includes(role)) return res.status(403).json({ error: 'هذا الإجراء مخصص لمنسّق الفعالية فقط' });
       if (action === 'forward') {
-        await Model.findByIdAndUpdate(doc._id, { status: 'awaiting_manager', coordinator_by: req.user.fullName, coordinator_at: now });
+        await Model.findByIdAndUpdate(doc._id, {
+          status: 'awaiting_manager', coordinator_by: req.user.fullName, coordinator_at: now,
+          manager_return_note: '', manager_return_by: '', manager_return_at: ''
+        });
         return res.json({ message: 'تم تمرير الطلب إلى المدير' });
       }
       if (action === 'reject') {
@@ -307,6 +310,13 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
           dean_return_note: '', dean_return_by: '', dean_return_at: ''
         });
         return res.json({ message: 'تمت الموافقة وتمرير الطلب إلى العميد' });
+      }
+      if (action === 'return') {
+        await Model.findByIdAndUpdate(doc._id, {
+          status: 'pending', manager_return_by: req.user.fullName, manager_return_at: now, manager_return_note: note || '',
+          dean_return_note: '', dean_return_by: '', dean_return_at: ''
+        });
+        return res.json({ message: 'تم إرجاع الطلب إلى منسّق الفعالية لإجراء التعديل' });
       }
       if (action === 'reject') {
         await Model.findByIdAndUpdate(doc._id, { status: 'rejected', rejected_by: req.user.fullName, rejected_at: now, rejection_note: note || '', rejected_stage: 'manager' });
@@ -334,7 +344,34 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ══ تتبّع الطالب لطلبه — بدون تسجيل دخول (رقم مرجعي + رقم جامعي) ══
+// ══ تعديل بيانات طلب النشاط (مسموح فقط للمنسّق/المدير أثناء مرحلتهما لإجراء تصحيح) ══
+const AR_EDITABLE_FIELDS = [
+  'type','title','ad_title','description','goals','audience','cost','organizer',
+  'student_name','student_id','phone','college','submit_date',
+  'activity_date','time_from','time_to','location','services',
+  'supervisor','sup_college','sup_phone','guests','ext_name','ext_people'
+];
+app.post('/api/activity_requests/:id/edit-content', auth(), async (req, res) => {
+  try {
+    const Model = models['activity_requests'];
+    const doc = await Model.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'الطلب غير موجود' });
+    const role = req.user.role;
+    const status = doc.status || 'pending';
+    if (status === 'pending' && !['coordinator','admin'].includes(role))
+      return res.status(403).json({ error: 'التعديل في هذه المرحلة مخصص لمنسّق الفعالية فقط' });
+    if (status === 'awaiting_manager' && !['manager','admin'].includes(role))
+      return res.status(403).json({ error: 'التعديل في هذه المرحلة مخصص للمدير فقط' });
+    if (!['pending','awaiting_manager'].includes(status) && role !== 'admin')
+      return res.status(403).json({ error: 'لا يمكن تعديل بيانات الطلب في هذه المرحلة' });
+
+    const update = {};
+    AR_EDITABLE_FIELDS.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
+    if (!update.title) return res.status(400).json({ error: 'يرجى ملء عنوان الفعالية' });
+    await Model.findByIdAndUpdate(doc._id, update);
+    res.json({ message: 'تم حفظ التعديلات بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/track', async (req, res) => {
   try {
     const { ref, sid } = req.query;
