@@ -170,6 +170,7 @@ function buildSidebar() {
   <div class="folder-hdr" onclick="toggleFolder('f-forms')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-forms"></i><i class="ti ti-files"></i>النماذج الرسمية</div>
   <div class="folder-body" id="f-forms" style="display:none">
     <div class="ni" onclick="go('activity_requests',this)"><i class="ti ti-file-plus"></i>طلبات إقامة نشاط<span class="cnt" id="c-activity_requests">0</span></div>
+    <div class="ni" onclick="go('activity_requests_external',this)"><i class="ti ti-world"></i>طلبات إقامة نشاط خارجية<span class="cnt" id="c-activity_requests_external">0</span></div>
     <div class="ni" onclick="go('announcements',this)"><i class="ti ti-speakerphone"></i>الإعلانات<span class="cnt" id="c-announcements">0</span></div>
     <div class="ni" onclick="go('hall_bookings',this)"><i class="ti ti-building"></i>حجز القاعات<span class="cnt" id="c-hall_bookings">0</span></div>
     <div class="ni" onclick="go('participants',this)"><i class="ti ti-list-check"></i>أسماء المشاركين<span class="cnt" id="c-participants">0</span></div>
@@ -183,6 +184,7 @@ function buildSidebar() {
   <div class="folder-body" id="f-quality" style="display:none">
     <div class="ni" onclick="go('governance',this)"><i class="ti ti-building-community"></i>مجالس الحاكمية<span class="cnt" id="c-governance">0</span></div>
     <div class="ni" onclick="go('student_activities',this)"><i class="ti ti-confetti"></i>الأنشطة الطلابية<span class="cnt" id="c-student_activities">0</span></div>
+    <div class="ni" onclick="go('student_activities_external',this)"><i class="ti ti-world"></i>الأنشطة الطلابية الخارجية<span class="cnt" id="c-student_activities_external">0</span></div>
     <div class="ni" onclick="go('student_honors',this)"><i class="ti ti-award"></i>تكريم الطلبة<span class="cnt" id="c-student_honors">0</span></div>
     <div class="ni" onclick="go('staff_committees',this)"><i class="ti ti-users-group"></i>لجان الموظفين<span class="cnt" id="c-staff_committees">0</span></div>
     <div class="ni" onclick="go('staff_training',this)"><i class="ti ti-certificate"></i>تدريب الموظفين<span class="cnt" id="c-staff_training">0</span></div>
@@ -212,7 +214,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','students','achievements','activity_requests','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','search','users'];
+  const IDS = ['dash','incomplete','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','search','users'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
 }
 
@@ -269,10 +271,10 @@ function go(name, el) {
   if (el) el.classList.add('active');
   const loaders = {
     dash:loadDash, incomplete:loadIncomplete, students:loadStudents, achievements:loadAchievements,
-    activity_requests:loadAR, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
+    activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
-    governance:()=>loadQ('governance'), student_activities:()=>loadQ('student_activities'),
+    governance:()=>loadQ('governance'), student_activities:()=>loadQ('student_activities'), student_activities_external:()=>loadQ('student_activities_external'),
     student_honors:()=>loadQ('student_honors'), staff_committees:()=>loadQ('staff_committees'),
     staff_training:()=>loadQ('staff_training'), staff_innovation:()=>loadQ('staff_innovation'),
     staff_honors:()=>loadQ('staff_honors'), uni_committees:()=>loadQ('uni_committees'),

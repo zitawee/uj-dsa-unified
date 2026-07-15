@@ -33,7 +33,7 @@ function prtApproval() {
 
 async function printAR(id) {
   const r=await api('/api/activity_requests/'+id); if(!r||r.error)return;
-  const saList=await api('/api/student_activities');
+  const saList=await getCombinedActivitiesList();
   const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
   const html=prtHeader('نموذج طلب إقامة نشاط','DSA-02-01-05')+`
   <div class="fr"><span class="fl">نوع النشاط:</span><div style="display:flex;gap:10px;flex:1;font-size:8pt;flex-wrap:wrap">${['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','جلسة','حملة','أخرى'].map(t=>`<span><span class="chk">${r.type===t?'✓':''}</span> ${t}</span>`).join('')}</div></div>

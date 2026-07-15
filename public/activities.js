@@ -158,48 +158,94 @@ function resolveReqCategories(req, saList){
   return fallback;
 }
 
+function buildARRow(r, i, role, isAdmin, canEdit, refreshFn) {
+  const status=r.status||'pending';
+  let actions='';
+  if(status==='pending' && ['coordinator','admin'].includes(role)){
+    actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول وتمرير</button><button class="btn btn-sm btn-r" onclick="coordDecision('${r.id}','reject')">❌ رفض</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️ تعديل</button>`;
+  }
+  if(status==='awaiting_manager' && ['manager','admin'].includes(role)){
+    actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة وتمرير</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="mgrReturn('${r.id}')">↩️ إرجاع للمنسّق</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️ تعديل</button>`;
+  }
+  if(status==='awaiting_dean' && ['dean','admin'].includes(role)){
+    actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد نهائي</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع للمدير</button>`;
+  }
+  if(isAdmin && !['approved','rejected'].includes(status)){
+    actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 اعتماد مباشر</button>`;
+  }
+  const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
+  const returnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
+  const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
+  return `<tr>
+  <td>${i+1}</td><td><strong>${r.title||'-'}</strong>${r.ref_code?`<div style="font-size:10.5px;color:var(--muted)">${r.ref_code}</div>`:''}</td><td>${r.type||'-'}</td>
+  <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
+  <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
+  <td>${stBadge(status)}${mgrReturnNote}${returnNote}${rejNote}</td>
+  <td style="font-size:11px;color:var(--g)">${(r._cats&&r._cats.length)?r._cats.map(c=>`• ${c}`).join('<br>'):'-'}</td>
+  <td><div class="rb">
+    ${actions}
+    <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewAR('${r.id}')">👁️ عرض</button>
+    <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
+    ${canEdit?`<button class="btn btn-r" onclick="delRec('activity_requests','${r.id}',${refreshFn})">🗑</button>`:''}
+  </div></td>
+  </tr>`;
+}
+
+async function getCombinedActivitiesList() {
+  const [a,b] = await Promise.all([api('/api/student_activities'), api('/api/student_activities_external')]);
+  return [...(a||[]), ...(b||[])];
+}
+
 async function filterAR() {
   const q=g('arf-q'), st=g('arf-st');
   const p=new URLSearchParams(); if(q)p.set('q',q);
   const rows=await api('/api/activity_requests?'+p);
-  const saList=await api('/api/student_activities'); // المصدر الأصح للتصنيفات
+  const saList=await getCombinedActivitiesList();
   const role=ME?.role;
   const isAdmin=role==='admin';
   const canEdit=canEditGlobal();
-  const filtered=(rows||[]).filter(r=>!st||(r.status||'pending')===st);
+  const filtered=(rows||[]).filter(r=>r.submitted_via!=='public_link').filter(r=>!st||(r.status||'pending')===st);
   document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>{
-    const cats=resolveReqCategories(r, saList);
-    const status=r.status||'pending';
-    let actions='';
-    if(status==='pending' && ['coordinator','admin'].includes(role)){
-      actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول وتمرير</button><button class="btn btn-sm btn-r" onclick="coordDecision('${r.id}','reject')">❌ رفض</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️ تعديل</button>`;
-    }
-    if(status==='awaiting_manager' && ['manager','admin'].includes(role)){
-      actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة وتمرير</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="mgrReturn('${r.id}')">↩️ إرجاع للمنسّق</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️ تعديل</button>`;
-    }
-    if(status==='awaiting_dean' && ['dean','admin'].includes(role)){
-      actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد نهائي</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع للمدير</button>`;
-    }
-    if(isAdmin && !['approved','rejected'].includes(status)){
-      actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 اعتماد مباشر</button>`;
-    }
-    const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
-    const returnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
-    const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
-    return `<tr>
-    <td>${i+1}</td><td><strong>${r.title||'-'}</strong>${r.ref_code?`<div style="font-size:10.5px;color:var(--muted)">${r.ref_code}${r.submitted_via==='public_link'?' · <span style="color:#8A4B0F">🌐 من الرابط العام</span>':''}</div>`:''}</td><td>${r.type||'-'}</td>
-    <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
-    <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
-    <td>${stBadge(status)}${mgrReturnNote}${returnNote}${rejNote}</td>
-    <td style="font-size:11px;color:var(--g)">${(cats&&cats.length)?cats.map(c=>`• ${c}`).join('<br>'):'-'}</td>
-    <td><div class="rb">
-      ${actions}
-      <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewAR('${r.id}')">👁️ عرض</button>
-      <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
-      ${canEdit?`<button class="btn btn-r" onclick="delRec('activity_requests','${r.id}',filterAR)">🗑</button>`:''}
-    </div></td>
-  </tr>`;}).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات</td></tr>`;
+    r._cats=resolveReqCategories(r, saList);
+    return buildARRow(r, i, role, isAdmin, canEdit, 'filterAR');
+  }).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات</td></tr>`;
   const cnt=document.getElementById('c-activity_requests'); if(cnt) cnt.textContent=filtered.length;
+}
+
+// ══ طلبات إقامة نشاط خارجية (المُقدَّمة من البوابة العامة فقط) ══
+async function loadARExternal() {
+  document.getElementById('panel-activity_requests_external').innerHTML = `
+  <div class="ph">
+    <div><div class="pt"><i class="ti ti-world"></i> طلبات إقامة نشاط خارجية</div><div class="pc">مُقدَّمة من البوابة العامة (بدون تسجيل دخول)</div></div>
+    <div style="display:flex;gap:6px">
+      <a class="btn" href="/apply.html" target="_blank" style="text-decoration:none">🔗 رابط تقديم عام</a>
+      <a class="btn" href="/track.html" target="_blank" style="text-decoration:none">🔗 رابط تتبّع الطالب</a>
+    </div>
+  </div>
+  <div class="fb">
+    <input type="text" id="arfx-q" placeholder="بحث..." oninput="filterARExternal()">
+    <select id="arfx-st" onchange="filterARExternal()"><option value="">جميع الحالات</option><option value="pending">🟡 قيد مراجعة المنسّق</option><option value="awaiting_manager">🟠 قيد مراجعة المدير</option><option value="awaiting_dean">🔵 قيد اعتماد العميد</option><option value="approved">✅ معتمد</option><option value="rejected">❌ مرفوض</option></select>
+  </div>
+  <div class="tw"><table><thead><tr>
+    <th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>الحالة</th><th>التصنيفات المعتمدة</th><th></th>
+  </tr></thead><tbody id="tbl-ar-ext"></tbody></table></div>`;
+  filterARExternal();
+}
+
+async function filterARExternal() {
+  const q=g('arfx-q'), st=g('arfx-st');
+  const p=new URLSearchParams(); if(q)p.set('q',q);
+  const rows=await api('/api/activity_requests?'+p);
+  const saList=await getCombinedActivitiesList();
+  const role=ME?.role;
+  const isAdmin=role==='admin';
+  const canEdit=canEditGlobal();
+  const filtered=(rows||[]).filter(r=>r.submitted_via==='public_link').filter(r=>!st||(r.status||'pending')===st);
+  document.getElementById('tbl-ar-ext').innerHTML=filtered.map((r,i)=>{
+    r._cats=resolveReqCategories(r, saList);
+    return buildARRow(r, i, role, isAdmin, canEdit, 'filterARExternal');
+  }).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات خارجية</td></tr>`;
+  const cnt=document.getElementById('c-activity_requests_external'); if(cnt) cnt.textContent=filtered.length;
 }
 
 async function saveAR() {
@@ -324,7 +370,7 @@ function vsec(title) { return `<div style="font-size:12.5px;font-weight:700;colo
 
 async function viewAR(id) {
   const r=await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات الطلب');return;}
-  const saList=await api('/api/student_activities');
+  const saList=await getCombinedActivitiesList();
   const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
   const existing=document.getElementById('view-ar-modal'); if(existing) existing.remove();
   const modal=document.createElement('div');
