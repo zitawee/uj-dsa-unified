@@ -139,6 +139,7 @@ async function filterAR() {
     <td style="font-size:11px;color:var(--g)">${(cats&&cats.length)?cats.map(c=>`• ${c}`).join('<br>'):'-'}</td>
     <td><div class="rb">
       ${actions}
+      <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewAR('${r.id}')">👁️ عرض</button>
       <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('activity_requests','${r.id}',filterAR)">🗑</button>`:''}
     </div></td>
@@ -247,4 +248,80 @@ async function deanReturn(id) {
   const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'reject', note});
   if(r.error){alert(r.error);return;}
   filterAR(); loadDash();
+}
+
+// ══ مشاهدة تفاصيل طلب النشاط داخل نافذة (بدون طباعة) ══
+function vrow(label, val, color) {
+  if(!val && val!==0) return '';
+  return `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+    <span style="color:var(--muted);min-width:150px;flex-shrink:0">${label}</span>
+    <span style="font-weight:600;${color?`color:${color}`:''}">${String(val).replace(/\n/g,'<br>')}</span>
+  </div>`;
+}
+function vsec(title) { return `<div style="font-size:12.5px;font-weight:700;color:var(--g);margin:16px 0 4px">${title}</div>`; }
+
+async function viewAR(id) {
+  const r=await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات الطلب');return;}
+  const saList=await api('/api/student_activities');
+  const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
+  const existing=document.getElementById('view-ar-modal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='view-ar-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:680px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--g)">👁️ ${r.title||'-'}</div>
+        <div style="margin-top:6px">${stBadge(r.status||'pending')} ${r.ref_code?`<span style="font-size:11px;color:var(--muted);margin-right:8px">${r.ref_code}</span>`:''} ${r.submitted_via==='public_link'?`<span style="font-size:11px;color:#8A4B0F;margin-right:8px">🌐 من الرابط العام</span>`:''}</div>
+      </div>
+      <button onclick="document.getElementById('view-ar-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);flex-shrink:0">✕</button>
+    </div>
+
+    ${vsec('بيانات النشاط')}
+    ${vrow('نوع النشاط', r.type)}
+    ${vrow('وصف النشاط', r.description)}
+    ${vrow('أهداف النشاط', r.goals)}
+    ${vrow('نوع الحضور', r.audience)}
+    ${vrow('التكلفة المالية', r.cost)}
+    ${vrow('الجهة المنظمة', r.organizer, '#1B6B3A')}
+    ${cats&&cats.length?vrow('تصنيفات الجودة المعتمدة', cats.map((c,i)=>`${i+1}. ${c}`).join('\n')):''}
+
+    ${vsec('موعد ومكان النشاط')}
+    ${vrow('تاريخ انعقاد النشاط', r.activity_date)}
+    ${vrow('من الساعة — إلى', (r.time_from||r.time_to)?`${r.time_from||'-'} — ${r.time_to||'-'}`:'')}
+    ${vrow('مكان الانعقاد', r.location)}
+    ${vrow('الخدمات المساندة المطلوبة', r.services)}
+
+    ${vsec('مقدّم الطلب')}
+    ${vrow('الاسم', r.student_name)}
+    ${vrow('الرقم الجامعي', r.student_id)}
+    ${vrow('الهاتف', r.phone)}
+    ${vrow('الكلية', r.college)}
+    ${vrow('تاريخ التقديم', r.submit_date)}
+
+    ${(r.supervisor||r.sup_college||r.sup_phone)?vsec('مشرف النشاط'):''}
+    ${vrow('الاسم', r.supervisor)}
+    ${vrow('الكلية', r.sup_college)}
+    ${vrow('الهاتف', r.sup_phone)}
+
+    ${(r.guests||r.ext_name||r.ext_people)?vsec('مشاركة جهة خارجية'):''}
+    ${vrow('مشاركة جهة خارجية', r.guests)}
+    ${vrow('اسم الجهة الخارجية', r.ext_name)}
+    ${vrow('أسماء المشاركين من الخارج', r.ext_people)}
+
+    ${vsec('مسار الاعتماد')}
+    ${vrow('منسّق الفعالية', r.coordinator_by ? `${r.coordinator_by} — ${(r.coordinator_at||'').split('T')[0]||r.coordinator_at}` : '')}
+    ${vrow('المدير', r.manager_by ? `${r.manager_by} — ${(r.manager_at||'').split('T')[0]||r.manager_at}` : '')}
+    ${vrow('العميد (الاعتماد النهائي)', r.approved_by ? `${r.approved_by} — ${(r.approved_at||'').split('T')[0]||r.approved_at}` : '', '#27500A')}
+    ${vrow('إرجاع العميد للمدير', r.dean_return_note ? `${r.dean_return_by||''} — ${r.dean_return_note}` : '', '#8A4B0F')}
+    ${vrow('سبب الرفض النهائي', r.rejection_note ? `(${r.rejected_stage==='coordinator'?'من المنسّق':'من المدير'}) ${r.rejection_note}` : '', '#791F1F')}
+    ${r.admin_override?vrow('ملاحظة', 'تم الاعتماد مباشرة من مدير النظام (تجاوز التسلسل)', '#5B4636'):''}
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+      <button class="btn" onclick="document.getElementById('view-ar-modal').remove()">إغلاق</button>
+      <button class="btn btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
 }

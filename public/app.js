@@ -317,6 +317,7 @@ async function loadDash() {
     <td>${stBadge(status)}</td>
     <td><div class="rb">
       ${actions}
+      <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewAR('${r.id}')">👁️</button>
       <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️</button>
     </div></td>
   </tr>`;}).join('')}</tbody></table></div></div>` : ''}
