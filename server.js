@@ -415,7 +415,9 @@ app.get('/api/stats', auth(), async (req, res) => {
     await Promise.all(TABLES.map(async t => {
       stats[t] = await models[t].countDocuments();
     }));
-    stats.pending_requests = await models['activity_requests'].countDocuments({ status: { $in: ['pending','awaiting_manager','awaiting_dean'] } });
+    const pendingQuery = { status: { $in: ['pending','awaiting_manager','awaiting_dean'] } };
+    if (['coordinator','manager'].includes(req.user.role) && req.user.department) pendingQuery.organizer = req.user.department;
+    stats.pending_requests = await models['activity_requests'].countDocuments(pendingQuery);
     const Q = ['student_activities','community_svc'];
     let incomplete = 0;
     await Promise.all(Q.map(async t => {
