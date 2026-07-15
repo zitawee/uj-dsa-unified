@@ -173,6 +173,9 @@ function buildARRow(r, i, role, isAdmin, canEdit, refreshFn) {
   if(isAdmin && !['approved','rejected'].includes(status)){
     actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 اعتماد مباشر</button>`;
   }
+  if(status==='rejected' && ['coordinator','admin'].includes(role)){
+    actions+=`<button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="reopenAR('${r.id}',${refreshFn})">↩️ إعادة فتح</button>`;
+  }
   const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
   const returnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
   const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
@@ -341,6 +344,15 @@ async function mgrReturn(id) {
   if(r.error){alert(r.error);return;}
   filterAR(); loadDash();
 }
+// ══ إعادة فتح طلب مرفوض (بعد استكمال الطالب للنواقص) — يعود لمرحلة المنسّق من جديد ══
+async function reopenAR(id, refreshFn) {
+  if(!confirm('إعادة فتح هذا الطلب ستعيده لمرحلة منسّق الفعالية من جديد. متابعة؟')) return;
+  const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'reopen'});
+  if(r.error){alert(r.error);return;}
+  if(typeof refreshFn==='function') refreshFn();
+  loadDash();
+}
+
 async function mgrDecision(id, action) {
   let note='';
   if(action==='reject'){
@@ -427,9 +439,11 @@ async function viewAR(id) {
     ${vrow('العميد (الاعتماد النهائي)', r.approved_by ? `${r.approved_by} — ${(r.approved_at||'').split('T')[0]||r.approved_at}` : '', '#27500A')}
     ${vrow('إرجاع العميد للمدير', r.dean_return_note ? `${r.dean_return_by||''} — ${r.dean_return_note}` : '', '#8A4B0F')}
     ${vrow('سبب الرفض النهائي', r.rejection_note ? `(${r.rejected_stage==='coordinator'?'من المنسّق':'من المدير'}) ${r.rejection_note}` : '', '#791F1F')}
+    ${vrow('إعادة فتح الطلب', r.reopened_by ? `${r.reopened_by} — ${(r.reopened_at||'').split('T')[0]||r.reopened_at}` : '', '#1B6B3A')}
     ${r.admin_override?vrow('ملاحظة', 'تم الاعتماد مباشرة من مدير النظام (تجاوز التسلسل)', '#5B4636'):''}
 
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+      ${r.status==='rejected' && ['coordinator','admin'].includes(ME?.role) ? `<button class="btn" style="color:#1B6B3A;border-color:#1B6B3A" onclick="reopenAR('${r.id}', function(){document.getElementById('view-ar-modal').remove();typeof filterAR==='function'&&filterAR();typeof filterARExternal==='function'&&filterARExternal();})">↩️ إعادة فتح</button>` : ''}
       <button class="btn" onclick="document.getElementById('view-ar-modal').remove()">إغلاق</button>
       <button class="btn btn-b" onclick="printAR('${r.id}')">🖨️ طباعة</button>
     </div>
