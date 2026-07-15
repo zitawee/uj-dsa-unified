@@ -8,7 +8,7 @@ async function loadAR() {
   <div class="ph">
     <div><div class="pt"><i class="ti ti-file-plus"></i> طلبات إقامة نشاط</div><div class="pc">DSA-02-01-05</div></div>
     <div style="display:flex;gap:6px">
-      ${canEditGlobal()?`<button class="btn btn-g" onclick="showARForm()"><i class="ti ti-plus"></i>طلب جديد</button>`:''}
+      ${canCreateAR()?`<button class="btn btn-g" onclick="showARForm()"><i class="ti ti-plus"></i>طلب جديد</button>`:''}
       <button class="btn btn-b" onclick="printBlankAR()"><i class="ti ti-printer"></i>طباعة فارغ</button>
       <a class="btn" href="/apply.html" target="_blank" style="text-decoration:none">🔗 رابط تقديم عام</a>
       <a class="btn" href="/track.html" target="_blank" style="text-decoration:none">🔗 رابط تتبّع الطالب</a>
@@ -204,7 +204,8 @@ async function filterAR() {
   const role=ME?.role;
   const isAdmin=role==='admin';
   const canEdit=canEditGlobal();
-  const filtered=(rows||[]).filter(r=>r.submitted_via!=='public_link').filter(r=>!st||(r.status||'pending')===st);
+  const filtered=(rows||[]).filter(r=>r.submitted_via!=='public_link').filter(r=>!st||(r.status||'pending')===st)
+    .filter(r=>!(role==='coordinator' && ME.department) || r.organizer===ME.department);
   document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>{
     r._cats=resolveReqCategories(r, saList);
     return buildARRow(r, i, role, isAdmin, canEdit, 'filterAR');
@@ -240,7 +241,8 @@ async function filterARExternal() {
   const role=ME?.role;
   const isAdmin=role==='admin';
   const canEdit=canEditGlobal();
-  const filtered=(rows||[]).filter(r=>r.submitted_via==='public_link').filter(r=>!st||(r.status||'pending')===st);
+  const filtered=(rows||[]).filter(r=>r.submitted_via==='public_link').filter(r=>!st||(r.status||'pending')===st)
+    .filter(r=>!(role==='coordinator' && ME.department) || r.organizer===ME.department);
   document.getElementById('tbl-ar-ext').innerHTML=filtered.map((r,i)=>{
     r._cats=resolveReqCategories(r, saList);
     return buildARRow(r, i, role, isAdmin, canEdit, 'filterARExternal');

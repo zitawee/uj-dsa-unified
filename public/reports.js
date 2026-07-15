@@ -713,13 +713,23 @@ async function loadUsers() {
       <div class="fg"><label>اسم المستخدم *</label><input id="u-un" type="text" placeholder="username"></div>
       <div class="fg"><label>الاسم الكامل *</label><input id="u-fn" type="text"></div>
       <div class="fg"><label>كلمة المرور *</label><input id="u-pw" type="password"></div>
-      <div class="fg"><label>الصلاحية *</label><select id="u-role"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">منسّق الفعالية</option><option value="manager">مدير عمادة شؤون الطلبة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option></select></div>
+      <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">منسّق الفعالية</option><option value="manager">مدير عمادة شؤون الطلبة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option></select></div>
+      <div class="fg full" id="u-dept-wrap" style="display:none">
+        <label>الجهة المنظمة المرتبطة بالمنسّق (اختياري)</label>
+        <select id="u-dept"><option value="">— بدون تقييد (يرى كل الطلبات) —</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">عند تحديد جهة، سيرى هذا المنسّق فقط طلبات إقامة النشاط (الداخلية والخارجية) الخاصة بهذه الجهة تحديداً.</div>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end"><button class="btn btn-g" onclick="addUser()">✔ إضافة</button></div>
   </div>
-  <div class="tw"><table><thead><tr><th>#</th><th>اسم المستخدم</th><th>الاسم الكامل</th><th>الصلاحية</th><th>تاريخ الإنشاء</th><th></th></tr></thead>
+  <div class="tw"><table><thead><tr><th>#</th><th>اسم المستخدم</th><th>الاسم الكامل</th><th>الصلاحية</th><th>الجهة المرتبطة</th><th>تاريخ الإنشاء</th><th></th></tr></thead>
   <tbody id="tbl-users"></tbody></table></div>`;
   refreshUsers();
+}
+
+function toggleUserDept() {
+  const show = g('u-role')==='coordinator';
+  document.getElementById('u-dept-wrap').style.display = show ? 'block' : 'none';
 }
 
 async function refreshUsers() {
@@ -727,13 +737,14 @@ async function refreshUsers() {
   document.getElementById('tbl-users').innerHTML=(rows||[]).map((r,i)=>`<tr>
     <td>${i+1}</td><td><strong>${r.username}</strong></td><td>${r.fullName}</td>
     <td><span class="rtag ${RCLS[r.role]||''}">${RLABELS[r.role]||r.role}</span></td>
+    <td style="font-size:11px;color:var(--g)">${r.department||'-'}</td>
     <td>${new Date(r.created_at).toLocaleDateString('ar-JO')}</td>
     <td>${r.username!=='admin'?`<button class="btn btn-r" onclick="delUser('${r._id||r.id}')">🗑</button>`:''}</td>
-  </tr>`).join('')||`<tr class="erow"><td colspan="6">لا يوجد مستخدمون</td></tr>`;
+  </tr>`).join('')||`<tr class="erow"><td colspan="7">لا يوجد مستخدمون</td></tr>`;
 }
 
 async function addUser() {
-  const data={username:g('u-un'),fullName:g('u-fn'),password:g('u-pw'),role:g('u-role')};
+  const data={username:g('u-un'),fullName:g('u-fn'),password:g('u-pw'),role:g('u-role'),department:g('u-dept')};
   if(!data.username||!data.fullName||!data.password){showMsg('msg-users','يرجى ملء جميع الحقول',true);return;}
   const r=await api('/api/users','POST',data);
   if(r.error){showMsg('msg-users',r.error,true);return;}
