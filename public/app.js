@@ -295,7 +295,8 @@ async function loadDash() {
   if(incEl) incEl.textContent = stats.incomplete||0;
 
   const pendingAll = await api('/api/activity_requests');
-  const pending = (pendingAll||[]).filter(r=>!['approved','rejected'].includes(r.status||'pending'));
+  const pending = (pendingAll||[]).filter(r=>!['approved','rejected'].includes(r.status||'pending'))
+    .filter(r=>!(['coordinator','manager'].includes(ME?.role) && ME.department) || r.organizer===ME.department);
   const studs = await api('/api/students');
   const byAct = {}; ACTS.forEach(a=>byAct[a]=0);
   (studs||[]).forEach(s=>{ if(byAct[s.activity]!==undefined) byAct[s.activity]++; });
