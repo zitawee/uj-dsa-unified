@@ -51,7 +51,7 @@ function buildActivityRecordFromRequest(req, categories) {
 
 const TABLES = [
   'students','achievements',
-  'governance','student_activities','workshops','initiatives','external_acts','competitions',
+  'governance','student_activities','student_activities_external','workshops','initiatives','external_acts','competitions',
   'student_honors','community_svc','staff_committees','awareness','expert_acts',
   'staff_training','staff_innovation','staff_honors','uni_committees',
   'environment','dialogues','campaigns',
@@ -282,7 +282,7 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
         status: 'approved', approved_by: req.user.fullName, approved_at: now,
         approval_note: note || '', categories, admin_override: true
       });
-      await models['student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
+      await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
       return res.json({ message: 'تم الاعتماد المباشر بنجاح' });
     }
 
@@ -330,7 +330,7 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
       if (action === 'approve') {
         if (!Array.isArray(categories) || !categories.length) return res.status(400).json({ error: 'يرجى اختيار تصنيف واحد على الأقل' });
         await Model.findByIdAndUpdate(doc._id, { status: 'approved', approved_by: req.user.fullName, approved_at: now, approval_note: note || '', categories });
-        await models['student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
+        await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
         return res.json({ message: 'تم الاعتماد النهائي بنجاح' });
       }
       if (action === 'reject') {
