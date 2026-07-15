@@ -346,6 +346,18 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
       return res.status(400).json({ error: 'إجراء غير معروف' });
     }
 
+    if (status === 'rejected' && action === 'reopen') {
+      if (!['coordinator','admin'].includes(role)) return res.status(403).json({ error: 'إعادة الفتح مخصصة لمنسّق الفعالية فقط' });
+      if (role==='coordinator' && req.user.department && doc.organizer !== req.user.department)
+        return res.status(403).json({ error: 'هذا الطلب لا يتبع الجهة المنظمة المرتبطة بحسابك' });
+      await Model.findByIdAndUpdate(doc._id, {
+        status: 'pending',
+        rejected_by: '', rejected_at: '', rejection_note: '', rejected_stage: '',
+        reopened_by: req.user.fullName, reopened_at: now
+      });
+      return res.json({ message: 'تمت إعادة فتح الطلب — يمكنك الآن تعديل بياناته وتمريره من جديد' });
+    }
+
     return res.status(400).json({ error: 'الحالة الحالية للطلب لا تسمح بأي إجراء' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
