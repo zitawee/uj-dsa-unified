@@ -301,8 +301,12 @@ async function loadDash() {
   <div class="g4" style="margin-bottom:14px">
     ${[[stats.students||0,'طلبة مسجلون','#1B6B3A'],[stats.achievements||0,'إنجازات','#1B5E9A'],[stats.pending_requests||0,'طلبات معلقة','#633806'],[stats.incomplete||0,'غير مكتملة','#8B6914']].map(([n,l,c])=>`<div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center"><div style="font-size:26px;font-weight:700;color:${c}">${n}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${l}</div></div>`).join('')}
   </div>
+  ${(pending||[]).length ? (()=>{
+    const returnedCount = pending.filter(r=>(r.status==='pending'&&r.manager_return_note)||(r.status==='awaiting_manager'&&r.dean_return_note)).length;
+    return `
+  <div class="card"><div class="ct" style="color:#633806"><i class="ti ti-clock"></i>طلبات قيد المعالجة (${pending.length})${returnedCount?` <span style="background:#FDEBD0;color:#8A4B0F;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:8px">⚠️ ${returnedCount} طلب مُرجَع بحاجة لمتابعتك</span>`:''}</div>`;
+  })() : ''}
   ${(pending||[]).length ? `
-  <div class="card"><div class="ct" style="color:#633806"><i class="ti ti-clock"></i>طلبات قيد المعالجة (${pending.length})</div>
   <div class="tw"><table><thead><tr><th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>المرحلة</th><th></th></tr></thead>
   <tbody>${(pending||[]).slice(0,6).map((r,i)=>{
     const status=r.status||'pending'; const role=ME?.role; let actions='';
@@ -310,11 +314,13 @@ async function loadDash() {
     if(status==='awaiting_manager' && ['manager','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="mgrReturn('${r.id}')">↩️ للمنسّق</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️</button>`;
     if(status==='awaiting_dean' && ['dean','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع</button>`;
     if(role==='admin') actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 تجاوز</button>`;
+    const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
+    const deanReturnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
     return `<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
     <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
-    <td>${stBadge(status)}</td>
+    <td>${stBadge(status)}${mgrReturnNote}${deanReturnNote}</td>
     <td><div class="rb">
       ${actions}
       <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewAR('${r.id}')">👁️</button>

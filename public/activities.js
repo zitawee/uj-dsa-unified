@@ -104,7 +104,10 @@ function showARForm() {
 // ══ تعديل بيانات النشاط (متاح لمنسّق الفعالية/المدير أثناء مرحلتهما فقط، للتصحيح بعد الإرجاع) ══
 async function editContentAR(id) {
   const r=await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات الطلب');return;}
-  const f=document.getElementById('ar-form'); f.style.display='block';
+  // إن كان الزر مضغوطاً من خارج شاشة «طلبات إقامة نشاط» (كلوحة التحكم)، ننتقل لها أولاً لضمان وجود نموذج التعديل
+  if(!document.getElementById('ar-form')) go('activity_requests');
+  const f=document.getElementById('ar-form'); if(!f){alert('تعذر فتح نموذج التعديل');return;}
+  f.style.display='block';
   f.dataset.editId=id;
   const set=(id2,val)=>{ const el=document.getElementById(id2); if(el) el.value=val||''; };
   set('ar-type',r.type); set('ar-title',r.title); set('ar-adtitle',r.ad_title);
