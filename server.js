@@ -197,6 +197,19 @@ app.delete('/api/users/:id', auth(['admin']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/users/:id/change-password', auth(['admin']), async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 4)
+      return res.status(400).json({ error: 'يرجى إدخال كلمة سر لا تقل عن 4 خانات' });
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'المستخدم غير موجود' });
+    user.password = bcrypt.hashSync(newPassword, 10);
+    await user.save();
+    res.json({ message: 'تم تغيير كلمة السر بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══ CRUD لجميع الجداول ══
 TABLES.forEach(table => {
   const Model = models[table];
