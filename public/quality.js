@@ -250,11 +250,11 @@ async function saveQ(table) {
 // النماذج العامة (الإعلانات، القاعات، اللجان، الاجتماعات)
 // ══════════════════════════════════════════
 const FCFG = {
-  announcements:{title:'الإعلانات عن الفعاليات',code:'',cols:['title','type','date','location','organizer'],heads:['العنوان','النوع','التاريخ','المكان','الجهة'],fields:[{l:'عنوان الفعالية*',id:'title',t:'text'},{l:'نوع الفعالية',id:'type',t:'select',opts:['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','أخرى']},{l:'التاريخ*',id:'date',t:'date'},{l:'الوقت',id:'time',t:'text'},{l:'المكان',id:'location',t:'text'},{l:'الجهة المنظِّمة',id:'organizer',t:'text'},{l:'للتواصل',id:'contact',t:'text'},{l:'وصف',id:'description',t:'text'},{l:'ملاحظات',id:'notes',t:'text'}]},
+  announcements:{title:'الإعلانات عن الفعاليات',code:'',cols:['title','type','date','location','organizer'],heads:['العنوان','النوع','التاريخ','المكان','الجهة'],fields:[{l:'عنوان الفعالية*',id:'title',t:'text'},{l:'نوع الفعالية',id:'type',t:'select',opts:['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','أخرى']},{l:'التاريخ*',id:'date',t:'date'},{l:'الوقت',id:'time',t:'text'},{l:'المكان',id:'location',t:'text'},{l:'الجهة المنظِّمة',id:'organizer',t:'select',opts:DEANSHIP_DEPTS},{l:'للتواصل',id:'contact',t:'text'},{l:'وصف',id:'description',t:'text'},{l:'ملاحظات',id:'notes',t:'text'}]},
   hall_bookings:{title:'حجز المدرجات والقاعات',code:'DSA-06-28-01',cols:['hall','day','date','time_from','time_to','purpose','supervisor'],heads:['المكان','اليوم','التاريخ','من','إلى','الغرض','المشرف'],fields:[{l:'المكان*',id:'hall',t:'select',opts:['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات']},{l:'اليوم*',id:'day',t:'select',opts:['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت']},{l:'التاريخ*',id:'date',t:'date'},{l:'من الساعة',id:'time_from',t:'text'},{l:'إلى الساعة',id:'time_to',t:'text'},{l:'الغرض*',id:'purpose',t:'text'},{l:'اسم المشرف',id:'supervisor',t:'text'}]},
-  committees:{title:'تشكيل لجنة / مجلس',code:'AQC-02-10-01',cols:['name','type','date','ref_num','meeting_freq','secretary'],heads:['اللجنة','النوع','التاريخ','رقم الكتاب','آلية الاجتماع','المقرر'],fields:[{l:'اسم اللجنة*',id:'name',t:'text'},{l:'رقم الكتاب',id:'ref_num',t:'text'},{l:'تاريخ التشكيل',id:'date',t:'date'},{l:'نوع اللجنة',id:'type',t:'select',opts:['دائمة','مؤقتة']},{l:'آلية الاجتماع',id:'meeting_freq',t:'select',opts:['أسبوعياً','كل أسبوعين','شهرياً','أخرى']},{l:'الهدف العام',id:'goal',t:'text'},{l:'المهام',id:'tasks',t:'text'},{l:'أسماء الأعضاء',id:'members',t:'textarea'},{l:'المقرر',id:'secretary',t:'text'},{l:'أمين السر',id:'ameen',t:'text'}]},
-  meeting_invites:{title:'دعوات حضور الاجتماعات',code:'AQC-04-01-01',cols:['committee','subject','session_num','date','time','location'],heads:['اللجنة','الموضوع','رقم الجلسة','التاريخ','الوقت','المكان'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'الموضوع*',id:'subject',t:'text'},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'طبيعة الاجتماع',id:'nature',t:'select',opts:['عادي وجاهي','عادي عن بعد','عادي مدمج','طارئ وجاهي','طارئ عن بعد']},{l:'المكان',id:'location',t:'text'},{l:'المدعوّون',id:'invitees',t:'textarea'},{l:'جدول الأعمال',id:'agenda',t:'text'},{l:'أمين السر',id:'ameen',t:'text'},{l:'رئيس اللجنة',id:'head',t:'text'}]},
-  meeting_minutes:{title:'محاضر الاجتماعات',code:'AQC-04-01-02',cols:['committee','session_num','date','time','chair'],heads:['اللجنة','رقم الجلسة','التاريخ','الوقت','الرئيس'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'نوع الاجتماع',id:'nature',t:'select',opts:['دوري وجاهي','دوري عن بعد','دوري مدمج','طارئ']},{l:'رئيس الجلسة',id:'chair',t:'text'},{l:'الحاضرون (الاسم - المنصب)',id:'present',t:'textarea'},{l:'المعتذرون',id:'absent',t:'textarea'},{l:'أمين السر',id:'ameen',t:'text'},{l:'البنود والقرارات',id:'items',t:'textarea'},{l:'وقت الانتهاء',id:'end_time',t:'text'}]},
+  committees:{title:'تشكيل لجنة / مجلس',code:'AQC-02-10-01',cols:['name','organizer','type','date','ref_num','meeting_freq','secretary'],heads:['اللجنة','الجهة المنظّمة','النوع','التاريخ','رقم الكتاب','آلية الاجتماع','المقرر'],fields:[{l:'اسم اللجنة*',id:'name',t:'text'},{l:'الجهة المنظّمة',id:'organizer',t:'select',opts:DEANSHIP_DEPTS},{l:'رقم الكتاب',id:'ref_num',t:'text'},{l:'تاريخ التشكيل',id:'date',t:'date'},{l:'نوع اللجنة',id:'type',t:'select',opts:['دائمة','مؤقتة']},{l:'آلية الاجتماع',id:'meeting_freq',t:'select',opts:['أسبوعياً','كل أسبوعين','شهرياً','أخرى']},{l:'الهدف العام',id:'goal',t:'text'},{l:'المهام',id:'tasks',t:'text'},{l:'أسماء الأعضاء',id:'members',t:'textarea'},{l:'المقرر',id:'secretary',t:'text'},{l:'أمين السر',id:'ameen',t:'text'}]},
+  meeting_invites:{title:'دعوات حضور الاجتماعات',code:'AQC-04-01-01',cols:['committee','organizer','subject','session_num','date','time','location'],heads:['اللجنة','الجهة المنظّمة','الموضوع','رقم الجلسة','التاريخ','الوقت','المكان'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'الجهة المنظّمة',id:'organizer',t:'select',opts:DEANSHIP_DEPTS},{l:'الموضوع*',id:'subject',t:'text'},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'طبيعة الاجتماع',id:'nature',t:'select',opts:['عادي وجاهي','عادي عن بعد','عادي مدمج','طارئ وجاهي','طارئ عن بعد']},{l:'المكان',id:'location',t:'text'},{l:'المدعوّون',id:'invitees',t:'textarea'},{l:'جدول الأعمال',id:'agenda',t:'text'},{l:'أمين السر',id:'ameen',t:'text'},{l:'رئيس اللجنة',id:'head',t:'text'}]},
+  meeting_minutes:{title:'محاضر الاجتماعات',code:'AQC-04-01-02',cols:['committee','organizer','session_num','date','time','chair'],heads:['اللجنة','الجهة المنظّمة','رقم الجلسة','التاريخ','الوقت','الرئيس'],fields:[{l:'اللجنة*',id:'committee',t:'text'},{l:'الجهة المنظّمة',id:'organizer',t:'select',opts:DEANSHIP_DEPTS},{l:'رقم الجلسة',id:'session_num',t:'text'},{l:'التاريخ*',id:'date',t:'date2'},{l:'الوقت',id:'time',t:'text'},{l:'نوع الاجتماع',id:'nature',t:'select',opts:['دوري وجاهي','دوري عن بعد','دوري مدمج','طارئ']},{l:'رئيس الجلسة',id:'chair',t:'text'},{l:'الحاضرون (الاسم - المنصب)',id:'present',t:'textarea'},{l:'المعتذرون',id:'absent',t:'textarea'},{l:'أمين السر',id:'ameen',t:'text'},{l:'البنود والقرارات',id:'items',t:'textarea'},{l:'وقت الانتهاء',id:'end_time',t:'text'}]},
 };
 
 
@@ -333,7 +333,11 @@ async function loadFData(table) {
   const cfg=FCFG[table];
   const q=document.getElementById('ffs-'+table)?.value||'';
   const p=new URLSearchParams(); if(q)p.set('q',q);
-  const rows=await api('/api/'+table+'?'+p);
+  let rows=await api('/api/'+table+'?'+p);
+  // تصفية حسب الجهة المرتبطة بحساب رئيس الشعبة/المدير (إن وُجدت، ووُجد حقل "organizer" في هذا الجدول)
+  if(['coordinator','manager'].includes(ME?.role) && ME.department && cfg.fields.some(f=>f.id==='organizer')){
+    rows=(rows||[]).filter(r=>r.organizer===ME.department);
+  }
   const canEdit=canEditGlobal();
   document.getElementById('ftbl-'+table).innerHTML=(rows||[]).map((r,i)=>`<tr style="${r.source&&!r.completed?'background:#FFFBF0':''}">
     <td>${i+1}</td>${cfg.cols.map(c=>`<td>${r[c]||'-'}</td>`).join('')}
@@ -437,7 +441,7 @@ async function loadParticipants() {
       <div class="g2">
         <div class="fg"><label>اسم النشاط *</label><input id="pf-act" type="text"></div>
         <div class="fg"><label>يوم وتاريخ عقد النشاط *</label><input id="pf-date" type="date"></div>
-        <div class="fg"><label>الجهة المسؤولة</label><input id="pf-org" type="text"></div>
+        <div class="fg"><label>الجهة المسؤولة</label><select id="pf-org"><option value="">اختر...</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select></div>
         <div class="fg"><label>رقم النشاط للتقييم</label><input id="pf-eval" type="text"></div>
       </div>
     </div>
@@ -585,7 +589,10 @@ async function saveAndPrintPart() {
 
 async function filterPart() {
   const q=g('ptf-q'); const p=new URLSearchParams(); if(q)p.set('q',q);
-  const rows=await api('/api/participants?'+p);
+  let rows=await api('/api/participants?'+p);
+  if(['coordinator','manager'].includes(ME?.role) && ME.department){
+    rows=(rows||[]).filter(r=>r.organizer===ME.department);
+  }
   const canEdit=canEditGlobal();
   document.getElementById('tbl-part').innerHTML=(rows||[]).map((r,i)=>`<tr>
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
