@@ -739,8 +739,20 @@ async function refreshUsers() {
     <td><span class="rtag ${RCLS[r.role]||''}">${RLABELS[r.role]||r.role}</span></td>
     <td style="font-size:11px;color:var(--g)">${r.department||'-'}</td>
     <td>${new Date(r.created_at).toLocaleDateString('ar-JO')}</td>
-    <td>${r.username!=='admin'?`<button class="btn btn-r" onclick="delUser('${r._id||r.id}')">🗑</button>`:''}</td>
+    <td><div class="rb">
+      <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="changeUserPassword('${r._id||r.id}','${r.username}')">🔑 تغيير كلمة السر</button>
+      ${r.username!=='admin'?`<button class="btn btn-r" onclick="delUser('${r._id||r.id}')">🗑</button>`:''}
+    </div></td>
   </tr>`).join('')||`<tr class="erow"><td colspan="7">لا يوجد مستخدمون</td></tr>`;
+}
+
+async function changeUserPassword(id, username) {
+  const pw = prompt(`كلمة السر الجديدة للمستخدم "${username}" (4 خانات على الأقل):`, '');
+  if (pw === null) return;
+  if (pw.length < 4) { alert('يرجى إدخال كلمة سر لا تقل عن 4 خانات'); return; }
+  const r = await api(`/api/users/${id}/change-password`, 'POST', { newPassword: pw });
+  if (r.error) { alert(r.error); return; }
+  alert('✅ '+(r.message||'تم تغيير كلمة السر بنجاح'));
 }
 
 async function addUser() {
