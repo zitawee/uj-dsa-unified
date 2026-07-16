@@ -6,7 +6,7 @@ const COLS = ['كلية الآداب','كلية الأعمال','كلية الش
 const ADMIT = ['تنافس','موازي','دولي','تحويل','تفوق فني'];
 const YEARS = ['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
 const ACOLORS = {'المرسم الجامعي':['#EEEDFE','#3C3489'],'الموسيقى':['#E1F5EE','#085041'],'الخط العربي':['#FAEEDA','#633806'],'الحرف اليدوية':['#FAECE7','#712B13'],'المسرح الجامعي':['#FBE8F5','#5D1A4A'],'الأداء الحركي':['#EAF3DE','#27500A'],'المناظرات':['#E8F4FD','#0A4A6B'],'الأنشطة الحزبية':['#FBEAF0','#72243E']};
-const RLABELS = {admin:'مدير النظام',editor:'مدخل بيانات',viewer:'عرض فقط',coordinator:'منسّق الفعالية',manager:'مدير عمادة شؤون الطلبة',dean:'العميد'};
+const RLABELS = {admin:'مدير النظام',editor:'مدخل بيانات',viewer:'عرض فقط',coordinator:'رئيس شعبة',manager:'مدير الدائرة',dean:'العميد'};
 const RCLS = {admin:'r-admin',editor:'r-editor',viewer:'r-viewer',coordinator:'r-editor',manager:'r-admin',dean:'r-admin'};
 // التصنيفات التسعة للأنشطة (يختارها مدير النظام عند الاعتماد) — قابلة للإضافة عليها لاحقاً
 const ACTIVITY_CATEGORIES = [
@@ -144,9 +144,9 @@ function openPrint(html) {
 const badge = act => { const[bg,fg]=ACOLORS[act]||['#eee','#555']; return `<span class="ab" style="background:${bg};color:${fg}">${act}</span>`; };
 const stBadge = st => { const m={pending:'🟡 قيد مراجعة المنسّق',awaiting_manager:'🟠 قيد مراجعة المدير',awaiting_dean:'🔵 قيد اعتماد العميد',approved:'✅ معتمد',rejected:'❌ مرفوض'}; const c={pending:'st-p',awaiting_manager:'st-m',awaiting_dean:'st-d',approved:'st-a',rejected:'st-r'}; return `<span class="st ${c[st]||'st-p'}">${m[st]||'🟡 قيد مراجعة المنسّق'}</span>`; };
 // صلاحية الإضافة/التعديل العامة: مقصورة فعلياً على admin/editor في الخادم.
-// منسّق الفعالية/المدير/العميد لهم صلاحيات محدودة ضمن مسار اعتماد النشاط فقط، وليس تعديلاً عاماً على الجداول.
+// رئيس شعبة/المدير/العميد لهم صلاحيات محدودة ضمن مسار اعتماد النشاط فقط، وليس تعديلاً عاماً على الجداول.
 function canEditGlobal() { return ['admin','editor'].includes(ME?.role); }
-// صلاحية إضافة طلب إقامة نشاط جديد: تشمل أيضاً منسّق الفعالية والمدير (وليس فقط admin/editor)
+// صلاحية إضافة طلب إقامة نشاط جديد: تشمل أيضاً رئيس شعبة والمدير (وليس فقط admin/editor)
 function canCreateAR() { return ['admin','editor','coordinator','manager'].includes(ME?.role); }
 const colOpts = (val='') => COLS.map(c=>`<option${c===val?' selected':''}>${c}</option>`).join('');
 const actOpts = (val='') => ACTS.map(a=>`<option${a===val?' selected':''}>${a}</option>`).join('');

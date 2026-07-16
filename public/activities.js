@@ -101,7 +101,7 @@ function showARForm() {
   f.scrollIntoView({behavior:'smooth'});
 }
 
-// ══ تعديل بيانات النشاط (متاح لمنسّق الفعالية/المدير أثناء مرحلتهما فقط، للتصحيح بعد الإرجاع) ══
+// ══ تعديل بيانات النشاط (متاح لرئيس شعبة/المدير أثناء مرحلتهما فقط، للتصحيح بعد الإرجاع) ══
 async function editContentAR(id) {
   const r=await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات الطلب');return;}
   // إن كان الزر مضغوطاً من خارج شاشة «طلبات إقامة نشاط» (كلوحة التحكم)، ننتقل لها أولاً لضمان وجود نموذج التعديل
@@ -326,7 +326,7 @@ async function confirmApprove() {
   filterAR(); loadDash();
 }
 
-// ══ منسّق الفعالية: قبول وتمرير / رفض ══
+// ══ رئيس شعبة: قبول وتمرير / رفض ══
 async function coordDecision(id, action) {
   let note='';
   if(action==='reject'){ note=prompt('سبب الرفض:',''); if(note===null) return; }
@@ -338,7 +338,7 @@ async function coordDecision(id, action) {
 
 // ══ المدير: إرجاع الطلب للمنسّق لإجراء تعديل على بيانات النشاط ══
 async function mgrReturn(id) {
-  const note=prompt('سبب الإرجاع لمنسّق الفعالية (سيظهر له لإجراء التعديل اللازم):','');
+  const note=prompt('سبب الإرجاع لرئيس شعبة (سيظهر له لإجراء التعديل اللازم):','');
   if(note===null) return;
   const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'return', note});
   if(r.error){alert(r.error);return;}
@@ -346,7 +346,7 @@ async function mgrReturn(id) {
 }
 // ══ إعادة فتح طلب مرفوض (بعد استكمال الطالب للنواقص) — يعود لمرحلة المنسّق من جديد ══
 async function reopenAR(id, refreshFn) {
-  if(!confirm('إعادة فتح هذا الطلب ستعيده لمرحلة منسّق الفعالية من جديد. متابعة؟')) return;
+  if(!confirm('إعادة فتح هذا الطلب ستعيده لمرحلة رئيس شعبة من جديد. متابعة؟')) return;
   const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'reopen'});
   if(r.error){alert(r.error);return;}
   if(typeof refreshFn==='function') refreshFn();
@@ -433,7 +433,7 @@ async function viewAR(id) {
     ${vrow('أسماء المشاركين من الخارج', r.ext_people)}
 
     ${vsec('مسار الاعتماد')}
-    ${vrow('منسّق الفعالية', r.coordinator_by ? `${r.coordinator_by} — ${(r.coordinator_at||'').split('T')[0]||r.coordinator_at}` : '')}
+    ${vrow('رئيس شعبة', r.coordinator_by ? `${r.coordinator_by} — ${(r.coordinator_at||'').split('T')[0]||r.coordinator_at}` : '')}
     ${vrow('إرجاع المدير للمنسّق', r.manager_return_note ? `${r.manager_return_by||''} — ${r.manager_return_note}` : '', '#8A4B0F')}
     ${vrow('المدير', r.manager_by ? `${r.manager_by} — ${(r.manager_at||'').split('T')[0]||r.manager_at}` : '')}
     ${vrow('العميد (الاعتماد النهائي)', r.approved_by ? `${r.approved_by} — ${(r.approved_at||'').split('T')[0]||r.approved_at}` : '', '#27500A')}

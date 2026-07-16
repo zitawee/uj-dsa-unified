@@ -713,7 +713,7 @@ async function loadUsers() {
       <div class="fg"><label>اسم المستخدم *</label><input id="u-un" type="text" placeholder="username"></div>
       <div class="fg"><label>الاسم الكامل *</label><input id="u-fn" type="text"></div>
       <div class="fg"><label>كلمة المرور *</label><input id="u-pw" type="password"></div>
-      <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">منسّق الفعالية</option><option value="manager">مدير عمادة شؤون الطلبة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option></select></div>
+      <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">رئيس شعبة</option><option value="manager">مدير الدائرة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option></select></div>
       <div class="fg full" id="u-dept-wrap" style="display:none">
         <label>الجهة المنظمة المرتبطة (للمنسّق أو المدير)</label>
         <select id="u-dept"><option value="">— بدون تقييد (يرى كل الطلبات) —</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select>
@@ -738,7 +738,7 @@ async function refreshUsers() {
     <td>${i+1}</td><td><strong>${r.username}</strong></td><td>${r.fullName}</td>
     <td><span class="rtag ${RCLS[r.role]||''}">${RLABELS[r.role]||r.role}</span></td>
     <td style="font-size:11px;color:var(--g)">${r.department||'-'}</td>
-    <td>${new Date(r.created_at).toLocaleDateString('ar-JO')}</td>
+    <td>${r.createdAt ? new Date(r.createdAt).toLocaleDateString('ar-JO') : '-'}</td>
     <td><div class="rb">
       <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="changeUserPassword('${r._id||r.id}','${r.username}')">🔑 تغيير كلمة السر</button>
       ${r.username!=='admin'?`<button class="btn btn-r" onclick="delUser('${r._id||r.id}')">🗑</button>`:''}
