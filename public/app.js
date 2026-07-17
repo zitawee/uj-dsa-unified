@@ -33,6 +33,18 @@ const DEANSHIP_DEPTS = [
   'مكتب شؤون الطلبة الدوليين',
   'اتحاد طلبة الجامعة الأردنية'
 ];
+// ألوان خفيفة مميّزة لكل دائرة في بطاقات لوحة التحكم [خلفية, نص]
+const DEPT_COLORS = {
+  'دائرة الهيئات والخدمات الطلابية':      ['#EAF3DE','#27500A'],
+  'دائرة الرعاية الصحية':                 ['#FBEAF0','#72243E'],
+  'دائرة الإرشاد الطلابي':                ['#E1F5EE','#085041'],
+  'دائرة النشاطات الرياضية':              ['#E8F4FD','#0A4A6B'],
+  'دائرة المنازل الداخلية':               ['#FAEEDA','#633806'],
+  'دائرة الخدمات الفنية والتطوير':        ['#EEEDFE','#3C3489'],
+  'دائرة النشاطات الثقافية والحزبية':     ['#FBE8F5','#5D1A4A'],
+  'مكتب شؤون الطلبة الدوليين':            ['#FAECE7','#712B13'],
+  'اتحاد طلبة الجامعة الأردنية':          ['#FDEBEA','#8A2A22']
+};
 
 let TOKEN = localStorage.getItem('uj_tok');
 let ME = null;
@@ -300,6 +312,7 @@ async function loadDash() {
   const studs = await api('/api/students');
   const byAct = {}; ACTS.forEach(a=>byAct[a]=0);
   (studs||[]).forEach(s=>{ if(byAct[s.activity]!==undefined) byAct[s.activity]++; });
+  const deptStats = await api('/api/dept-stats');
 
   document.getElementById('panel-dash').innerHTML = `
   <div class="ph"><div><div class="pt">لوحة التحكم الموحدة</div><div class="ps">الجامعة الأردنية — عمادة شؤون الطلبة</div></div></div>
@@ -332,6 +345,23 @@ async function loadDash() {
       <button class="btn btn-sm btn-b" onclick="printAR('${r.id}')">🖨️</button>
     </div></td>
   </tr>`;}).join('')}</tbody></table></div></div>` : ''}
+  <div class="card"><div class="ct"><i class="ti ti-building-bank"></i>إحصائية الدوائر والجهات المنظِّمة</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+    ${DEANSHIP_DEPTS.map(d=>{
+      const st = (deptStats && deptStats[d]) || {pending:0,incomplete:0,activities:0,activities_external:0};
+      const [bg,fg] = DEPT_COLORS[d] || ['#F2F2F2','#333'];
+      const rows = [
+        ['طلبات قيد المعالجة', st.pending||0],
+        ['طلبات غير مكتملة', st.incomplete||0],
+        ['الأنشطة الطلابية', st.activities||0],
+        ['الأنشطة الطلابية الخارجية', st.activities_external||0]
+      ];
+      return `<div style="background:${bg};border-radius:var(--r);padding:12px 14px">
+        <div style="font-weight:700;text-align:center;color:${fg};font-size:13.5px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid ${fg}33">${d}</div>
+        ${rows.map(([label,n],i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;${i<rows.length-1?`border-bottom:1px solid ${fg}22`:''}"><span style="font-size:11.5px;color:${fg}">${label}</span><span style="font-weight:700;color:${fg};font-size:13.5px">${n}</span></div>`).join('')}
+      </div>`;
+    }).join('')}
+  </div></div>
   <div class="card"><div class="ct"><i class="ti ti-chart-bar"></i>توزيع الطلبة على الأنشطة الجامعية</div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
     ${ACTS.map(a=>{ const[bg,fg]=ACOLORS[a]; return `<div style="background:${bg};border-radius:var(--r);padding:10px;text-align:center"><div style="font-size:22px;font-weight:700;color:${fg}">${byAct[a]||0}</div><div style="font-size:10.5px;color:${fg};margin-top:2px">${a}</div></div>`; }).join('')}
