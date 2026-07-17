@@ -2,8 +2,11 @@
 // الطلبات غير المكتملة
 // ══════════════════════════════════════════
 async function loadIncomplete() {
-  const rows = await api('/api/incomplete');
-  const TNAMES = {student_activities:'الأنشطة الطلابية',community_svc:'الخدمات المجتمعية'};
+  let rows = await api('/api/incomplete');
+  if(['coordinator','manager'].includes(ME?.role) && ME.department){
+    rows = (rows||[]).filter(r => !r.organizer || r.organizer===ME.department);
+  }
+  const TNAMES = {student_activities:'الأنشطة الطلابية',student_activities_external:'الأنشطة الطلابية الخارجية',community_svc:'الخدمات المجتمعية'};
   document.getElementById('panel-incomplete').innerHTML = `
   <div class="ph"><div><div class="pt"><i class="ti ti-alert-circle" style="color:#633806"></i> الطلبات غير المكتملة</div><div class="ps">سجلات رُحِّلت من النماذج وتحتاج إدخال بيانات إضافية</div></div></div>
   ${!(rows||[]).length ? `<div style="text-align:center;padding:40px;color:var(--muted)"><i class="ti ti-circle-check" style="font-size:48px;color:#27500A;display:block;margin-bottom:10px"></i>لا توجد طلبات غير مكتملة</div>` : `
