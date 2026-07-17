@@ -259,8 +259,15 @@ TABLES.forEach(table => {
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
 
-  app.put(`/api/${table}/:id`, auth(['admin','editor']), async (req, res) => {
+  const AR_QUALITY = ['student_activities','student_activities_external'];
+  const putRoles = AR_QUALITY.includes(table) ? ['admin','editor','coordinator','manager'] : ['admin','editor'];
+  app.put(`/api/${table}/:id`, auth(putRoles), async (req, res) => {
     try {
+      if (AR_QUALITY.includes(table) && ['coordinator','manager'].includes(req.user.role) && req.user.department) {
+        const existing = await Model.findById(req.params.id);
+        if (existing && existing.organizer && existing.organizer !== req.user.department)
+          return res.status(403).json({ error: 'هذا السجل لا يتبع الجهة المرتبطة بحسابك' });
+      }
       await Model.findByIdAndUpdate(req.params.id,
         { ...req.body, updated_by: req.user.username, updatedAt: new Date() },
         { new: true }
@@ -443,7 +450,7 @@ app.get('/api/stats', auth(), async (req, res) => {
     const pendingQuery = { status: { $in: ['pending','awaiting_manager','awaiting_dean'] } };
     if (['coordinator','manager'].includes(req.user.role) && req.user.department) pendingQuery.organizer = req.user.department;
     stats.pending_requests = await models['activity_requests'].countDocuments(pendingQuery);
-    const Q = ['student_activities','community_svc'];
+    const Q = ['student_activities','student_activities_external','community_svc'];
     let incomplete = 0;
     await Promise.all(Q.map(async t => {
       incomplete += await models[t].countDocuments({ 
@@ -459,7 +466,7 @@ app.get('/api/stats', auth(), async (req, res) => {
 // ══ الطلبات غير المكتملة ══
 app.get('/api/incomplete', auth(), async (req, res) => {
   try {
-    const Q = ['student_activities','community_svc'];
+    const Q = ['student_activities','student_activities_external','community_svc'];
     const result = [];
     await Promise.all(Q.map(async t => {
       const docs = await models[t].find({ 
