@@ -50,6 +50,19 @@ function buildActivityRecordFromRequest(req, categories) {
   };
 }
 
+// دوائر العمادة (يجب أن تطابق حرفياً قائمة DEANSHIP_DEPTS في public/app.js)
+const DEANSHIP_DEPTS = [
+  'دائرة الهيئات والخدمات الطلابية',
+  'دائرة الرعاية الصحية',
+  'دائرة الإرشاد الطلابي',
+  'دائرة النشاطات الرياضية',
+  'دائرة المنازل الداخلية',
+  'دائرة الخدمات الفنية والتطوير',
+  'دائرة النشاطات الثقافية والحزبية',
+  'مكتب شؤون الطلبة الدوليين',
+  'اتحاد طلبة الجامعة الأردنية'
+];
+
 const TABLES = [
   'students','achievements',
   'governance','student_activities','student_activities_external','workshops','initiatives','external_acts','competitions',
@@ -460,6 +473,44 @@ app.get('/api/stats', auth(), async (req, res) => {
     }));
     stats.incomplete = incomplete;
     res.json(stats);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ إحصائيات لكل جهة/دائرة (تظهر للجميع في لوحة التحكم الرئيسية) ══
+app.get('/api/dept-stats', auth(), async (req, res) => {
+  try {
+    const result = {};
+    DEANSHIP_DEPTS.forEach(d => { result[d] = { pending: 0, incomplete: 0, activities: 0, activities_external: 0 }; });
+
+    const pendingAgg = await models['activity_requests'].aggregate([
+      { $match: { status: { $in: ['pending', 'awaiting_manager', 'awaiting_dean'] } } },
+      { $group: { _id: '$organizer', count: { $sum: 1 } } }
+    ]);
+    pendingAgg.forEach(r => { if (result[r._id]) result[r._id].pending = r.count; });
+
+    const actAgg = await models['student_activities'].aggregate([
+      { $group: { _id: '$organizer', count: { $sum: 1 } } }
+    ]);
+    actAgg.forEach(r => { if (result[r._id]) result[r._id].activities = r.count; });
+
+    const actExtAgg = await models['student_activities_external'].aggregate([
+      { $group: { _id: '$organizer', count: { $sum: 1 } } }
+    ]);
+    actExtAgg.forEach(r => { if (result[r._id]) result[r._id].activities_external = r.count; });
+
+    const INC_TABLES = ['student_activities', 'student_activities_external'];
+    await Promise.all(INC_TABLES.map(async t => {
+      const agg = await models[t].aggregate([
+        { $match: {
+          source: { $exists: true, $ne: null, $ne: '' },
+          $or: [{ completed: { $exists: false } }, { completed: false }]
+        } },
+        { $group: { _id: '$organizer', count: { $sum: 1 } } }
+      ]);
+      agg.forEach(r => { if (result[r._id]) result[r._id].incomplete += r.count; });
+    }));
+
+    res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
