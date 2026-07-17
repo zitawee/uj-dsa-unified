@@ -309,16 +309,10 @@ async function loadDash() {
   const pendingAll = await api('/api/activity_requests');
   const pending = (pendingAll||[]).filter(r=>!['approved','rejected'].includes(r.status||'pending'))
     .filter(r=>!(['coordinator','manager'].includes(ME?.role) && ME.department) || r.organizer===ME.department);
-  const studs = await api('/api/students');
-  const byAct = {}; ACTS.forEach(a=>byAct[a]=0);
-  (studs||[]).forEach(s=>{ if(byAct[s.activity]!==undefined) byAct[s.activity]++; });
   const deptStats = await api('/api/dept-stats');
 
   document.getElementById('panel-dash').innerHTML = `
   <div class="ph"><div><div class="pt">لوحة التحكم الموحدة</div><div class="ps">الجامعة الأردنية — عمادة شؤون الطلبة</div></div></div>
-  <div class="g4" style="margin-bottom:14px">
-    ${[[stats.students||0,'طلبة مسجلون','#1B6B3A'],[stats.achievements||0,'إنجازات','#1B5E9A'],[stats.pending_requests||0,'طلبات معلقة','#633806'],[stats.incomplete||0,'غير مكتملة','#8B6914']].map(([n,l,c])=>`<div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center"><div style="font-size:26px;font-weight:700;color:${c}">${n}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${l}</div></div>`).join('')}
-  </div>
   ${(pending||[]).length ? (()=>{
     const returnedCount = pending.filter(r=>(r.status==='pending'&&r.manager_return_note)||(r.status==='awaiting_manager'&&r.dean_return_note)).length;
     return `
@@ -361,10 +355,6 @@ async function loadDash() {
         ${rows.map(([label,n],i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;${i<rows.length-1?`border-bottom:1px solid ${fg}22`:''}"><span style="font-size:11.5px;color:${fg}">${label}</span><span style="font-weight:700;color:${fg};font-size:13.5px">${n}</span></div>`).join('')}
       </div>`;
     }).join('')}
-  </div></div>
-  <div class="card"><div class="ct"><i class="ti ti-chart-bar"></i>توزيع الطلبة على الأنشطة الجامعية</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
-    ${ACTS.map(a=>{ const[bg,fg]=ACOLORS[a]; return `<div style="background:${bg};border-radius:var(--r);padding:10px;text-align:center"><div style="font-size:22px;font-weight:700;color:${fg}">${byAct[a]||0}</div><div style="font-size:10.5px;color:${fg};margin-top:2px">${a}</div></div>`; }).join('')}
   </div></div>`;
 }
 
