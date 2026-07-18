@@ -277,12 +277,22 @@ function showApp() {
 }
 
 // ══ Navigation ══
+function toggleSidebar() {
+  document.getElementById('sidebar')?.classList.toggle('open');
+  document.getElementById('sb-overlay')?.classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar')?.classList.remove('open');
+  document.getElementById('sb-overlay')?.classList.remove('open');
+}
+
 function go(name, el) {
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   const panel = document.getElementById('panel-'+name);
   if (panel) panel.classList.add('active');
   if (el) el.classList.add('active');
+  if (window.innerWidth <= 768) closeSidebar();
   const loaders = {
     dash:loadDash, incomplete:loadIncomplete, students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
@@ -340,7 +350,7 @@ async function loadDash() {
     </div></td>
   </tr>`;}).join('')}</tbody></table></div></div>` : ''}
   <div class="card"><div class="ct"><i class="ti ti-building-bank"></i>إحصائية الدوائر والجهات المنظِّمة</div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+  <div class="dept-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
     ${DEANSHIP_DEPTS.map(d=>{
       const st = (deptStats && deptStats[d]) || {pending:0,incomplete:0,activities:0,activities_external:0};
       const [bg,fg] = DEPT_COLORS[d] || ['#F2F2F2','#333'];

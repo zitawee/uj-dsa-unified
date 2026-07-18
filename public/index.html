@@ -127,7 +127,30 @@ tr:hover td{background:#FAFAFA}
 .folder-body .ni{padding-right:22px;font-size:12px}
 .folder-arrow{font-size:12px;transition:.2s}
 
-@media(max-width:768px){.sb{display:none}.g2,.g3,.g4{grid-template-columns:1fr}}
+.menu-toggle{display:none;background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;padding:5px 10px;border-radius:var(--r);font-size:16px;cursor:pointer;font-family:inherit;line-height:1}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:998}
+.sb-overlay.open{display:block}
+
+@media(max-width:768px){
+  .menu-toggle{display:inline-flex;align-items:center}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .dept-grid{grid-template-columns:1fr!important}
+  .layout{position:relative}
+  .sb{
+    display:block;
+    position:fixed;
+    top:0;
+    right:0;
+    bottom:0;
+    width:250px;
+    max-width:80vw;
+    z-index:999;
+    transform:translateX(100%);
+    transition:transform .25s ease;
+    box-shadow:-3px 0 14px rgba(0,0,0,.2);
+  }
+  .sb.open{transform:translateX(0)}
+}
 </style>
 </head>
 <body>
@@ -149,9 +172,13 @@ tr:hover td{background:#FAFAFA}
       <div class="ubadge"><i class="ti ti-user-circle"></i><span id="hn"></span><span class="rtag" id="hr"></span></div>
       <button class="logout" onclick="doLogout()"><i class="ti ti-logout"></i> خروج</button>
     </div>
-    <div class="hdr-title"><img src="/logo.png" style="width:26px;height:26px;border-radius:50%"> الجامعة الأردنية — عمادة شؤون الطلبة</div>
+    <div class="hdr-title">
+      <button class="menu-toggle" onclick="toggleSidebar()" aria-label="القائمة"><i class="ti ti-menu-2"></i></button>
+      <img src="/logo.png" style="width:26px;height:26px;border-radius:50%"> الجامعة الأردنية — عمادة شؤون الطلبة
+    </div>
   </div>
   <div class="layout">
+    <div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
     <div class="sb" id="sidebar"></div>
     <div class="content" id="panels"></div>
   </div>
