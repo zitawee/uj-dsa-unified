@@ -136,10 +136,16 @@ async function init(){
     }
     document.getElementById('activityInfo').innerHTML =
       `📌 النشاط: <b>${r.activity||'—'}</b><br>📅 التاريخ: <b>${r.date||'—'}</b>` +
-      (r.organizer?`<br>🏛️ الجهة المنظِّمة: <b>${r.organizer}</b>`:'');
+      (r.organizer?`<br>🏛️ الجهة المنظِّمة: <b>${r.organizer}</b>`:'') +
+      (r.max_capacity?`<br>🎟️ المقاعد المتبقية: <b>${Math.max(0, r.max_capacity - r.registered_count)}</b> من ${r.max_capacity}`:'');
     document.getElementById('loadingArea').style.display='none';
     document.getElementById('formWrap').style.display='block';
-    loadCaptcha();
+    if(r.max_capacity && r.registered_count >= r.max_capacity){
+      document.getElementById('activityInfo').innerHTML += `<br><br>❌ <b>عذراً، اكتمل العدد المسموح به من التسجيل لهذا النشاط.</b>`;
+      document.getElementById('formArea').style.display='none';
+    }else{
+      loadCaptcha();
+    }
   }catch(e){
     document.getElementById('loadingArea').style.display='none';
     document.getElementById('invalidArea').style.display='block';

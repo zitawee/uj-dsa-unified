@@ -214,7 +214,8 @@ function buildSidebar() {
   <div class="ni" onclick="go('sa_report',this)"><i class="ti ti-chart-bar"></i>تقرير الأنشطة الطلابية</div>
   <div class="ni" onclick="go('cat_report',this)"><i class="ti ti-category"></i>تقرير حسب التصنيفات</div>
   <div class="ni" onclick="go('search',this)"><i class="ti ti-search"></i>البحث الشامل</div>
-  <div class="ni" id="nav-users" onclick="go('users',this)"><i class="ti ti-shield"></i>إدارة المستخدمين</div>`;
+  <div class="ni" id="nav-users" onclick="go('users',this)"><i class="ti ti-shield"></i>إدارة المستخدمين</div>
+  <div class="ni" id="nav-archive" onclick="go('archive',this)"><i class="ti ti-archive"></i>الأرشفة السنوية</div>`;
 }
 
 function toggleFolder(id) {
@@ -228,7 +229,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','search','users'];
+  const IDS = ['dash','incomplete','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','search','users','archive'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
 }
 
@@ -272,7 +273,7 @@ function showApp() {
   document.getElementById('hn').textContent=ME.fullName;
   const rb=document.getElementById('hr'); rb.textContent=RLABELS[ME.role]; rb.className='rtag '+RCLS[ME.role];
   buildSidebar(); buildPanels();
-  if (ME.role!=='admin') document.getElementById('nav-users').style.display='none';
+  if (ME.role!=='admin') { document.getElementById('nav-users').style.display='none'; document.getElementById('nav-archive').style.display='none'; }
   loadDash();
 }
 
@@ -303,7 +304,7 @@ function go(name, el) {
     staff_training:()=>loadQ('staff_training'), staff_innovation:()=>loadQ('staff_innovation'),
     staff_honors:()=>loadQ('staff_honors'), uni_committees:()=>loadQ('uni_committees'),
     community_svc:()=>loadQ('community_svc'),
-    reports:loadReports, search:loadSearch, users:loadUsers, committee_report:loadCommitteeReport, sa_report:loadStudentActivitiesReport, cat_report:loadCategoryReport,
+    reports:loadReports, search:loadSearch, users:loadUsers, archive:loadArchive, committee_report:loadCommitteeReport, sa_report:loadStudentActivitiesReport, cat_report:loadCategoryReport,
   };
   if (loaders[name]) loaders[name]();
 }

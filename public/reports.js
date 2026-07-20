@@ -701,6 +701,65 @@ async function doSearch() {
 }
 
 // ══════════════════════════════════════════
+// الأرشفة السنوية وإعادة الضبط (admin فقط)
+// ══════════════════════════════════════════
+async function loadArchive() {
+  document.getElementById('panel-archive').innerHTML = `
+  <div class="ph"><div><div class="pt"><i class="ti ti-archive"></i> الأرشفة السنوية وإعادة الضبط</div></div></div>
+
+  <div class="card">
+    <div class="ct"><i class="ti ti-download"></i>1) تنزيل نسخة أرشيفية كاملة من بيانات النظام</div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.8;margin:0 0 12px">
+      يُنزِّل هذا الزر ملف JSON واحد يحتوي كل بيانات النظام الحالية (الطلبة، طلبات إقامة الأنشطة، الإعلانات، بيانات الجودة بكل أنواعها، اللجان، الاجتماعات، المشاركين...) لحفظه كأرشيف لهذا العام الدراسي على جهازك أو أي مساحة تخزين آمنة. <b>لا يشمل حسابات المستخدمين وكلمات المرور</b> — هذه تبقى دوماً على النظام ولا تُحذف أبداً.
+    </p>
+    <button class="btn btn-b" onclick="downloadArchive()"><i class="ti ti-download"></i> تنزيل الأرشيف الكامل (JSON)</button>
+    <div id="archive-dl-msg" class="msg ok" style="display:none;margin-top:10px">✅ تم تنزيل الأرشيف — تأكدي من حفظه في مكان آمن قبل المتابعة لأي خطوة أخرى.</div>
+  </div>
+
+  <div class="card" style="border:2px solid #F3C5C5;background:#FFF7F7">
+    <div class="ct" style="color:#8A1F1F"><i class="ti ti-alert-triangle"></i>2) مسح بيانات النظام والبدء بعام دراسي جديد</div>
+    <p style="font-size:12.5px;color:#791F1F;line-height:1.9;font-weight:600;margin:0 0 8px">
+      ⚠️ تحذير: هذا الإجراء يحذف نهائياً ومن دون إمكانية تراجع كل بيانات: الطلبة، طلبات إقامة الأنشطة، الإعلانات، بيانات الجودة، اللجان، الاجتماعات، المشاركين، وكل الجداول الأخرى من الخادم الرئيسي. <u>حسابات المستخدمين وصلاحياتهم وجهاتهم لن تتأثر إطلاقاً وستبقى كما هي</u>.
+    </p>
+    <p style="font-size:12px;color:#791F1F;margin:0 0 14px">تأكدي أولاً من تنزيل الأرشيف في الخطوة أعلاه، واحتفظي بنسخة منه في مكان آمن، قبل المتابعة لهذه الخطوة.</p>
+    <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px">للتأكيد، اكتبي العبارة التالية بالضبط: <b>نعم متأكد من الحذف</b></label>
+    <input id="archive-confirm-text" type="text" style="max-width:320px">
+    <div style="margin-top:12px">
+      <button class="btn" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="resetYearData()"><i class="ti ti-trash"></i> مسح كل البيانات والبدء من جديد</button>
+    </div>
+    <div id="archive-reset-msg" class="msg" style="margin-top:10px"></div>
+  </div>`;
+}
+
+async function downloadArchive() {
+  try {
+    const res = await fetch('/api/admin/export-archive', { headers: { 'Authorization': 'Bearer '+(TOKEN||'') } });
+    if (!res.ok) { alert('تعذر تنزيل الأرشيف'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `ju-dsa-archive-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    const m = document.getElementById('archive-dl-msg'); if (m) m.style.display = 'block';
+  } catch(e) { alert('تعذر الاتصال بالخادم لتنزيل الأرشيف'); }
+}
+
+async function resetYearData() {
+  const txt = g('archive-confirm-text');
+  if (txt !== 'نعم متأكد من الحذف') {
+    showMsg('archive-reset-msg', 'يرجى كتابة عبارة التأكيد بالضبط كما هي مكتوبة أعلاه', true);
+    return;
+  }
+  if (!confirm('تأكيد أخير: سيتم حذف جميع بيانات الأنشطة نهائياً من الخادم الرئيسي دون إمكانية التراجع. هل تأكدتِ من تنزيل نسخة الأرشيف والاحتفاظ بها؟')) return;
+  const r = await api('/api/admin/reset-data', 'POST', { confirm: txt });
+  if (r.error) { showMsg('archive-reset-msg', r.error, true); return; }
+  showMsg('archive-reset-msg', r.message || 'تم مسح البيانات بنجاح.', false);
+  document.getElementById('archive-confirm-text').value = '';
+  loadDash();
+}
+
+// ══════════════════════════════════════════
 // إدارة المستخدمين
 // ══════════════════════════════════════════
 async function loadUsers() {
