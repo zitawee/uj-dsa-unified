@@ -733,12 +733,8 @@ async function editQRow(table, id) {
   showQForm(table, record);
 }
 
-async function printQRow(table, id) {
-  const record = await api('/api/'+table+'/'+id);
-  if(!record||record.error){alert('تعذر تحميل السجل');return;}
-  const cfg = QCFG[table]; if(!cfg) return;
-
-  // بناء محتوى الطباعة بجميع الحقول
+function buildQRowBodyHTML(table, record) {
+  const cfg = QCFG[table]; if(!cfg) return '';
   const rows = cfg.fields.map(f=>{
     const val = record[f.id];
     if(!val && val!==0) return '';
@@ -747,7 +743,7 @@ async function printQRow(table, id) {
     return `<div class="fr"><span class="fl">${label}:</span><span class="fv" style="white-space:normal">${display}</span></div>`;
   }).filter(Boolean).join('');
 
-  const html = `<div class="ph2">
+  return `<div class="ph2">
     <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
     <div class="puni">
       <div class="ar">الجامعة الأردنية</div>
@@ -769,6 +765,13 @@ async function printQRow(table, id) {
       <div><strong>التاريخ:</strong><br><br>.......................................</div>
     </div>
   </div>`;
+}
+
+async function printQRow(table, id) {
+  const record = await api('/api/'+table+'/'+id);
+  if(!record||record.error){alert('تعذر تحميل السجل');return;}
+  const html = buildQRowBodyHTML(table, record);
+  if(!html) return;
   openPrint(html);
 }
 

@@ -31,11 +31,8 @@ function prtApproval() {
 }
 
 
-async function printAR(id) {
-  const r=await api('/api/activity_requests/'+id); if(!r||r.error)return;
-  const saList=await getCombinedActivitiesList();
-  const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
-  const html=prtHeader('نموذج طلب إقامة نشاط','DSA-02-01-05')+`
+function buildARBodyHTML(r, cats) {
+  return `
   <div class="fr"><span class="fl">نوع النشاط:</span><div style="display:flex;gap:10px;flex:1;font-size:8pt;flex-wrap:wrap">${['مبادرة','محاضرة','دورة تدريبية','ورشة','معرض','مسابقة','جلسة','حملة','أخرى'].map(t=>`<span><span class="chk">${r.type===t?'✓':''}</span> ${t}</span>`).join('')}</div></div>
   <div class="fr"><span class="fl">اسم / عنوان الفعالية:</span><span class="fv">${r.title||''}</span></div>
   <div class="fr"><span class="fl">اسم الفعالية في الإعلان:</span><span class="fv">${r.ad_title||''}</span></div>
@@ -81,6 +78,13 @@ async function printAR(id) {
     <div style="margin-top:6px"><strong>اسم رئيس الاتحاد:</strong> ..............................  <strong>توقيع/ختم رئيس اتحاد الطلبة:</strong> ..............................</div>
   </div>
   ${r.status==='approved'?`<div style="margin-top:10px;border:3px solid #27500A;border-radius:8px;padding:6px 14px;display:inline-block;color:#27500A;font-weight:700;font-size:10pt;transform:rotate(-5deg)">✅ معتمد — ${r.approved_by||''} — ${(r.approved_at||'').split('T')[0]}</div>`:''}`;
+}
+
+async function printAR(id) {
+  const r=await api('/api/activity_requests/'+id); if(!r||r.error)return;
+  const saList=await getCombinedActivitiesList();
+  const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
+  const html=prtHeader('نموذج طلب إقامة نشاط','DSA-02-01-05')+buildARBodyHTML(r, cats);
   openPrint(html);
 }
 
@@ -105,10 +109,9 @@ function printBlankAR() {
   openPrint(html);
 }
 
-async function printPart(id) {
-  const r=await api('/api/participants/'+id); if(!r||r.error)return;
-  const students=r.students||[];
-  const html=prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02')+`
+function buildPartBodyHTML(r) {
+  const students = r.students||[];
+  return `
   <div class="fg2">
     <div class="fr"><span class="fl">اسم النشاط:</span><span class="fv">${r.activity||''}</span></div>
     <div class="fr"><span class="fl">يوم وتاريخ عقد النشاط:</span><span class="fv">${r.date||''}</span></div>
@@ -125,6 +128,11 @@ async function printPart(id) {
     <strong>المشرفون:</strong> ${(r.supervisors||'').split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('  ')||'1. ............  2. ............  3. ............'}
     <br><br><strong>الموظفون:</strong> ${(r.staff||'').split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('  ')||'1. ............  2. ............'}
   </div>`;
+}
+
+async function printPart(id) {
+  const r=await api('/api/participants/'+id); if(!r||r.error)return;
+  const html=prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02')+buildPartBodyHTML(r);
   openPrint(html);
 }
 
@@ -716,12 +724,28 @@ async function loadArchive() {
     <div id="archive-dl-msg" class="msg ok" style="display:none;margin-top:10px">✅ تم تنزيل الأرشيف — تأكدي من حفظه في مكان آمن قبل المتابعة لأي خطوة أخرى.</div>
   </div>
 
+  <div class="card">
+    <div class="ct"><i class="ti ti-file-type-pdf"></i>2) تنزيل نسخة PDF قابلة للطباعة (بنفس النماذج الرسمية)</div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.8;margin:0 0 12px">
+      يُنشئ هذا الزر حزمة مضغوطة (ZIP) تحتوي 5 ملفات PDF منفصلة، كل ملف يجمع كل سجلات نوع معيّن بنفس تنسيق النموذج الرسمي (شعار الجامعة والحقول الرسمية)، كل سجل في صفحة مستقلة:
+    </p>
+    <ul style="font-size:12px;color:var(--muted);margin:0 0 12px;padding-inline-start:20px;line-height:1.9">
+      <li>طلبات_اقامة_نشاط.pdf</li>
+      <li>طلبات_اقامة_نشاط_خارجية.pdf</li>
+      <li>الانشطة_الطلابية.pdf</li>
+      <li>الانشطة_الطلابية_الخارجية.pdf</li>
+      <li>اسماء_المشاركين.pdf</li>
+    </ul>
+    <button class="btn btn-b" id="bulk-pdf-btn" onclick="downloadBulkPDF()"><i class="ti ti-file-zip"></i> تنزيل حزمة PDF (ZIP)</button>
+    <div id="bulk-pdf-status" class="msg" style="display:none;margin-top:10px"></div>
+  </div>
+
   <div class="card" style="border:2px solid #F3C5C5;background:#FFF7F7">
-    <div class="ct" style="color:#8A1F1F"><i class="ti ti-alert-triangle"></i>2) مسح بيانات النظام والبدء بعام دراسي جديد</div>
+    <div class="ct" style="color:#8A1F1F"><i class="ti ti-alert-triangle"></i>3) مسح بيانات النظام والبدء بعام دراسي جديد</div>
     <p style="font-size:12.5px;color:#791F1F;line-height:1.9;font-weight:600;margin:0 0 8px">
       ⚠️ تحذير: هذا الإجراء يحذف نهائياً ومن دون إمكانية تراجع كل بيانات: الطلبة، طلبات إقامة الأنشطة، الإعلانات، بيانات الجودة، اللجان، الاجتماعات، المشاركين، وكل الجداول الأخرى من الخادم الرئيسي. <u>حسابات المستخدمين وصلاحياتهم وجهاتهم لن تتأثر إطلاقاً وستبقى كما هي</u>.
     </p>
-    <p style="font-size:12px;color:#791F1F;margin:0 0 14px">تأكدي أولاً من تنزيل الأرشيف في الخطوة أعلاه، واحتفظي بنسخة منه في مكان آمن، قبل المتابعة لهذه الخطوة.</p>
+    <p style="font-size:12px;color:#791F1F;margin:0 0 14px">تأكدي أولاً من تنزيل الأرشيف الكامل (الخطوة 1) — ويُستحسن أيضاً حزمة PDF (الخطوة 2) — واحتفظي بنسخة منهما في مكان آمن، قبل المتابعة لهذه الخطوة.</p>
     <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px">للتأكيد، اكتبي العبارة التالية بالضبط: <b>نعم متأكد من الحذف</b></label>
     <input id="archive-confirm-text" type="text" style="max-width:320px">
     <div style="margin-top:12px">
@@ -743,6 +767,106 @@ async function downloadArchive() {
     URL.revokeObjectURL(url);
     const m = document.getElementById('archive-dl-msg'); if (m) m.style.display = 'block';
   } catch(e) { alert('تعذر الاتصال بالخادم لتنزيل الأرشيف'); }
+}
+
+// يبني ملف PDF واحد متعدد الصفحات من مجموعة سجلات (كل سجل = صفحة مستقلة)
+async function buildPDFBlob(records, bodyBuilderFn) {
+  const bodies = records.map(r => `<div style="page-break-after:always">${bodyBuilderFn(r)}</div>`).join('');
+  const container = document.createElement('div');
+  container.innerHTML = `<style>${PRINT_STYLES}</style>${bodies}`;
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff';
+  document.body.appendChild(container);
+  try {
+    const opts = {
+      margin: 0,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css'] }
+    };
+    return await html2pdf().set(opts).from(container).outputPdf('blob');
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+// يجمع كل الفئات الخمس المطلوبة في حزمة ZIP واحدة، كل فئة كملف PDF منفصل
+async function downloadBulkPDF() {
+  const statusEl = document.getElementById('bulk-pdf-status');
+  const btn = document.getElementById('bulk-pdf-btn');
+  const showStatus = (txt) => { if (statusEl) { statusEl.className='msg ok'; statusEl.style.display='block'; statusEl.textContent = txt; } };
+  const showErr = (txt) => { if (statusEl) { statusEl.className='msg err'; statusEl.style.display='block'; statusEl.textContent = txt; } };
+  if (typeof html2pdf === 'undefined' || typeof JSZip === 'undefined') {
+    showErr('تعذّر تحميل مكتبات إنشاء PDF — تأكدي من اتصال الإنترنت وأعيدي المحاولة.');
+    return;
+  }
+  if (btn) btn.disabled = true;
+  try {
+    const zip = new JSZip();
+    let anyData = false;
+
+    showStatus('⏳ جارٍ جلب البيانات...');
+    const allAR   = await api('/api/activity_requests');
+    const saList  = await getCombinedActivitiesList();
+    const sa      = await api('/api/student_activities');
+    const saExt   = await api('/api/student_activities_external');
+    const parts   = await api('/api/participants');
+
+    const internalAR = (allAR||[]).filter(r=>r.submitted_via!=='public_link');
+    const externalAR  = (allAR||[]).filter(r=>r.submitted_via==='public_link');
+
+    if (internalAR.length) {
+      showStatus(`⏳ جارٍ تجهيز: طلبات إقامة نشاط (${internalAR.length})...`);
+      const blob = await buildPDFBlob(internalAR, (r)=>{
+        const cats = (typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
+        return prtHeader('نموذج طلب إقامة نشاط','DSA-02-01-05') + buildARBodyHTML(r, cats);
+      });
+      zip.file('طلبات_اقامة_نشاط.pdf', blob); anyData = true;
+    }
+
+    if (externalAR.length) {
+      showStatus(`⏳ جارٍ تجهيز: طلبات إقامة نشاط خارجية (${externalAR.length})...`);
+      const blob = await buildPDFBlob(externalAR, (r)=>{
+        const cats = (typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
+        return prtHeader('نموذج طلب إقامة نشاط (خارجي)','DSA-02-01-05') + buildARBodyHTML(r, cats);
+      });
+      zip.file('طلبات_اقامة_نشاط_خارجية.pdf', blob); anyData = true;
+    }
+
+    if (sa && sa.length) {
+      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية (${sa.length})...`);
+      const blob = await buildPDFBlob(sa, (r)=> buildQRowBodyHTML('student_activities', r));
+      zip.file('الانشطة_الطلابية.pdf', blob); anyData = true;
+    }
+
+    if (saExt && saExt.length) {
+      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية الخارجية (${saExt.length})...`);
+      const blob = await buildPDFBlob(saExt, (r)=> buildQRowBodyHTML('student_activities_external', r));
+      zip.file('الانشطة_الطلابية_الخارجية.pdf', blob); anyData = true;
+    }
+
+    if (parts && parts.length) {
+      showStatus(`⏳ جارٍ تجهيز: أسماء المشاركين (${parts.length})...`);
+      const blob = await buildPDFBlob(parts, (r)=> prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02') + buildPartBodyHTML(r));
+      zip.file('اسماء_المشاركين.pdf', blob); anyData = true;
+    }
+
+    if (!anyData) { showErr('لا توجد بيانات حالياً في أي من الفئات الخمس لتصديرها.'); return; }
+
+    showStatus('⏳ جارٍ ضغط الملفات...');
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `ju-dsa-pdf-archive-${new Date().toISOString().slice(0,10)}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    showStatus('✅ تم تجهيز الملفات وتنزيلها بنجاح.');
+  } catch(e) {
+    console.error(e);
+    showErr('حدث خطأ أثناء التجهيز: ' + (e.message||'خطأ غير معروف'));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function resetYearData() {
