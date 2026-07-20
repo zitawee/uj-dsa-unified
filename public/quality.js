@@ -446,6 +446,7 @@ async function loadParticipants() {
         <div class="fg"><label>يوم وتاريخ عقد النشاط *</label><input id="pf-date" type="date"></div>
         <div class="fg"><label>الجهة المسؤولة</label><select id="pf-org"><option value="">اختر...</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select></div>
         <div class="fg"><label>رقم النشاط للتقييم</label><input id="pf-eval" type="text"></div>
+        <div class="fg"><label>الحد الأقصى لعدد المسجَّلين عبر رابط التسجيل (اختياري)</label><input id="pf-maxcap" type="number" min="1" placeholder="بدون حدّ إن تُرك فارغاً"></div>
       </div>
     </div>
     <div class="card" id="pf-reglink-card">
@@ -503,6 +504,7 @@ async function editPart(id) {
   document.getElementById('pf-date').value=r.date||'';
   document.getElementById('pf-org').value=r.organizer||'';
   document.getElementById('pf-eval').value=r.eval_num||'';
+  document.getElementById('pf-maxcap').value=r.max_capacity||'';
   document.getElementById('pf-sups').value=r.supervisors||'';
   document.getElementById('pf-staff').value=r.staff||'';
   const c=document.getElementById('part-rows'); c.innerHTML='';
@@ -510,7 +512,7 @@ async function editPart(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
-  renderRegLink(id);
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null });
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
   f.scrollIntoView({behavior:'smooth'});
 }
@@ -580,20 +582,26 @@ async function importPart(input) {
   updatePartCnt(); alert(`✅ تم استيراد ${added} طالب بنجاح`);
 }
 
-function renderRegLink(id) {
+function renderRegLink(id, info) {
   const box=document.getElementById('pf-reglink-body'); if(!box) return;
   if(!id){
     box.innerHTML = `<div style="font-size:12px;color:var(--muted)">احفظي/احفظ بيانات النشاط أولاً (زر «حفظ فقط» بالأسفل) للحصول على رابط يمكن مشاركته مع الطلبة عبر واتساب أو البريد الإلكتروني، ليسجّلوا حضورهم بأنفسهم مباشرة ضمن قائمة المشاركين أدناه دون تسجيل دخول.</div>`;
     return;
   }
   const link = `${location.origin}/register.html?id=${id}`;
+  const cnt = info?.count ?? 0;
+  const cap = info?.cap || null;
+  const capLine = cap
+    ? `<div style="font-size:11.5px;color:${cnt>=cap?'#8A1F1F':'var(--muted)'};margin-top:6px">المسجَّلون عبر الرابط حالياً: <b>${cnt}</b> من الحد الأقصى <b>${cap}</b>${cnt>=cap?' — اكتمل العدد ولن يقبل الرابط تسجيلات جديدة حتى تُرفَع القيمة':''}</div>`
+    : `<div style="font-size:11.5px;color:var(--muted);margin-top:6px">المسجَّلون عبر الرابط حالياً: <b>${cnt}</b> (بدون حدّ أقصى)</div>`;
   box.innerHTML = `
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">شاركي/شارك هذا الرابط مع الطلبة ليسجّلوا حضورهم بأنفسهم مباشرة ضمن قائمة المشاركين أدناه (بدون تسجيل دخول):</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       <input type="text" readonly value="${link}" onclick="this.select()" style="flex:1;min-width:220px;font-size:11.5px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:#F9FAFB">
       <button class="btn btn-sm btn-g" onclick="copyRegLink('${link}')">📋 نسخ الرابط</button>
       <button class="btn btn-sm" onclick="refreshPartStudents('${id}')">🔄 تحديث قائمة المسجَّلين</button>
-    </div>`;
+    </div>
+    ${capLine}`;
 }
 
 function copyRegLink(link) {
@@ -610,11 +618,12 @@ async function refreshPartStudents(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null });
   alert(`✅ تم تحديث القائمة — ${r.students?r.students.length:0} طالب مسجَّل حالياً`);
 }
 
 async function savePart() {
-  const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
+  const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),max_capacity:g('pf-maxcap')?Number(g('pf-maxcap')):null,students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
   if(!data.activity){showMsg('msg-participants','يرجى إدخال اسم النشاط',true);return null;}
   const f=document.getElementById('part-form'); const editId=f.dataset.editId;
   const r = editId ? await api('/api/participants/'+editId,'PUT',data) : await api('/api/participants','POST',data);
@@ -625,7 +634,7 @@ async function savePart() {
     // أول حفظ لسجل جديد: يبقى النموذج مفتوحاً لإظهار رابط تسجيل الطلبة مباشرة
     f.dataset.editId = savedId;
     const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
-    renderRegLink(savedId);
+    renderRegLink(savedId, { count: data.students.length, cap: data.max_capacity });
   } else {
     document.getElementById('part-form').style.display='none';
     delete f.dataset.editId;
