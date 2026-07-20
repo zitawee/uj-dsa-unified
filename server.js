@@ -178,7 +178,11 @@ app.get('/api/public/participants-info/:id', async (req, res) => {
   try {
     const doc = await models['participants'].findById(req.params.id).lean();
     if (!doc) return res.status(404).json({ error: 'رابط غير صالح أو تمت إزالة النشاط' });
-    res.json({ activity: doc.activity || '', date: doc.date || '', organizer: doc.organizer || '' });
+    res.json({
+      activity: doc.activity || '', date: doc.date || '', organizer: doc.organizer || '',
+      max_capacity: doc.max_capacity || null,
+      registered_count: Array.isArray(doc.students) ? doc.students.length : 0,
+    });
   } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
 });
 
@@ -198,12 +202,16 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
     const doc = await models['participants'].findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'رابط التسجيل غير صالح' });
 
+    const students = Array.isArray(doc.students) ? doc.students : [];
+    const capLimit = doc.max_capacity ? Number(doc.max_capacity) : null;
+    if (capLimit && students.length >= capLimit)
+      return res.status(400).json({ error: 'عذراً، اكتمل العدد المسموح به من التسجيل لهذا النشاط' });
+
     const name  = (req.body.name   || '').trim();
     const uniId = (req.body.uni_id || '').trim();
     if (!name || !uniId)
       return res.status(400).json({ error: 'يرجى إدخال الاسم الكامل والرقم الجامعي' });
 
-    const students = Array.isArray(doc.students) ? doc.students : [];
     if (students.some(s => (s.id || '').trim() === uniId))
       return res.status(400).json({ error: 'أنت مسجَّل مسبقاً في هذا النشاط بنفس الرقم الجامعي' });
 
