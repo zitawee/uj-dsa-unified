@@ -725,23 +725,22 @@ async function loadArchive() {
   </div>
 
   <div class="card">
-    <div class="ct"><i class="ti ti-file-type-pdf"></i>2) تنزيل نسخة PDF قابلة للطباعة (بنفس النماذج الرسمية)</div>
+    <div class="ct"><i class="ti ti-file-type-pdf"></i>2) طباعة/حفظ PDF لكل فئة (بنفس النماذج الرسمية)</div>
     <p style="font-size:12.5px;color:var(--muted);line-height:1.8;margin:0 0 12px">
-      يُنشئ هذا الزر حزمة مضغوطة (ZIP) تحتوي 5 ملفات PDF منفصلة، كل ملف يجمع كل سجلات نوع معيّن بنفس تنسيق النموذج الرسمي (شعار الجامعة والحقول الرسمية)، كل سجل في صفحة مستقلة:
+      كل زر أدناه يجمع كل سجلات فئة معيّنة (بنفس تنسيق النموذج الرسمي: شعار الجامعة والحقول الرسمية، كل سجل في صفحة مستقلة) ويفتح نافذة الطباعة القياسية في متصفحك — اختاري فيها **"حفظ كـ PDF" (Save as PDF)** بدل اسم الطابعة الفعلية لحفظه كملف على جهازك.
     </p>
-    <ul style="font-size:12px;color:var(--muted);margin:0 0 12px;padding-inline-start:20px;line-height:1.9">
-      <li>طلبات_اقامة_نشاط.pdf</li>
-      <li>طلبات_اقامة_نشاط_خارجية.pdf</li>
-      <li>الانشطة_الطلابية.pdf</li>
-      <li>الانشطة_الطلابية_الخارجية.pdf</li>
-      <li>اسماء_المشاركين.pdf</li>
-    </ul>
     <div class="g2" style="margin-bottom:12px">
       <div class="fg"><label>من تاريخ إقامة النشاط (اختياري)</label><input id="pdf-date-from" type="date"></div>
       <div class="fg"><label>إلى تاريخ إقامة النشاط (اختياري)</label><input id="pdf-date-to" type="date"></div>
     </div>
-    <p style="font-size:11px;color:var(--muted);margin:0 0 12px">اتركي الحقلين فارغين لتصدير كل السجلات بلا فلترة زمنية.</p>
-    <button class="btn btn-b" id="bulk-pdf-btn" onclick="downloadBulkPDF()"><i class="ti ti-file-zip"></i> تنزيل حزمة PDF (ZIP)</button>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 14px">اتركي الحقلين فارغين لتضمين كل السجلات بلا فلترة زمنية. الفلترة تُطبَّق تلقائياً عند الضغط على أي زر أدناه.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-b" onclick="printBulkCategory('ar_internal')"><i class="ti ti-printer"></i> طلبات إقامة نشاط (داخلية)</button>
+      <button class="btn btn-b" onclick="printBulkCategory('ar_external')"><i class="ti ti-printer"></i> طلبات إقامة نشاط (خارجية)</button>
+      <button class="btn btn-b" onclick="printBulkCategory('sa')"><i class="ti ti-printer"></i> الأنشطة الطلابية</button>
+      <button class="btn btn-b" onclick="printBulkCategory('sa_ext')"><i class="ti ti-printer"></i> الأنشطة الطلابية الخارجية</button>
+      <button class="btn btn-b" onclick="printBulkCategory('parts')"><i class="ti ti-printer"></i> أسماء المشاركين</button>
+    </div>
     <div id="bulk-pdf-status" class="msg" style="display:none;margin-top:10px"></div>
   </div>
 
@@ -770,129 +769,65 @@ async function downloadArchive() {
 }
 
 // يبني ملف PDF واحد متعدد الصفحات من مجموعة سجلات (كل سجل = صفحة مستقلة)
-async function buildPDFBlob(records, bodyBuilderFn) {
-  const bodies = records.map(r => `<div style="page-break-after:always">${bodyBuilderFn(r)}</div>`).join('');
-  const container = document.createElement('div');
-  container.innerHTML = `<style>${PRINT_STYLES}</style>${bodies}`;
-  // ملاحظة: التموضع خارج الشاشة عبر position:fixed + left سالب كبير يتسبّب أحياناً بصفحات بيضاء
-  // لأن html2canvas قد يفشل بالتقاط عناصر بعيدة جداً عن حدود العرض. البديل الموثوق: تموضع طبيعي
-  // ضمن تدفق الصفحة (top:0/left:0) مع z-index سالب لإخفائه بصرياً خلف بقية المحتوى دون نقله فعلياً.
-  container.style.cssText = 'position:absolute;top:0;left:0;width:210mm;background:#fff;z-index:-9999';
-  document.body.appendChild(container);
-  try {
-    // انتظار تحميل كل الصور (كشعار الجامعة) قبل التحويل، لتفادي صفحات بيضاء أو ناقصة
-    const imgs = container.querySelectorAll('img');
-    await Promise.all(Array.from(imgs).map(img => img.complete
-      ? Promise.resolve()
-      : new Promise(res => { img.onload = res; img.onerror = res; })));
-    // مهلة قصيرة إضافية لضمان اكتمال الرسم (Layout/Paint) قبل الالتقاط
-    await new Promise(res => setTimeout(res, 80));
-
-    const opts = {
-      margin: 0,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css'] }
-    };
-    return await html2pdf().set(opts).from(container).outputPdf('blob');
-  } finally {
-    document.body.removeChild(container);
-  }
+// يجمع سجلات فئة واحدة في مستند طباعة واحد (كل سجل = صفحة) ويفتح نافذة الطباعة القياسية للمتصفح
+// (بدل التحويل الآلي عبر Canvas الذي تبيّن أنه لا يدعم النص العربي بشكل موثوق وينتج صفحات بيضاء)
+function printCombinedRecords(records, bodyBuilderFn) {
+  if (!records.length) return false;
+  const pages = records.map((r, i) => `<div style="${i < records.length - 1 ? 'page-break-after:always' : ''}">${bodyBuilderFn(r)}</div>`).join('');
+  openPrint(pages);
+  return true;
 }
 
-// يجمع كل الفئات الخمس المطلوبة في حزمة ZIP واحدة، كل فئة كملف PDF منفصل
-async function downloadBulkPDF() {
+async function printBulkCategory(kind) {
   const statusEl = document.getElementById('bulk-pdf-status');
-  const btn = document.getElementById('bulk-pdf-btn');
-  const showStatus = (txt) => { if (statusEl) { statusEl.className='msg ok'; statusEl.style.display='block'; statusEl.textContent = txt; } };
-  const showErr = (txt) => { if (statusEl) { statusEl.className='msg err'; statusEl.style.display='block'; statusEl.textContent = txt; } };
-  if (typeof html2pdf === 'undefined' || typeof JSZip === 'undefined') {
-    showErr('تعذّر تحميل مكتبات إنشاء PDF — تأكدي من اتصال الإنترنت وأعيدي المحاولة.');
-    return;
-  }
-  if (btn) btn.disabled = true;
+  const showStatus = (txt, err=false) => { if (statusEl) { statusEl.className = 'msg ' + (err?'err':'ok'); statusEl.style.display = 'block'; statusEl.textContent = txt; } };
+
+  const dateFrom = g('pdf-date-from');
+  const dateTo   = g('pdf-date-to');
+  const inRange = (val) => {
+    if (!dateFrom && !dateTo) return true;
+    if (!val) return false;
+    if (dateFrom && val < dateFrom) return false;
+    if (dateTo && val > dateTo) return false;
+    return true;
+  };
+
+  showStatus('⏳ جارٍ تجهيز الملف...');
   try {
-    const zip = new JSZip();
-    let anyData = false;
-
-    const dateFrom = g('pdf-date-from');
-    const dateTo   = g('pdf-date-to');
-    // فلترة حسب تاريخ إقامة النشاط: سجل بلا تاريخ يُستبعَد فقط إن حُدِّدت فترة زمنية فعلياً
-    const inRange = (val) => {
-      if (!dateFrom && !dateTo) return true;
-      if (!val) return false;
-      if (dateFrom && val < dateFrom) return false;
-      if (dateTo && val > dateTo) return false;
-      return true;
-    };
-
-    showStatus('⏳ جارٍ جلب البيانات...');
-    const allAR   = await api('/api/activity_requests');
-    const saList  = await getCombinedActivitiesList();
-    const sa      = await api('/api/student_activities');
-    const saExt   = await api('/api/student_activities_external');
-    const parts   = await api('/api/participants');
-
-    const internalAR = (allAR||[]).filter(r=>r.submitted_via!=='public_link' && inRange(r.activity_date));
-    const externalAR  = (allAR||[]).filter(r=>r.submitted_via==='public_link' && inRange(r.activity_date));
-    const saFiltered    = (sa||[]).filter(r=>inRange(r.date));
-    const saExtFiltered = (saExt||[]).filter(r=>inRange(r.date));
-    const partsFiltered = (parts||[]).filter(r=>inRange(r.date));
-
-    if (internalAR.length) {
-      showStatus(`⏳ جارٍ تجهيز: طلبات إقامة نشاط (${internalAR.length})...`);
-      const blob = await buildPDFBlob(internalAR, (r)=>{
-        const cats = (typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
-        return prtHeader('نموذج طلب إقامة نشاط','DSA-02-01-05') + buildARBodyHTML(r, cats);
+    if (kind === 'ar_internal' || kind === 'ar_external') {
+      const allAR  = await api('/api/activity_requests');
+      const saList = await getCombinedActivitiesList();
+      const records = (allAR||[]).filter(r =>
+        (kind === 'ar_internal' ? r.submitted_via !== 'public_link' : r.submitted_via === 'public_link')
+        && inRange(r.activity_date)
+      );
+      const ok = printCombinedRecords(records, (r) => {
+        const cats = (typeof resolveReqCategories === 'function') ? resolveReqCategories(r, saList) : (r.categories || []);
+        return prtHeader('نموذج طلب إقامة نشاط' + (kind==='ar_external' ? ' (خارجي)' : ''), 'DSA-02-01-05') + buildARBodyHTML(r, cats);
       });
-      zip.file('طلبات_اقامة_نشاط.pdf', blob); anyData = true;
+      showStatus(ok ? `✅ تم تجهيز ${records.length} سجل — اختاري "حفظ كـ PDF" من نافذة الطباعة.` : 'لا توجد سجلات ضمن الفترة المحدَّدة لهذه الفئة.', !ok);
     }
 
-    if (externalAR.length) {
-      showStatus(`⏳ جارٍ تجهيز: طلبات إقامة نشاط خارجية (${externalAR.length})...`);
-      const blob = await buildPDFBlob(externalAR, (r)=>{
-        const cats = (typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
-        return prtHeader('نموذج طلب إقامة نشاط (خارجي)','DSA-02-01-05') + buildARBodyHTML(r, cats);
-      });
-      zip.file('طلبات_اقامة_نشاط_خارجية.pdf', blob); anyData = true;
+    if (kind === 'sa' || kind === 'sa_ext') {
+      const table = kind === 'sa' ? 'student_activities' : 'student_activities_external';
+      const all = await api('/api/' + table);
+      const records = (all||[]).filter(r => inRange(r.date));
+      const ok = printCombinedRecords(records, (r) => buildQRowBodyHTML(table, r));
+      showStatus(ok ? `✅ تم تجهيز ${records.length} سجل — اختاري "حفظ كـ PDF" من نافذة الطباعة.` : 'لا توجد سجلات ضمن الفترة المحدَّدة لهذه الفئة.', !ok);
     }
 
-    if (saFiltered.length) {
-      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية (${saFiltered.length})...`);
-      const blob = await buildPDFBlob(saFiltered, (r)=> buildQRowBodyHTML('student_activities', r));
-      zip.file('الانشطة_الطلابية.pdf', blob); anyData = true;
+    if (kind === 'parts') {
+      const all = await api('/api/participants');
+      const records = (all||[]).filter(r => inRange(r.date));
+      const ok = printCombinedRecords(records, (r) => prtHeader('نموذج أسماء الطلبة المشاركين في النشاط', 'DSA-02-01-02') + buildPartBodyHTML(r));
+      showStatus(ok ? `✅ تم تجهيز ${records.length} سجل — اختاري "حفظ كـ PDF" من نافذة الطباعة.` : 'لا توجد سجلات ضمن الفترة المحدَّدة لهذه الفئة.', !ok);
     }
-
-    if (saExtFiltered.length) {
-      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية الخارجية (${saExtFiltered.length})...`);
-      const blob = await buildPDFBlob(saExtFiltered, (r)=> buildQRowBodyHTML('student_activities_external', r));
-      zip.file('الانشطة_الطلابية_الخارجية.pdf', blob); anyData = true;
-    }
-
-    if (partsFiltered.length) {
-      showStatus(`⏳ جارٍ تجهيز: أسماء المشاركين (${partsFiltered.length})...`);
-      const blob = await buildPDFBlob(partsFiltered, (r)=> prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02') + buildPartBodyHTML(r));
-      zip.file('اسماء_المشاركين.pdf', blob); anyData = true;
-    }
-
-    if (!anyData) { showErr('لا توجد بيانات ضمن الفترة المحدَّدة (أو بشكل عام) في أي من الفئات الخمس لتصديرها.'); return; }
-
-    showStatus('⏳ جارٍ ضغط الملفات...');
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `ju-dsa-pdf-archive-${new Date().toISOString().slice(0,10)}.zip`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    showStatus('✅ تم تجهيز الملفات وتنزيلها بنجاح.');
   } catch(e) {
     console.error(e);
-    showErr('حدث خطأ أثناء التجهيز: ' + (e.message||'خطأ غير معروف'));
-  } finally {
-    if (btn) btn.disabled = false;
+    showStatus('حدث خطأ أثناء التجهيز: ' + (e.message||'خطأ غير معروف'), true);
   }
 }
+
 
 // قائمة الجداول القابلة للاختيار في نافذة المسح الانتقائي (يجب أن تطابق منطقياً RESET_DATE_FIELD في server.js)
 const RESET_TABLES_CONFIG = [
