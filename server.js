@@ -646,23 +646,54 @@ app.get('/api/admin/export-archive', auth(['admin']), async (req, res) => {
 });
 
 // ══ الأرشفة السنوية: مسح كل بيانات الأنشطة والبدء بعام دراسي جديد (حسابات المستخدمين لا تُمَس) ══
+// حقل التاريخ المعتمَد لكل جدول عند الفلترة الزمنية أثناء المسح الانتقائي (null = لا يوجد حقل تاريخ مناسب)
+const RESET_DATE_FIELD = {
+  activity_requests: 'activity_date',
+  announcements: 'date', hall_bookings: 'date', participants: 'date',
+  committees: 'date', meeting_invites: 'date', meeting_minutes: 'date',
+  governance: 'date', student_activities: 'date', student_activities_external: 'date',
+  student_honors: 'date', staff_committees: 'date', staff_training: 'date',
+  staff_innovation: 'date', staff_honors: 'date', uni_committees: 'date', community_svc: 'date',
+  students: null, achievements: null,
+  workshops: null, initiatives: null, external_acts: null, competitions: null,
+  awareness: null, expert_acts: null, environment: null, dialogues: null, campaigns: null,
+};
+
 app.post('/api/admin/reset-data', auth(['admin']), async (req, res) => {
   try {
     if (req.body.confirm !== 'نعم متأكد من الحذف')
       return res.status(400).json({ error: 'نص التأكيد غير مطابق' });
 
+    // الجداول المطلوب حذفها: إن أُرسلت قائمة محدَّدة نستخدمها (بعد التحقق أنها ضمن TABLES الفعلية)، وإلا كل الجداول (سلوك سابق)
+    const requested = Array.isArray(req.body.tables) && req.body.tables.length
+      ? req.body.tables.filter(t => TABLES.includes(t))
+      : TABLES;
+
+    const dateFrom = req.body.date_from || null; // 'YYYY-MM-DD'
+    const dateTo   = req.body.date_to   || null;
+
     const counts = {};
+    const skipped = [];
     let total = 0;
-    for (const t of TABLES) {
-      const r = await models[t].deleteMany({});
+
+    for (const t of requested) {
+      const dateField = RESET_DATE_FIELD[t] || null;
+      let query = {};
+      if (dateFrom || dateTo) {
+        if (!dateField) { skipped.push(t); continue; } // لا يوجد حقل تاريخ لهذا الجدول، يُتجاوَز عند وجود فلترة زمنية
+        query[dateField] = {};
+        if (dateFrom) query[dateField].$gte = dateFrom;
+        if (dateTo)   query[dateField].$lte = dateTo;
+      }
+      const r = await models[t].deleteMany(query);
       counts[t] = r.deletedCount || 0;
       total += r.deletedCount || 0;
     }
-    res.json({
-      ok: true,
-      message: `تم مسح جميع بيانات الأنشطة بنجاح (${total} سجل). حسابات المستخدمين وصلاحياتهم لم تتأثر.`,
-      counts,
-    });
+
+    let message = `تم حذف ${total} سجل من ${Object.keys(counts).length} جدول محدَّد. حسابات المستخدمين وصلاحياتهم لم تتأثر.`;
+    if (skipped.length) message += ` (تم تجاوز ${skipped.length} جدول بلا حقل تاريخ مناسب بسبب تحديد فترة زمنية: ${skipped.join('، ')})`;
+
+    res.json({ ok: true, message, counts, skipped });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
