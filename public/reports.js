@@ -725,22 +725,11 @@ async function loadArchive() {
   </div>
 
   <div class="card">
-    <div class="ct"><i class="ti ti-file-type-pdf"></i>2) طباعة/حفظ PDF لكل فئة (بنفس النماذج الرسمية)</div>
+    <div class="ct"><i class="ti ti-file-type-pdf"></i>2) طباعة/حفظ PDF لمحتوى مُختار (بنفس النماذج الرسمية)</div>
     <p style="font-size:12.5px;color:var(--muted);line-height:1.8;margin:0 0 12px">
-      كل زر أدناه يجمع كل سجلات فئة معيّنة (بنفس تنسيق النموذج الرسمي: شعار الجامعة والحقول الرسمية، كل سجل في صفحة مستقلة) ويفتح نافذة الطباعة القياسية في متصفحك — اختاري فيها **"حفظ كـ PDF" (Save as PDF)** بدل اسم الطابعة الفعلية لحفظه كملف على جهازك.
+      اختاري بالضبط أي النماذج تريدين تضمينها (طلبات أنشطة، لجان، اجتماعات، بيانات جودة...) وفترة زمنية اختيارية، وسيُبنى **مستند واحد** يضمّ كل ما اخترتِه مرتَّباً بأقسام، ثم تفتح نافذة طباعة **واحدة فقط** تختارين فيها "حفظ كـ PDF" (Save as PDF) لحفظه كملف واحد على جهازك — بدل تكرار الخطوة لكل فئة على حدة.
     </p>
-    <div class="g2" style="margin-bottom:12px">
-      <div class="fg"><label>من تاريخ إقامة النشاط (اختياري)</label><input id="pdf-date-from" type="date"></div>
-      <div class="fg"><label>إلى تاريخ إقامة النشاط (اختياري)</label><input id="pdf-date-to" type="date"></div>
-    </div>
-    <p style="font-size:11px;color:var(--muted);margin:0 0 14px">اتركي الحقلين فارغين لتضمين كل السجلات بلا فلترة زمنية. الفلترة تُطبَّق تلقائياً عند الضغط على أي زر أدناه.</p>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-b" onclick="printBulkCategory('ar_internal')"><i class="ti ti-printer"></i> طلبات إقامة نشاط (داخلية)</button>
-      <button class="btn btn-b" onclick="printBulkCategory('ar_external')"><i class="ti ti-printer"></i> طلبات إقامة نشاط (خارجية)</button>
-      <button class="btn btn-b" onclick="printBulkCategory('sa')"><i class="ti ti-printer"></i> الأنشطة الطلابية</button>
-      <button class="btn btn-b" onclick="printBulkCategory('sa_ext')"><i class="ti ti-printer"></i> الأنشطة الطلابية الخارجية</button>
-      <button class="btn btn-b" onclick="printBulkCategory('parts')"><i class="ti ti-printer"></i> أسماء المشاركين</button>
-    </div>
+    <button class="btn btn-b" onclick="openPrintArchiveModal()"><i class="ti ti-list-check"></i> اختيار محتوى الأرشيف للطباعة</button>
     <div id="bulk-pdf-status" class="msg" style="display:none;margin-top:10px"></div>
   </div>
 
@@ -768,22 +757,115 @@ async function downloadArchive() {
   } catch(e) { alert('تعذر الاتصال بالخادم لتنزيل الأرشيف'); }
 }
 
-// يبني ملف PDF واحد متعدد الصفحات من مجموعة سجلات (كل سجل = صفحة مستقلة)
-// يجمع سجلات فئة واحدة في مستند طباعة واحد (كل سجل = صفحة) ويفتح نافذة الطباعة القياسية للمتصفح
-// (بدل التحويل الآلي عبر Canvas الذي تبيّن أنه لا يدعم النص العربي بشكل موثوق وينتج صفحات بيضاء)
-function printCombinedRecords(records, bodyBuilderFn) {
-  if (!records.length) return false;
-  const pages = records.map((r, i) => `<div style="${i < records.length - 1 ? 'page-break-after:always' : ''}">${bodyBuilderFn(r)}</div>`).join('');
-  openPrint(pages);
-  return true;
+// إعداد كل فئة قابلة للتضمين في أرشيف الطباعة الموحّد (شاملة لجميع النماذج، وليس فقط الخمس الأولى)
+const ARCHIVE_CATEGORIES = [
+  { key:'ar_internal', label:'طلبات إقامة نشاط (داخلية)' },
+  { key:'ar_external', label:'طلبات إقامة نشاط (خارجية)' },
+  { key:'sa', label:'الأنشطة الطلابية' },
+  { key:'sa_ext', label:'الأنشطة الطلابية الخارجية' },
+  { key:'parts', label:'أسماء المشاركين' },
+  { key:'announcements', label:'الإعلانات' },
+  { key:'hall_bookings', label:'حجوزات القاعات' },
+  { key:'committees', label:'تشكيل لجنة / مجلس' },
+  { key:'meeting_invites', label:'دعوات حضور الاجتماعات' },
+  { key:'meeting_minutes', label:'محاضر الاجتماعات' },
+  { key:'governance', label:'مجالس الحاكمية واللجان' },
+  { key:'student_honors', label:'تكريم الطلبة' },
+  { key:'staff_committees', label:'لجان الموظفين' },
+  { key:'staff_training', label:'تدريب الموظفين' },
+  { key:'staff_innovation', label:'إبداع الموظفين' },
+  { key:'staff_honors', label:'تكريم الموظفين' },
+  { key:'uni_committees', label:'اللجان الجامعية' },
+  { key:'community_svc', label:'الخدمات المجتمعية' },
+];
+
+// يجلب سجلات فئة معيّنة (مع فلترة التاريخ) ويبني قائمة "أجسام" HTML جاهزة للطباعة (سجل واحد = عنصر واحد)
+async function fetchAndBuildCategory(key, inRange, cache) {
+  if (key === 'ar_internal' || key === 'ar_external') {
+    const allAR  = await api('/api/activity_requests');
+    if (!cache.saList) cache.saList = await getCombinedActivitiesList();
+    const records = (allAR||[]).filter(r =>
+      (key === 'ar_internal' ? r.submitted_via !== 'public_link' : r.submitted_via === 'public_link')
+      && inRange(r.activity_date)
+    );
+    return records.map(r => {
+      const cats = (typeof resolveReqCategories === 'function') ? resolveReqCategories(r, cache.saList) : (r.categories || []);
+      return prtHeader('نموذج طلب إقامة نشاط' + (key==='ar_external' ? ' (خارجي)' : ''), 'DSA-02-01-05') + buildARBodyHTML(r, cats);
+    });
+  }
+  if (key === 'sa' || key === 'sa_ext') {
+    const table = key === 'sa' ? 'student_activities' : 'student_activities_external';
+    const all = await api('/api/' + table);
+    return (all||[]).filter(r => inRange(r.date)).map(r => buildQRowBodyHTML(table, r));
+  }
+  if (key === 'parts') {
+    const all = await api('/api/participants');
+    return (all||[]).filter(r => inRange(r.date)).map(r => prtHeader('نموذج أسماء الطلبة المشاركين في النشاط', 'DSA-02-01-02') + buildPartBodyHTML(r));
+  }
+  if (key === 'announcements') {
+    const all = await api('/api/announcements');
+    return (all||[]).filter(r => inRange(r.date)).map(r => buildAnnouncementBodyHTML(r));
+  }
+  if (key === 'hall_bookings') {
+    const all = await api('/api/hall_bookings');
+    return (all||[]).filter(r => inRange(r.date)).map(r => buildHallBookingBodyHTML(r));
+  }
+  if (key === 'committees') {
+    const all = await api('/api/committees');
+    return (all||[]).filter(r => inRange(r.date)).map(r => buildCommitteeBodyHTML(r));
+  }
+  if (key === 'meeting_invites') {
+    const all = await api('/api/meeting_invites');
+    return (all||[]).filter(r => inRange(r.date)).map(r => buildInviteBodyHTML(r));
+  }
+  if (key === 'meeting_minutes') {
+    const all = await api('/api/meeting_minutes');
+    return (all||[]).filter(r => inRange(r.date)).map(r => buildMinutesBodyHTML(r));
+  }
+  // بقية جداول بيانات الجودة العامة (QCFG) — نفس القالب المولِّد العام
+  const all = await api('/api/' + key);
+  return (all||[]).filter(r => inRange(r.date)).map(r => buildQRowBodyHTML(key, r));
 }
 
-async function printBulkCategory(kind) {
-  const statusEl = document.getElementById('bulk-pdf-status');
-  const showStatus = (txt, err=false) => { if (statusEl) { statusEl.className = 'msg ' + (err?'err':'ok'); statusEl.style.display = 'block'; statusEl.textContent = txt; } };
+function openPrintArchiveModal() {
+  let ov = document.getElementById('mod-print-archive');
+  if (!ov) { ov = document.createElement('div'); ov.className = 'modal-ov'; ov.id = 'mod-print-archive'; document.body.appendChild(ov); }
+  const checkboxesHTML = ARCHIVE_CATEGORIES.map(c => `
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:5px 2px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" class="arc-cat-chk" value="${c.key}">
+      ${c.label}
+    </label>`).join('');
+  ov.innerHTML = `
+    <div class="modal" style="max-width:540px;max-height:88vh;overflow-y:auto">
+      <h3>🖨️ اختيار محتوى الأرشيف للطباعة</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اختاري النماذج التي تريدين تضمينها، وحدّدي (اختياري) فترة زمنية بحسب تاريخ كل نموذج. سيُبنى مستند واحد يضمّ كل ما اخترتِه مرتَّباً بأقسام، وتفتح بعده نافذة طباعة واحدة فقط.</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="btn btn-sm" onclick="toggleAllArcCats(true)">تحديد الكل</button>
+        <button class="btn btn-sm" onclick="toggleAllArcCats(false)">إلغاء تحديد الكل</button>
+      </div>
+      <div style="max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:12px">${checkboxesHTML}</div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg"><label>من تاريخ (اختياري)</label><input id="arc-date-from" type="date"></div>
+        <div class="fg"><label>إلى تاريخ (اختياري)</label><input id="arc-date-to" type="date"></div>
+      </div>
+      <div id="arc-modal-msg" class="msg" style="margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="closePrintArchiveModal()">إلغاء</button>
+        <button class="btn btn-b" id="arc-print-btn" onclick="confirmPrintArchive()"><i class="ti ti-printer"></i> طباعة/حفظ المحدَّد</button>
+      </div>
+    </div>`;
+  ov.classList.add('open');
+}
 
-  const dateFrom = g('pdf-date-from');
-  const dateTo   = g('pdf-date-to');
+function closePrintArchiveModal() { const ov = document.getElementById('mod-print-archive'); if (ov) ov.classList.remove('open'); }
+function toggleAllArcCats(state) { document.querySelectorAll('.arc-cat-chk').forEach(c => c.checked = state); }
+
+async function confirmPrintArchive() {
+  const selected = Array.from(document.querySelectorAll('.arc-cat-chk:checked')).map(c => c.value);
+  if (!selected.length) { showMsg('arc-modal-msg', 'يرجى اختيار نموذج واحد على الأقل', true); return; }
+
+  const dateFrom = g('arc-date-from');
+  const dateTo   = g('arc-date-to');
   const inRange = (val) => {
     if (!dateFrom && !dateTo) return true;
     if (!val) return false;
@@ -792,42 +874,31 @@ async function printBulkCategory(kind) {
     return true;
   };
 
-  showStatus('⏳ جارٍ تجهيز الملف...');
+  const btn = document.getElementById('arc-print-btn');
+  const origText = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '⏳ جارٍ التجهيز...';
   try {
-    if (kind === 'ar_internal' || kind === 'ar_external') {
-      const allAR  = await api('/api/activity_requests');
-      const saList = await getCombinedActivitiesList();
-      const records = (allAR||[]).filter(r =>
-        (kind === 'ar_internal' ? r.submitted_via !== 'public_link' : r.submitted_via === 'public_link')
-        && inRange(r.activity_date)
-      );
-      const ok = printCombinedRecords(records, (r) => {
-        const cats = (typeof resolveReqCategories === 'function') ? resolveReqCategories(r, saList) : (r.categories || []);
-        return prtHeader('نموذج طلب إقامة نشاط' + (kind==='ar_external' ? ' (خارجي)' : ''), 'DSA-02-01-05') + buildARBodyHTML(r, cats);
-      });
-      showStatus(ok ? `✅ تم تجهيز ${records.length} سجل — اختاري "حفظ كـ PDF" من نافذة الطباعة.` : 'لا توجد سجلات ضمن الفترة المحدَّدة لهذه الفئة.', !ok);
+    const cache = {};
+    let combinedHTML = '';
+    let totalRecords = 0;
+    for (const key of selected) {
+      const cfg = ARCHIVE_CATEGORIES.find(c => c.key === key);
+      const bodies = await fetchAndBuildCategory(key, inRange, cache);
+      if (!bodies.length) continue;
+      totalRecords += bodies.length;
+      combinedHTML += `<div style="page-break-after:always;padding:80px 0;text-align:center"><div style="font-size:16pt;font-weight:700;color:#1B6B3A;border:2px solid #1B6B3A;border-radius:8px;padding:16px 24px;display:inline-block">${cfg ? cfg.label : key}<div style="font-size:10pt;color:#555;margin-top:6px;font-weight:400">${bodies.length} سجل</div></div></div>`;
+      bodies.forEach(b => { combinedHTML += `<div style="page-break-after:always">${b}</div>`; });
     }
-
-    if (kind === 'sa' || kind === 'sa_ext') {
-      const table = kind === 'sa' ? 'student_activities' : 'student_activities_external';
-      const all = await api('/api/' + table);
-      const records = (all||[]).filter(r => inRange(r.date));
-      const ok = printCombinedRecords(records, (r) => buildQRowBodyHTML(table, r));
-      showStatus(ok ? `✅ تم تجهيز ${records.length} سجل — اختاري "حفظ كـ PDF" من نافذة الطباعة.` : 'لا توجد سجلات ضمن الفترة المحدَّدة لهذه الفئة.', !ok);
-    }
-
-    if (kind === 'parts') {
-      const all = await api('/api/participants');
-      const records = (all||[]).filter(r => inRange(r.date));
-      const ok = printCombinedRecords(records, (r) => prtHeader('نموذج أسماء الطلبة المشاركين في النشاط', 'DSA-02-01-02') + buildPartBodyHTML(r));
-      showStatus(ok ? `✅ تم تجهيز ${records.length} سجل — اختاري "حفظ كـ PDF" من نافذة الطباعة.` : 'لا توجد سجلات ضمن الفترة المحدَّدة لهذه الفئة.', !ok);
-    }
+    if (!totalRecords) { showMsg('arc-modal-msg', 'لا توجد سجلات ضمن الفترة المحدَّدة لأي من النماذج المختارة', true); return; }
+    openPrint(combinedHTML);
+    closePrintArchiveModal();
   } catch(e) {
     console.error(e);
-    showStatus('حدث خطأ أثناء التجهيز: ' + (e.message||'خطأ غير معروف'), true);
+    showMsg('arc-modal-msg', 'حدث خطأ أثناء التجهيز: ' + (e.message||'خطأ غير معروف'), true);
+  } finally {
+    btn.disabled = false; btn.innerHTML = origText;
   }
 }
-
 
 // قائمة الجداول القابلة للاختيار في نافذة المسح الانتقائي (يجب أن تطابق منطقياً RESET_DATE_FIELD في server.js)
 const RESET_TABLES_CONFIG = [

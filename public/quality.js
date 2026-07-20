@@ -666,10 +666,8 @@ async function filterPart() {
 }
 
 // ══ طباعة الإعلانات ══
-async function printAnnouncement(id) {
-  const r = await api('/api/announcements/'+id);
-  if(!r||r.error)return;
-  const html = `<div class="ph2">
+function buildAnnouncementBodyHTML(r) {
+  return `<div class="ph2">
     <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
     <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
     <div class="pmeta"><div><strong>تاريخ الطباعة:</strong> ${today()}</div></div>
@@ -690,15 +688,17 @@ async function printAnnouncement(id) {
       <div><strong>التاريخ:</strong><br><br>.......................................</div>
     </div>
   </div>`;
-  openPrint(html);
 }
 
-// ══ طباعة محاضر الاجتماعات ══
-async function printMinutes(id) {
-  const r = await api('/api/meeting_minutes/'+id);
+async function printAnnouncement(id) {
+  const r = await api('/api/announcements/'+id);
   if(!r||r.error)return;
+  openPrint(buildAnnouncementBodyHTML(r));
+}
+
+function buildMinutesBodyHTML(r) {
   const present=(r.present||'').split('\n').filter(Boolean);
-  const html = `<div class="ph2">
+  return `<div class="ph2">
     <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
     <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
     <div class="pmeta"><div><strong>رقم النموذج:</strong> AQC-04-01-02</div><div><strong>تاريخ الطباعة:</strong> ${today()}</div></div>
@@ -723,7 +723,13 @@ async function printMinutes(id) {
     <div></div>
     <div class="sbox"><div class="st2">رئيس المجلس / اللجنة</div><div style="font-size:8.5pt;padding:4px">${r.chair||''}</div><div class="sl2">التوقيع: .................</div></div>
   </div>`;
-  openPrint(html);
+}
+
+// ══ طباعة محاضر الاجتماعات ══
+async function printMinutes(id) {
+  const r = await api('/api/meeting_minutes/'+id);
+  if(!r||r.error)return;
+  openPrint(buildMinutesBodyHTML(r));
 }
 
 async function editQRow(table, id) {
@@ -912,15 +918,10 @@ async function saveEditedMinutes(oldId) {
   loadFData('meeting_minutes');
 }
 
-// ══ طباعة دعوة الاجتماع ══
-async function printInvite(id) {
-  const r = await api('/api/meeting_invites/'+id);
-  if(!r||r.error)return;
-
+function buildInviteBodyHTML(r) {
   const invitees=(r.invitees||'').split('\n').filter(Boolean);
   const agenda=(r.agenda||'').split('\n').filter(Boolean);
-
-  const html=`<div class="ph2">
+  return `<div class="ph2">
     <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
     <div class="puni">
       <div class="ar">الجامعة الأردنية</div>
@@ -963,15 +964,18 @@ async function printInvite(id) {
       <div class="sl2">التوقيع: .................</div>
     </div>
   </div>`;
-  openPrint(html);
 }
 
-// ══ طباعة حجز القاعة / المدرج ══
-async function printHallBooking(id) {
-  const r = await api('/api/hall_bookings/'+id);
+// ══ طباعة دعوة الاجتماع ══
+async function printInvite(id) {
+  const r = await api('/api/meeting_invites/'+id);
   if(!r||r.error)return;
+  openPrint(buildInviteBodyHTML(r));
+}
+
+function buildHallBookingBodyHTML(r) {
   const halls=['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات'];
-  const html=`<div class="ph2">
+  return `<div class="ph2">
     <img src="/logo.png" class="plogo">
     <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
     <div class="pmeta"><div><strong>رقم النموذج:</strong> DSA-06-28-01</div><div><strong>تاريخ الطباعة:</strong> ${today()}</div></div>
@@ -1009,15 +1013,18 @@ async function printHallBooking(id) {
       <span style="margin-right:16px">التوقيع: .............. التاريخ: ..............</span>
     </div>
   </div>`;
-  openPrint(html);
 }
 
-// ══ طباعة نموذج تشكيل لجنة / مجلس ══
-async function printCommittee(id) {
-  const r = await api('/api/committees/'+id);
+// ══ طباعة حجز القاعة / المدرج ══
+async function printHallBooking(id) {
+  const r = await api('/api/hall_bookings/'+id);
   if(!r||r.error)return;
+  openPrint(buildHallBookingBodyHTML(r));
+}
+
+function buildCommitteeBodyHTML(r) {
   const members=(r.members||'').split('\n').filter(Boolean);
-  const html=`<div class="ph2">
+  return `<div class="ph2">
     <img src="/logo.png" class="plogo">
     <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
     <div class="pmeta"><div><strong>رقم النموذج:</strong> AQC-02-10-01</div><div><strong>تاريخ الطباعة:</strong> ${today()}</div></div>
@@ -1050,7 +1057,13 @@ async function printCommittee(id) {
       : Array(8).fill(0).map((_,i)=>`<tr><td>${i+1}</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr>`).join('')}
     </tbody>
   </table>`;
-  openPrint(html);
+}
+
+// ══ طباعة نموذج تشكيل لجنة / مجلس ══
+async function printCommittee(id) {
+  const r = await api('/api/committees/'+id);
+  if(!r||r.error)return;
+  openPrint(buildCommitteeBodyHTML(r));
 }
 
 // ══════════════════════════════════════════
