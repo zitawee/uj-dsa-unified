@@ -172,6 +172,55 @@ app.post('/api/public/activity-requests', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ══ رابط عام لتسجيل الطلبة المشاركين في نشاط (بدون تسجيل دخول) ══
+// يعرض فقط بيانات النشاط الأساسية (بدون قائمة الطلبة) للتحقق من صحة الرابط
+app.get('/api/public/participants-info/:id', async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'رابط غير صالح أو تمت إزالة النشاط' });
+    res.json({ activity: doc.activity || '', date: doc.date || '', organizer: doc.organizer || '' });
+  } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
+});
+
+// يضيف طالباً واحداً إلى قائمة المشاركين لنشاط معيّن — كابتشا + حدّ معدّل + منع التكرار بالرقم الجامعي
+app.post('/api/public/participants/:id/register', async (req, res) => {
+  try {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    if (!checkPublicRateLimit(ip))
+      return res.status(429).json({ error: 'تم تجاوز الحد المسموح به من الطلبات، يرجى المحاولة لاحقاً' });
+
+    const { captcha_token, captcha_answer } = req.body;
+    const cap = publicCaptchas[captcha_token];
+    if (!cap || Date.now() > cap.expires || Number(captcha_answer) !== cap.answer)
+      return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[captcha_token];
+
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'رابط التسجيل غير صالح' });
+
+    const name  = (req.body.name   || '').trim();
+    const uniId = (req.body.uni_id || '').trim();
+    if (!name || !uniId)
+      return res.status(400).json({ error: 'يرجى إدخال الاسم الكامل والرقم الجامعي' });
+
+    const students = Array.isArray(doc.students) ? doc.students : [];
+    if (students.some(s => (s.id || '').trim() === uniId))
+      return res.status(400).json({ error: 'أنت مسجَّل مسبقاً في هذا النشاط بنفس الرقم الجامعي' });
+
+    students.push({
+      name, id: uniId,
+      gender: req.body.gender || '', nationality: req.body.nationality || '',
+      college: req.body.college || '', major: req.body.major || '',
+      year: req.body.year || '', phone: req.body.phone || '',
+    });
+    doc.students = students;
+    doc.markModified('students');
+    await doc.save();
+
+    res.json({ ok: true, message: 'تم تسجيل حضورك بنجاح ضمن قائمة المشاركين', count: students.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 function auth(roles = []) {
   return (req, res, next) => {
     const u = sessions[(req.headers.authorization||'').replace('Bearer ','')];
