@@ -448,6 +448,10 @@ async function loadParticipants() {
         <div class="fg"><label>رقم النشاط للتقييم</label><input id="pf-eval" type="text"></div>
       </div>
     </div>
+    <div class="card" id="pf-reglink-card">
+      <div class="ct"><i class="ti ti-link"></i>رابط تسجيل الطلبة ذاتياً</div>
+      <div id="pf-reglink-body"></div>
+    </div>
     <div class="card">
       <div class="ct"><i class="ti ti-users"></i>أسماء الطلبة المشاركين
         <div style="margin-right:auto;display:flex;gap:6px;flex-wrap:wrap">
@@ -486,6 +490,7 @@ function showPForm() {
   document.getElementById('part-rows').innerHTML='';
   document.getElementById('pf-cnt').textContent='';
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ فقط';
+  renderRegLink(null);
   addPartRow(); f.scrollIntoView({behavior:'smooth'});
 }
 
@@ -505,6 +510,7 @@ async function editPart(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
+  renderRegLink(id);
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
   f.scrollIntoView({behavior:'smooth'});
 }
@@ -574,6 +580,39 @@ async function importPart(input) {
   updatePartCnt(); alert(`✅ تم استيراد ${added} طالب بنجاح`);
 }
 
+function renderRegLink(id) {
+  const box=document.getElementById('pf-reglink-body'); if(!box) return;
+  if(!id){
+    box.innerHTML = `<div style="font-size:12px;color:var(--muted)">احفظي/احفظ بيانات النشاط أولاً (زر «حفظ فقط» بالأسفل) للحصول على رابط يمكن مشاركته مع الطلبة عبر واتساب أو البريد الإلكتروني، ليسجّلوا حضورهم بأنفسهم مباشرة ضمن قائمة المشاركين أدناه دون تسجيل دخول.</div>`;
+    return;
+  }
+  const link = `${location.origin}/register.html?id=${id}`;
+  box.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">شاركي/شارك هذا الرابط مع الطلبة ليسجّلوا حضورهم بأنفسهم مباشرة ضمن قائمة المشاركين أدناه (بدون تسجيل دخول):</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input type="text" readonly value="${link}" onclick="this.select()" style="flex:1;min-width:220px;font-size:11.5px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:#F9FAFB">
+      <button class="btn btn-sm btn-g" onclick="copyRegLink('${link}')">📋 نسخ الرابط</button>
+      <button class="btn btn-sm" onclick="refreshPartStudents('${id}')">🔄 تحديث قائمة المسجَّلين</button>
+    </div>`;
+}
+
+function copyRegLink(link) {
+  navigator.clipboard.writeText(link)
+    .then(()=>alert('✅ تم نسخ الرابط، يمكنك الآن مشاركته مع الطلبة'))
+    .catch(()=>alert('تعذّر النسخ تلقائياً، يرجى تحديد الرابط ونسخه يدوياً'));
+}
+
+async function refreshPartStudents(id) {
+  const r = await api('/api/participants/'+id);
+  if(!r||r.error){alert('تعذر تحديث القائمة');return;}
+  const c=document.getElementById('part-rows'); c.innerHTML='';
+  (r.students&&r.students.length?r.students:[{}]).forEach(s=>{
+    const div=document.createElement('div'); div.innerHTML=partRowHTML(s); c.appendChild(div.firstElementChild);
+  });
+  updatePartCnt();
+  alert(`✅ تم تحديث القائمة — ${r.students?r.students.length:0} طالب مسجَّل حالياً`);
+}
+
 async function savePart() {
   const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
   if(!data.activity){showMsg('msg-participants','يرجى إدخال اسم النشاط',true);return null;}
@@ -581,9 +620,17 @@ async function savePart() {
   const r = editId ? await api('/api/participants/'+editId,'PUT',data) : await api('/api/participants','POST',data);
   if(r.error){showMsg('msg-participants',r.error,true);return null;}
   showMsg('msg-participants','تم الحفظ بنجاح ✓');
-  document.getElementById('part-form').style.display='none';
-  delete f.dataset.editId;
-  filterPart(); return editId||r.id;
+  const savedId = editId || r.id;
+  if(!editId){
+    // أول حفظ لسجل جديد: يبقى النموذج مفتوحاً لإظهار رابط تسجيل الطلبة مباشرة
+    f.dataset.editId = savedId;
+    const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
+    renderRegLink(savedId);
+  } else {
+    document.getElementById('part-form').style.display='none';
+    delete f.dataset.editId;
+  }
+  filterPart(); return savedId;
 }
 
 async function saveAndPrintPart() {

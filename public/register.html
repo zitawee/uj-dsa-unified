@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل حضور نشاط — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  .wrap{max-width:640px;margin:0 auto;padding:16px 14px 48px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:14px}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0 0 4px;line-height:1.6}
+  .ct{font-size:13px;font-weight:700;color:var(--g);margin-bottom:12px}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input,select{
+    width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);
+    font-size:16px;margin-bottom:14px;font-family:inherit;-webkit-appearance:none;appearance:none;
+    min-height:44px
+  }
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+  .full{grid-column:1/-1}
+  @media(max-width:640px){
+    .g2{grid-template-columns:1fr}
+    .card{padding:14px;border-radius:10px}
+    h1{font-size:15px}
+  }
+  button{
+    width:100%;padding:13px 18px;border:none;border-radius:var(--r);background:var(--g);color:#fff;
+    font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px
+  }
+  button:disabled{opacity:.6;cursor:default}
+  #captchaQ{font-weight:700;color:var(--g)}
+  #f-captcha{max-width:160px}
+  .msg{margin-top:10px;font-size:12.5px;border-radius:var(--r);padding:10px 12px;display:none;line-height:1.6}
+  .ok{background:#EAF3DE;color:#27500A;border:1px solid #cfe3bd}
+  .err{background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5}
+  .done-box{background:#fff;border:2px solid var(--g);border-radius:12px;padding:26px 18px;text-align:center}
+  .info-box{background:#EAF3DE;border:1px solid #cfe3bd;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#27500A;line-height:1.7}
+  .center{text-align:center;color:var(--muted);font-size:13px;padding:30px 10px}
+</style>
+</head>
+<body>
+<header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap">
+
+  <div id="loadingArea" class="card center">جارٍ التحقق من الرابط...</div>
+
+  <div id="invalidArea" style="display:none" class="card center">
+    ❌ هذا الرابط غير صالح أو تمت إزالة النشاط المرتبط به. يرجى التواصل مع الجهة المنظِّمة للتأكد من الرابط الصحيح.
+  </div>
+
+  <div id="formWrap" style="display:none">
+    <div class="card">
+      <h1>تسجيل حضور نشاط طلابي</h1>
+      <p class="sub">يرجى تعبئة بياناتك بدقة لتسجيل حضورك ضمن قائمة المشاركين في النشاط التالي:</p>
+      <div class="info-box" id="activityInfo"></div>
+    </div>
+
+    <div id="formArea">
+      <div class="card">
+        <div class="ct">بياناتك</div>
+        <div class="g2">
+          <div class="full"><label>الاسم الكامل *</label><input id="f-name" type="text"></div>
+          <div><label>الرقم الجامعي *</label><input id="f-id" type="text"></div>
+          <div><label>رقم الهاتف</label><input id="f-phone" type="text"></div>
+          <div><label>الجنس</label><select id="f-gender"><option value="">اختر...</option><option>ذكر</option><option>أنثى</option></select></div>
+          <div><label>الجنسية</label><input id="f-nat" type="text" placeholder="أردني..."></div>
+          <div><label>الكلية</label><select id="f-col"><option value="">اختر...</option></select></div>
+          <div><label>التخصص</label><input id="f-major" type="text"></div>
+          <div><label>المستوى</label><select id="f-year"><option value="">اختر...</option></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ct">تحقق سريع</div>
+        <label id="captchaLbl">كم يساوي <span id="captchaQ">...</span> ؟ *</label>
+        <input id="f-captcha" type="number" style="max-width:140px">
+        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+          <button id="submitBtn" onclick="submitReg()">📨 تسجيل حضوري</button>
+        </div>
+        <div id="msg" class="msg"></div>
+      </div>
+    </div>
+
+    <div id="doneArea" style="display:none">
+      <div class="done-box">
+        <div style="font-size:14px;color:var(--g);font-weight:700">✅ تم تسجيل حضورك بنجاح</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:6px">تمت إضافتك إلى قائمة المشاركين في هذا النشاط.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLS = ['كلية الآداب','كلية الأعمال','كلية الشريعة','كلية العلوم التربوية','كلية الحقوق','كلية علوم الرياضة','كلية الفنون والتصميم','كلية الأمير الحسين بن عبد الله الثاني للعلوم السياسية والدراسات الدولية','كلية اللغات الأجنبية','كلية الآثار والسياحة','كلية العلوم','كلية الزراعة','كلية الهندسة','كلية الملك عبد الله الثاني لتكنولوجيا المعلومات','كلية الطب','كلية التمريض','كلية طب الأسنان','كلية الصيدلة','كلية علوم التأهيل','معهد الصحة العامة','كلية الدراسات العليا'];
+const YEARS = ['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
+
+function fillSelect(id, arr){ const el=document.getElementById(id); arr.forEach(v=>{ const o=document.createElement('option'); o.textContent=v; el.appendChild(o); }); }
+fillSelect('f-col', COLS);
+fillSelect('f-year', YEARS);
+
+const params = new URLSearchParams(location.search);
+const PID = params.get('id');
+
+let CAPTCHA_TOKEN=null;
+async function loadCaptcha(){
+  const res = await fetch('/api/public/captcha');
+  const data = await res.json();
+  CAPTCHA_TOKEN = data.token;
+  document.getElementById('captchaQ').textContent = data.question;
+}
+
+function v(id){ return document.getElementById(id).value.trim(); }
+function showMsg(txt, err){
+  const el=document.getElementById('msg');
+  el.textContent=txt; el.className='msg '+(err?'err':'ok'); el.style.display='block';
+}
+
+async function init(){
+  if(!PID){
+    document.getElementById('loadingArea').style.display='none';
+    document.getElementById('invalidArea').style.display='block';
+    return;
+  }
+  try{
+    const res = await fetch('/api/public/participants-info/'+PID);
+    const r = await res.json();
+    if(!res.ok){
+      document.getElementById('loadingArea').style.display='none';
+      document.getElementById('invalidArea').style.display='block';
+      return;
+    }
+    document.getElementById('activityInfo').innerHTML =
+      `📌 النشاط: <b>${r.activity||'—'}</b><br>📅 التاريخ: <b>${r.date||'—'}</b>` +
+      (r.organizer?`<br>🏛️ الجهة المنظِّمة: <b>${r.organizer}</b>`:'');
+    document.getElementById('loadingArea').style.display='none';
+    document.getElementById('formWrap').style.display='block';
+    loadCaptcha();
+  }catch(e){
+    document.getElementById('loadingArea').style.display='none';
+    document.getElementById('invalidArea').style.display='block';
+  }
+}
+init();
+
+async function submitReg(){
+  const name=v('f-name'), uniId=v('f-id');
+  if(!name || !uniId){ showMsg('يرجى إدخال الاسم الكامل والرقم الجامعي', true); return; }
+  if(!v('f-captcha')){ showMsg('يرجى الإجابة على سؤال التحقق', true); return; }
+
+  const data = {
+    name, uni_id: uniId, phone: v('f-phone'), gender: v('f-gender'),
+    nationality: v('f-nat'), college: v('f-col'), major: v('f-major'), year: v('f-year'),
+    captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
+  };
+
+  const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='جارٍ الإرسال...';
+  try{
+    const res = await fetch('/api/public/participants/'+PID+'/register', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+    });
+    const r = await res.json();
+    if(!res.ok){ showMsg(r.error||'تعذر إتمام التسجيل', true); btn.disabled=false; btn.textContent='📨 تسجيل حضوري'; loadCaptcha(); return; }
+    document.getElementById('formArea').style.display='none';
+    document.getElementById('doneArea').style.display='block';
+  }catch(e){
+    showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
+    btn.disabled=false; btn.textContent='📨 تسجيل حضوري';
+  }
+}
+</script>
+</body>
+</html>
