@@ -736,22 +736,22 @@ async function loadArchive() {
       <li>الانشطة_الطلابية_الخارجية.pdf</li>
       <li>اسماء_المشاركين.pdf</li>
     </ul>
+    <div class="g2" style="margin-bottom:12px">
+      <div class="fg"><label>من تاريخ إقامة النشاط (اختياري)</label><input id="pdf-date-from" type="date"></div>
+      <div class="fg"><label>إلى تاريخ إقامة النشاط (اختياري)</label><input id="pdf-date-to" type="date"></div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 12px">اتركي الحقلين فارغين لتصدير كل السجلات بلا فلترة زمنية.</p>
     <button class="btn btn-b" id="bulk-pdf-btn" onclick="downloadBulkPDF()"><i class="ti ti-file-zip"></i> تنزيل حزمة PDF (ZIP)</button>
     <div id="bulk-pdf-status" class="msg" style="display:none;margin-top:10px"></div>
   </div>
 
   <div class="card" style="border:2px solid #F3C5C5;background:#FFF7F7">
-    <div class="ct" style="color:#8A1F1F"><i class="ti ti-alert-triangle"></i>3) مسح بيانات النظام والبدء بعام دراسي جديد</div>
+    <div class="ct" style="color:#8A1F1F"><i class="ti ti-alert-triangle"></i>3) مسح بيانات محدَّدة والبدء بعام دراسي جديد</div>
     <p style="font-size:12.5px;color:#791F1F;line-height:1.9;font-weight:600;margin:0 0 8px">
-      ⚠️ تحذير: هذا الإجراء يحذف نهائياً ومن دون إمكانية تراجع كل بيانات: الطلبة، طلبات إقامة الأنشطة، الإعلانات، بيانات الجودة، اللجان، الاجتماعات، المشاركين، وكل الجداول الأخرى من الخادم الرئيسي. <u>حسابات المستخدمين وصلاحياتهم وجهاتهم لن تتأثر إطلاقاً وستبقى كما هي</u>.
+      ⚠️ تحذير: هذا الإجراء يحذف نهائياً ومن دون إمكانية تراجع البيانات التي تختارينها تحديداً (نماذج معيّنة و/أو ضمن فترة زمنية معيّنة). <u>حسابات المستخدمين وصلاحياتهم وجهاتهم لن تتأثر إطلاقاً وستبقى كما هي</u>.
     </p>
     <p style="font-size:12px;color:#791F1F;margin:0 0 14px">تأكدي أولاً من تنزيل الأرشيف الكامل (الخطوة 1) — ويُستحسن أيضاً حزمة PDF (الخطوة 2) — واحتفظي بنسخة منهما في مكان آمن، قبل المتابعة لهذه الخطوة.</p>
-    <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px">للتأكيد، اكتبي العبارة التالية بالضبط: <b>نعم متأكد من الحذف</b></label>
-    <input id="archive-confirm-text" type="text" style="max-width:320px">
-    <div style="margin-top:12px">
-      <button class="btn" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="resetYearData()"><i class="ti ti-trash"></i> مسح كل البيانات والبدء من جديد</button>
-    </div>
-    <div id="archive-reset-msg" class="msg" style="margin-top:10px"></div>
+    <button class="btn" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="openResetModal()"><i class="ti ti-trash"></i> فتح نافذة مسح بيانات محدَّدة</button>
   </div>`;
 }
 
@@ -774,13 +774,24 @@ async function buildPDFBlob(records, bodyBuilderFn) {
   const bodies = records.map(r => `<div style="page-break-after:always">${bodyBuilderFn(r)}</div>`).join('');
   const container = document.createElement('div');
   container.innerHTML = `<style>${PRINT_STYLES}</style>${bodies}`;
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff';
+  // ملاحظة: التموضع خارج الشاشة عبر position:fixed + left سالب كبير يتسبّب أحياناً بصفحات بيضاء
+  // لأن html2canvas قد يفشل بالتقاط عناصر بعيدة جداً عن حدود العرض. البديل الموثوق: تموضع طبيعي
+  // ضمن تدفق الصفحة (top:0/left:0) مع z-index سالب لإخفائه بصرياً خلف بقية المحتوى دون نقله فعلياً.
+  container.style.cssText = 'position:absolute;top:0;left:0;width:210mm;background:#fff;z-index:-9999';
   document.body.appendChild(container);
   try {
+    // انتظار تحميل كل الصور (كشعار الجامعة) قبل التحويل، لتفادي صفحات بيضاء أو ناقصة
+    const imgs = container.querySelectorAll('img');
+    await Promise.all(Array.from(imgs).map(img => img.complete
+      ? Promise.resolve()
+      : new Promise(res => { img.onload = res; img.onerror = res; })));
+    // مهلة قصيرة إضافية لضمان اكتمال الرسم (Layout/Paint) قبل الالتقاط
+    await new Promise(res => setTimeout(res, 80));
+
     const opts = {
       margin: 0,
       image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['css'] }
     };
@@ -805,6 +816,17 @@ async function downloadBulkPDF() {
     const zip = new JSZip();
     let anyData = false;
 
+    const dateFrom = g('pdf-date-from');
+    const dateTo   = g('pdf-date-to');
+    // فلترة حسب تاريخ إقامة النشاط: سجل بلا تاريخ يُستبعَد فقط إن حُدِّدت فترة زمنية فعلياً
+    const inRange = (val) => {
+      if (!dateFrom && !dateTo) return true;
+      if (!val) return false;
+      if (dateFrom && val < dateFrom) return false;
+      if (dateTo && val > dateTo) return false;
+      return true;
+    };
+
     showStatus('⏳ جارٍ جلب البيانات...');
     const allAR   = await api('/api/activity_requests');
     const saList  = await getCombinedActivitiesList();
@@ -812,8 +834,11 @@ async function downloadBulkPDF() {
     const saExt   = await api('/api/student_activities_external');
     const parts   = await api('/api/participants');
 
-    const internalAR = (allAR||[]).filter(r=>r.submitted_via!=='public_link');
-    const externalAR  = (allAR||[]).filter(r=>r.submitted_via==='public_link');
+    const internalAR = (allAR||[]).filter(r=>r.submitted_via!=='public_link' && inRange(r.activity_date));
+    const externalAR  = (allAR||[]).filter(r=>r.submitted_via==='public_link' && inRange(r.activity_date));
+    const saFiltered    = (sa||[]).filter(r=>inRange(r.date));
+    const saExtFiltered = (saExt||[]).filter(r=>inRange(r.date));
+    const partsFiltered = (parts||[]).filter(r=>inRange(r.date));
 
     if (internalAR.length) {
       showStatus(`⏳ جارٍ تجهيز: طلبات إقامة نشاط (${internalAR.length})...`);
@@ -833,25 +858,25 @@ async function downloadBulkPDF() {
       zip.file('طلبات_اقامة_نشاط_خارجية.pdf', blob); anyData = true;
     }
 
-    if (sa && sa.length) {
-      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية (${sa.length})...`);
-      const blob = await buildPDFBlob(sa, (r)=> buildQRowBodyHTML('student_activities', r));
+    if (saFiltered.length) {
+      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية (${saFiltered.length})...`);
+      const blob = await buildPDFBlob(saFiltered, (r)=> buildQRowBodyHTML('student_activities', r));
       zip.file('الانشطة_الطلابية.pdf', blob); anyData = true;
     }
 
-    if (saExt && saExt.length) {
-      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية الخارجية (${saExt.length})...`);
-      const blob = await buildPDFBlob(saExt, (r)=> buildQRowBodyHTML('student_activities_external', r));
+    if (saExtFiltered.length) {
+      showStatus(`⏳ جارٍ تجهيز: الأنشطة الطلابية الخارجية (${saExtFiltered.length})...`);
+      const blob = await buildPDFBlob(saExtFiltered, (r)=> buildQRowBodyHTML('student_activities_external', r));
       zip.file('الانشطة_الطلابية_الخارجية.pdf', blob); anyData = true;
     }
 
-    if (parts && parts.length) {
-      showStatus(`⏳ جارٍ تجهيز: أسماء المشاركين (${parts.length})...`);
-      const blob = await buildPDFBlob(parts, (r)=> prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02') + buildPartBodyHTML(r));
+    if (partsFiltered.length) {
+      showStatus(`⏳ جارٍ تجهيز: أسماء المشاركين (${partsFiltered.length})...`);
+      const blob = await buildPDFBlob(partsFiltered, (r)=> prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02') + buildPartBodyHTML(r));
       zip.file('اسماء_المشاركين.pdf', blob); anyData = true;
     }
 
-    if (!anyData) { showErr('لا توجد بيانات حالياً في أي من الفئات الخمس لتصديرها.'); return; }
+    if (!anyData) { showErr('لا توجد بيانات ضمن الفترة المحدَّدة (أو بشكل عام) في أي من الفئات الخمس لتصديرها.'); return; }
 
     showStatus('⏳ جارٍ ضغط الملفات...');
     const zipBlob = await zip.generateAsync({ type: 'blob' });
@@ -869,18 +894,83 @@ async function downloadBulkPDF() {
   }
 }
 
-async function resetYearData() {
-  const txt = g('archive-confirm-text');
+// قائمة الجداول القابلة للاختيار في نافذة المسح الانتقائي (يجب أن تطابق منطقياً RESET_DATE_FIELD في server.js)
+const RESET_TABLES_CONFIG = [
+  { key:'activity_requests', label:'طلبات إقامة نشاط (داخلية وخارجية)', hasDate:true },
+  { key:'announcements', label:'الإعلانات', hasDate:true },
+  { key:'hall_bookings', label:'حجوزات القاعات', hasDate:true },
+  { key:'participants', label:'أسماء الطلبة المشاركين', hasDate:true },
+  { key:'committees', label:'تشكيل لجنة/مجلس', hasDate:true },
+  { key:'meeting_invites', label:'دعوات حضور الاجتماعات', hasDate:true },
+  { key:'meeting_minutes', label:'محاضر الاجتماعات', hasDate:true },
+  { key:'governance', label:'مجالس الحاكمية واللجان', hasDate:true },
+  { key:'student_activities', label:'الأنشطة الطلابية', hasDate:true },
+  { key:'student_activities_external', label:'الأنشطة الطلابية الخارجية', hasDate:true },
+  { key:'student_honors', label:'تكريم الطلبة', hasDate:true },
+  { key:'staff_committees', label:'لجان الموظفين', hasDate:true },
+  { key:'staff_training', label:'تدريب الموظفين', hasDate:true },
+  { key:'staff_innovation', label:'إبداع الموظفين', hasDate:true },
+  { key:'staff_honors', label:'تكريم الموظفين', hasDate:true },
+  { key:'uni_committees', label:'اللجان الجامعية', hasDate:true },
+  { key:'community_svc', label:'الخدمات المجتمعية', hasDate:true },
+  { key:'students', label:'الطلبة المسجَّلون (بلا فلترة زمنية)', hasDate:false },
+  { key:'achievements', label:'الإنجازات (بلا فلترة زمنية)', hasDate:false },
+];
+
+function openResetModal() {
+  let ov = document.getElementById('mod-reset');
+  if (!ov) { ov = document.createElement('div'); ov.className = 'modal-ov'; ov.id = 'mod-reset'; document.body.appendChild(ov); }
+  const checkboxesHTML = RESET_TABLES_CONFIG.map(t => `
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:5px 2px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" class="reset-tbl-chk" value="${t.key}" checked>
+      ${t.label}
+    </label>`).join('');
+  ov.innerHTML = `
+    <div class="modal" style="max-width:540px;max-height:88vh;overflow-y:auto">
+      <h3>🗑️ مسح بيانات محدَّدة</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">اختاري النماذج المطلوب حذف بياناتها، وحدّدي (اختياري) فترة زمنية بحسب تاريخ النشاط/الحدث في كل نموذج — إن تُركت الفترة فارغة سيُحذف كل ما هو محدَّد أدناه بالكامل بلا قيد زمني.</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="btn btn-sm" onclick="toggleAllResetTables(true)">تحديد الكل</button>
+        <button class="btn btn-sm" onclick="toggleAllResetTables(false)">إلغاء تحديد الكل</button>
+      </div>
+      <div style="max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:12px">${checkboxesHTML}</div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg"><label>من تاريخ (اختياري)</label><input id="reset-date-from" type="date"></div>
+        <div class="fg"><label>إلى تاريخ (اختياري)</label><input id="reset-date-to" type="date"></div>
+      </div>
+      <p style="font-size:11px;color:#8A1F1F;margin:0 0 12px">⚠️ النماذج بلا فلترة زمنية (الطلبة، الإنجازات) تُحذف بالكامل إن حُدِّدت أعلاه، بصرف النظر عن أي فترة زمنية تُدخَل هنا.</p>
+      <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px">للتأكيد، اكتبي العبارة التالية بالضبط: <b>نعم متأكد من الحذف</b></label>
+      <input id="reset-confirm-text2" type="text" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;margin-bottom:10px">
+      <div id="reset-modal-msg" class="msg" style="margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="closeResetModal()">إلغاء</button>
+        <button class="btn" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="confirmSelectiveReset()"><i class="ti ti-trash"></i> حذف المحدَّد</button>
+      </div>
+    </div>`;
+  ov.classList.add('open');
+}
+
+function closeResetModal() { const ov = document.getElementById('mod-reset'); if (ov) ov.classList.remove('open'); }
+function toggleAllResetTables(state) { document.querySelectorAll('.reset-tbl-chk').forEach(c => c.checked = state); }
+
+async function confirmSelectiveReset() {
+  const txt = g('reset-confirm-text2');
   if (txt !== 'نعم متأكد من الحذف') {
-    showMsg('archive-reset-msg', 'يرجى كتابة عبارة التأكيد بالضبط كما هي مكتوبة أعلاه', true);
+    showMsg('reset-modal-msg', 'يرجى كتابة عبارة التأكيد بالضبط كما هي مكتوبة أعلاه', true);
     return;
   }
-  if (!confirm('تأكيد أخير: سيتم حذف جميع بيانات الأنشطة نهائياً من الخادم الرئيسي دون إمكانية التراجع. هل تأكدتِ من تنزيل نسخة الأرشيف والاحتفاظ بها؟')) return;
-  const r = await api('/api/admin/reset-data', 'POST', { confirm: txt });
-  if (r.error) { showMsg('archive-reset-msg', r.error, true); return; }
-  showMsg('archive-reset-msg', r.message || 'تم مسح البيانات بنجاح.', false);
-  document.getElementById('archive-confirm-text').value = '';
-  loadDash();
+  const selected = Array.from(document.querySelectorAll('.reset-tbl-chk:checked')).map(c => c.value);
+  if (!selected.length) { showMsg('reset-modal-msg', 'يرجى اختيار نموذج واحد على الأقل', true); return; }
+
+  const dateFrom = g('reset-date-from') || null;
+  const dateTo   = g('reset-date-to') || null;
+  const rangeMsg = (dateFrom || dateTo) ? ' ضمن الفترة الزمنية المحدَّدة (والنماذج بلا تاريخ من ضمن المحدَّد ستُحذف بالكامل)' : ' بالكامل (بلا قيد زمني)';
+  if (!confirm(`تأكيد أخير: سيتم حذف بيانات ${selected.length} نموذج محدَّد${rangeMsg}، دون إمكانية التراجع. هل تأكدتِ من تنزيل نسخة احتياطية أولاً؟`)) return;
+
+  const r = await api('/api/admin/reset-data', 'POST', { confirm: txt, tables: selected, date_from: dateFrom, date_to: dateTo });
+  if (r.error) { showMsg('reset-modal-msg', r.error, true); return; }
+  showMsg('reset-modal-msg', r.message || 'تم الحذف بنجاح.', false);
+  setTimeout(() => { closeResetModal(); loadDash(); }, 1800);
 }
 
 // ══════════════════════════════════════════
