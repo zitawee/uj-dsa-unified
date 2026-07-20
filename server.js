@@ -50,6 +50,22 @@ function buildActivityRecordFromRequest(req, categories) {
   };
 }
 
+// بناء سجل «أسماء الطلبة المشاركين» المُرحَّل من طلب معتمد (بالحقول المشتركة فقط، بدون طلبة بعد)
+function buildParticipantsRecordFromRequest(req) {
+  return {
+    activity:     req.title || '',
+    date:         req.activity_date || '',
+    organizer:    req.organizer || '',
+    eval_num:     '',
+    students:     [],
+    supervisors:  '',
+    staff:        '',
+    max_capacity: null,
+    request_id:   String(req._id),
+    source:       `مُرحَّل من طلب نشاط رقم ${req._id} — ${req.title}`,
+  };
+}
+
 // دوائر العمادة (يجب أن تطابق حرفياً قائمة DEANSHIP_DEPTS في public/app.js)
 const DEANSHIP_DEPTS = [
   'دائرة الهيئات والخدمات الطلابية',
@@ -375,6 +391,7 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
         approval_note: note || '', categories, admin_override: true
       });
       await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
+      await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
       return res.json({ message: 'تم الاعتماد المباشر بنجاح' });
     }
 
@@ -427,6 +444,7 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
         if (!Array.isArray(categories) || !categories.length) return res.status(400).json({ error: 'يرجى اختيار تصنيف واحد على الأقل' });
         await Model.findByIdAndUpdate(doc._id, { status: 'approved', approved_by: req.user.fullName, approved_at: now, approval_note: note || '', categories });
         await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
+        await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
         return res.json({ message: 'تم الاعتماد النهائي بنجاح' });
       }
       if (action === 'reject') {
