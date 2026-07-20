@@ -110,6 +110,10 @@ const publicCaptchas = {};   // token -> { answer, expires }
 const publicRateLog  = {};   // ip -> [timestamps]
 const PUBLIC_RATE_LIMIT = 3;           // عدد الطلبات
 const PUBLIC_RATE_WINDOW_MS = 60*60*1000; // خلال ساعة واحدة
+// ملاحظة: حدّ المعدّل (checkPublicRateLimit) مُعرَّف أدناه لكنه غير مُفعَّل حالياً على
+// /api/public/activity-requests ولا /api/public/participants/:id/register بناءً على طلب صريح
+// (لا حاجة لتقييد زمني حالياً على أي من البوابتين). الكابتشا وحدها هي الحماية الفعّالة الآن.
+// إن احتجتم إعادة تفعيله مستقبلاً: أعيدوا استدعاء checkPublicRateLimit(ip) في بداية كل مسار.
 
 function checkPublicRateLimit(ip) {
   const now = Date.now();
@@ -149,8 +153,6 @@ app.get('/api/public/captcha', (req, res) => {
 app.post('/api/public/activity-requests', async (req, res) => {
   try {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
-    if (!checkPublicRateLimit(ip))
-      return res.status(429).json({ error: 'تم تجاوز الحد المسموح به من الطلبات، يرجى المحاولة لاحقاً' });
 
     const { captcha_token, captcha_answer } = req.body;
     const cap = publicCaptchas[captcha_token];
@@ -190,8 +192,6 @@ app.get('/api/public/participants-info/:id', async (req, res) => {
 app.post('/api/public/participants/:id/register', async (req, res) => {
   try {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
-    if (!checkPublicRateLimit(ip))
-      return res.status(429).json({ error: 'تم تجاوز الحد المسموح به من الطلبات، يرجى المحاولة لاحقاً' });
 
     const { captcha_token, captcha_answer } = req.body;
     const cap = publicCaptchas[captcha_token];
