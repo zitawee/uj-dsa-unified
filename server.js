@@ -625,6 +625,47 @@ app.get('/api/export/:table', auth(), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ══ الأرشفة السنوية: تصدير نسخة كاملة من كل بيانات النظام (بدون حسابات المستخدمين) ══
+app.get('/api/admin/export-archive', auth(['admin']), async (req, res) => {
+  try {
+    const dump = {};
+    for (const t of TABLES) {
+      dump[t] = await models[t].find({}).lean();
+    }
+    const payload = {
+      system: 'نظام عمادة شؤون الطلبة — الجامعة الأردنية',
+      exported_at: new Date().toISOString(),
+      exported_by: req.user.fullName || req.user.username,
+      tables: dump,
+    };
+    const filename = `ju-dsa-archive-${new Date().toISOString().slice(0,10)}.json`;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(payload, null, 2));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ الأرشفة السنوية: مسح كل بيانات الأنشطة والبدء بعام دراسي جديد (حسابات المستخدمين لا تُمَس) ══
+app.post('/api/admin/reset-data', auth(['admin']), async (req, res) => {
+  try {
+    if (req.body.confirm !== 'نعم متأكد من الحذف')
+      return res.status(400).json({ error: 'نص التأكيد غير مطابق' });
+
+    const counts = {};
+    let total = 0;
+    for (const t of TABLES) {
+      const r = await models[t].deleteMany({});
+      counts[t] = r.deletedCount || 0;
+      total += r.deletedCount || 0;
+    }
+    res.json({
+      ok: true,
+      message: `تم مسح جميع بيانات الأنشطة بنجاح (${total} سجل). حسابات المستخدمين وصلاحياتهم لم تتأثر.`,
+      counts,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log('\n  ══════════════════════════════════════════');
   console.log('  الجامعة الأردنية — عمادة شؤون الطلبة');
