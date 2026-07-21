@@ -223,15 +223,18 @@ function buildSidebar() {
     <div class="ni" onclick="go('community_svc',this)"><i class="ti ti-heart-handshake"></i>الخدمات المجتمعية<span class="cnt" id="c-community_svc">0</span></div>
   </div>
 
-  <div class="sbt">الأدوات</div>
-  <div class="ni" onclick="go('reports',this)"><i class="ti ti-file-analytics"></i>التقارير الموحدة</div>
-  <div class="ni" onclick="go('committee_report',this)"><i class="ti ti-clipboard-list"></i>تقرير اجتماعات اللجان</div>
-  <div class="ni" onclick="go('sa_report',this)"><i class="ti ti-chart-bar"></i>تقرير الأنشطة الطلابية</div>
-  <div class="ni" onclick="go('cat_report',this)"><i class="ti ti-category"></i>تقرير حسب التصنيفات</div>
-  <div class="ni" onclick="go('eval_report',this)"><i class="ti ti-clipboard-list"></i>تقرير تقييم الفعاليات</div>
-  <div class="ni" onclick="go('search',this)"><i class="ti ti-search"></i>البحث الشامل</div>
-  <div class="ni" id="nav-users" onclick="go('users',this)"><i class="ti ti-shield"></i>إدارة المستخدمين</div>
-  <div class="ni" id="nav-archive" onclick="go('archive',this)"><i class="ti ti-archive"></i>الأرشفة السنوية</div>`;
+  <!-- الأدوات -->
+  <div class="folder-hdr" onclick="toggleFolder('f-tools')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-tools"></i><i class="ti ti-tools"></i>الأدوات</div>
+  <div class="folder-body" id="f-tools" style="display:none">
+    <div class="ni" onclick="go('reports',this)"><i class="ti ti-file-analytics"></i>التقارير الموحدة</div>
+    <div class="ni" onclick="go('committee_report',this)"><i class="ti ti-clipboard-list"></i>تقرير اجتماعات اللجان</div>
+    <div class="ni" onclick="go('sa_report',this)"><i class="ti ti-chart-bar"></i>تقرير الأنشطة الطلابية</div>
+    <div class="ni" onclick="go('cat_report',this)"><i class="ti ti-category"></i>تقرير حسب التصنيفات</div>
+    <div class="ni" onclick="go('eval_report',this)"><i class="ti ti-clipboard-list"></i>تقرير تقييم الفعاليات</div>
+    <div class="ni" onclick="go('search',this)"><i class="ti ti-search"></i>البحث الشامل</div>
+    <div class="ni" id="nav-users" onclick="go('users',this)"><i class="ti ti-shield"></i>إدارة المستخدمين</div>
+    <div class="ni" id="nav-archive" onclick="go('archive',this)"><i class="ti ti-archive"></i>الأرشفة السنوية</div>
+  </div>`;
 }
 
 function toggleFolder(id) {
