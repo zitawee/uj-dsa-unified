@@ -567,6 +567,7 @@ async function loadEvalReport() {
   <div class="ph">
     <div><div class="pt"><i class="ti ti-clipboard-list"></i> تقرير تقييم الفعاليات</div><div class="ps">ملخص نتائج استبانات تقييم الفعاليات لكل نشاط</div></div>
     <div style="display:flex;gap:6px">
+      <button class="btn btn-b" onclick="printEvalReport()"><i class="ti ti-printer"></i>طباعة / PDF</button>
       <button class="btn btn-b" onclick="exportEvalReport()"><i class="ti ti-file-spreadsheet"></i>تصدير Excel</button>
     </div>
   </div>
@@ -664,6 +665,54 @@ function renderEvalReport() {
       </tr>`).join('')}</tbody>
     </table>
   </div>`;
+}
+
+function printEvalReport() {
+  const rows = _evalFilteredRows();
+  if (!rows.length) { alert('لا توجد بيانات لطباعتها ضمن الفلاتر الحالية'); return; }
+
+  const org  = document.getElementById('ev-org')?.value || '';
+  const from = document.getElementById('ev-from')?.value || '';
+  const to   = document.getElementById('ev-to')?.value || '';
+  const pLabel   = from && to ? `من ${from} إلى ${to}` : from ? `من ${from}` : to ? `حتى ${to}` : 'جميع الفترات';
+  const orgLabel = org || 'كل الجهات';
+
+  const summaryHTML = document.getElementById('ev-summary')?.innerHTML || '';
+  const outHTML     = document.getElementById('ev-out')?.innerHTML || '';
+
+  const fullDoc = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير تقييم الفعاليات — عمادة شؤون الطلبة</title>
+<style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  :root{--g:#1B6B3A;--g2:#145229;--muted:#6B7280;--border:#E5E7EB;--r:8px;--rl:12px;--blue:#1B5E9A}
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
+  img{max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+  th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
+  td{padding:4px 6px;border:1px solid #ccc}
+  tr:nth-child(even) td{background:#F0FAF4}
+  .card{border:none!important;box-shadow:none!important;padding:0!important;margin-bottom:14px}
+  .ct{font-weight:700;color:var(--g);font-size:11pt;margin-bottom:6px}
+  .g4{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+  @media print{@page{margin:5mm 8mm} .card{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+  <div style="text-align:center;padding:10px;border-bottom:3px solid #1B6B3A;margin-bottom:14px">
+    <img src="/logo.png" style="width:60px;height:60px;object-fit:contain;margin-bottom:5px">
+    <div style="font-size:18px;font-weight:700;color:#1B6B3A">الجامعة الأردنية</div>
+    <div style="font-size:12px;font-weight:600;color:#333;margin:2px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
+    <div style="background:#1B6B3A;color:#fff;padding:6px 20px;border-radius:6px;display:inline-block;margin:8px 0;font-size:14px;font-weight:700">تقرير تقييم الفعاليات</div>
+    <div style="font-size:11px;color:#333;font-weight:600">الجهة: ${orgLabel} — الفترة: ${pLabel}</div>
+    <div style="font-size:10px;color:#aaa;margin-top:2px">تاريخ الإصدار: ${today()}</div>
+  </div>
+  ${summaryHTML}
+  ${outHTML}
+</body></html>`;
+  printDocument(fullDoc);
 }
 
 function exportEvalReport() {
