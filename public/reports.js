@@ -663,10 +663,18 @@ function renderEvalReport() {
         <td style="padding:6px 9px;border:1px solid #eee">${r.organizer||''}</td>
         <td style="padding:6px 9px;border:1px solid #eee;text-align:center">${r.count}</td>
         <td style="padding:6px 9px;border:1px solid #eee;text-align:center;font-weight:700;color:${r.avg<3?'#8A1F1F':'#1B6B3A'}">${r.avg.toFixed(2)}</td>
-        <td style="padding:6px 9px;border:1px solid #eee;text-align:center"><button class="btn btn-sm" onclick="viewEvalActivity('${r.id}')" title="عرض تفاصيل الأسئلة وطباعة تقرير هذا النشاط">👁️ عرض/طباعة</button></td>
+        <td style="padding:6px 9px;border:1px solid #eee;text-align:center"><button class="btn btn-sm" onclick="viewEvalActivity('${r.id}')" title="عرض تفاصيل الأسئلة وطباعة تقرير هذا النشاط">👁️ عرض/طباعة</button>${(typeof ME!=='undefined'&&ME.role==='admin')?` <button class="btn btn-sm btn-r" onclick="delEvalRecord('${r.id}')" title="حذف سجل الاستبانة نهائياً — يتوقف رابط التقييم فوراً">🗑</button>`:''}</td>
       </tr>`).join('')}</tbody>
     </table>
   </div>`;
+}
+
+async function delEvalRecord(id) {
+  if (!confirm('هل تريد حذف سجل استبانة هذا النشاط نهائياً؟ سيتوقف رابط التقييم عن العمل فوراً وستُحذف كل الإجابات المسجَّلة فيه.')) return;
+  const r = await api('/api/activity_evaluations/'+id, 'DELETE');
+  if (r && r.error) { alert(r.error); return; }
+  _evalReportData = (await api('/api/activity_evaluations')) || [];
+  renderEvalReport();
 }
 
 function _evalActivityQuestionAverages(rec) {
