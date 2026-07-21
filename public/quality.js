@@ -188,7 +188,47 @@ function showQForm(table, record=null) {
       if(btns) card.insertBefore(div,btns); else card.appendChild(div);
     }
   }
+  // بطاقة رابط استبانة تقييم الفعالية (للأنشطة الطلابية الداخلية والخارجية، إن وُجد سجل مرتبط)
+  const prevEval=document.getElementById('qf-evalcard-'+table); if(prevEval) prevEval.remove();
+  if((table==='student_activities'||table==='student_activities_external') && record && record.request_id){
+    const card=f.querySelector('.card');
+    if(card){
+      const div=document.createElement('div');
+      div.id='qf-evalcard-'+table;
+      div.style.cssText='grid-column:1/-1;background:#EEF6FC;border:1px solid #CFE6F7;border-radius:var(--r);padding:12px;margin-top:8px';
+      div.innerHTML='<div style="font-weight:700;color:#1B5E9A;font-size:12px;margin-bottom:6px">📋 استبانة تقييم الفعالية</div><div style="font-size:11.5px;color:#1B5E9A">جارٍ تحميل رابط الاستبانة...</div>';
+      const btns=card.querySelector('div[style*="justify-content:flex-end"]');
+      if(btns) card.insertBefore(div,btns); else card.appendChild(div);
+      renderEvalCard(table, record.request_id);
+    }
+  }
   f.scrollIntoView({behavior:'smooth'});
+}
+
+const EVAL_SCALE_SCORES = {'ممتازة':5,'جيدة جداً':4,'جيد':3,'مقبول':2,'ضعيف':1};
+
+async function renderEvalCard(table, requestId) {
+  const box=document.getElementById('qf-evalcard-'+table); if(!box) return;
+  const r = await api('/api/eval-by-request/'+requestId);
+  if(!r){ box.innerHTML='<div style="font-size:11.5px;color:#1B5E9A">لا يوجد سجل استبانة مرتبط بهذا النشاط بعد.</div>'; return; }
+  const link = `${location.origin}/eval.html?id=${r.id}`;
+  const responses = r.responses||[];
+  const cnt = responses.length;
+  let avgLine = '<span style="color:#888">لا توجد إجابات بعد</span>';
+  if(cnt){
+    let total=0, n=0;
+    responses.forEach(resp=>{ (resp.answers||[]).forEach(a=>{ if(EVAL_SCALE_SCORES[a]){ total+=EVAL_SCALE_SCORES[a]; n++; } }); });
+    const avg = n ? (total/n).toFixed(2) : '-';
+    avgLine = `متوسط التقييم العام: <b>${avg}</b> من 5 — عدد الإجابات: <b>${cnt}</b>`;
+  }
+  box.innerHTML = `
+    <div style="font-weight:700;color:#1B5E9A;font-size:12px;margin-bottom:8px">📋 استبانة تقييم الفعالية</div>
+    <div style="font-size:11.5px;color:#1B5E9A;margin-bottom:8px">${avgLine}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input type="text" readonly value="${link}" onclick="this.select()" style="flex:1;min-width:220px;font-size:11.5px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:#F9FAFB">
+      <button class="btn btn-sm btn-g" onclick="copyRegLink('${link}')">📋 نسخ رابط الاستبانة</button>
+      <button class="btn btn-sm" onclick="renderEvalCard('${table}','${requestId}')">🔄 تحديث</button>
+    </div>`;
 }
 
 async function saveQ(table) {

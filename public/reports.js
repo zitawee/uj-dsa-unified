@@ -559,6 +559,132 @@ ${content.innerHTML}
 // ══════════════════════════════════════════
 let _catReportData = [];
 
+let _evalReportData = [];
+
+async function loadEvalReport() {
+  const panel = document.getElementById('panel-eval_report');
+  panel.innerHTML = `
+  <div class="ph">
+    <div><div class="pt"><i class="ti ti-clipboard-list"></i> تقرير تقييم الفعاليات</div><div class="ps">ملخص نتائج استبانات تقييم الفعاليات لكل نشاط</div></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-b" onclick="exportEvalReport()"><i class="ti ti-file-spreadsheet"></i>تصدير Excel</button>
+    </div>
+  </div>
+  <div class="card" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+    <div class="fg" style="margin:0;min-width:220px">
+      <label>الجهة المنظِّمة</label>
+      <select id="ev-org" onchange="renderEvalReport()" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;width:100%">
+        <option value="">كل الجهات</option>
+        ${(typeof DEANSHIP_DEPTS!=='undefined'?DEANSHIP_DEPTS:[]).map(d=>`<option value="${d}">${d}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg" style="margin:0"><label>من تاريخ</label><input type="date" id="ev-from" onchange="renderEvalReport()"></div>
+    <div class="fg" style="margin:0"><label>إلى تاريخ</label><input type="date" id="ev-to" onchange="renderEvalReport()"></div>
+  </div>
+  <div id="ev-summary"></div>
+  <div id="ev-out"></div>`;
+
+  _evalReportData = (await api('/api/activity_evaluations')) || [];
+  renderEvalReport();
+}
+
+function _evalFilteredRows() {
+  const org  = document.getElementById('ev-org')?.value || '';
+  const from = document.getElementById('ev-from')?.value || '';
+  const to   = document.getElementById('ev-to')?.value || '';
+  let rows = (Array.isArray(_evalReportData) ? _evalReportData : []).filter(r => (r.responses||[]).length);
+  if (org)  rows = rows.filter(r => r.organizer === org);
+  if (from) rows = rows.filter(r => (r.date||'') >= from);
+  if (to)   rows = rows.filter(r => (r.date||'') <= to);
+  return rows;
+}
+
+function renderEvalReport() {
+  const summaryEl = document.getElementById('ev-summary');
+  const out = document.getElementById('ev-out');
+  if (!out) return;
+  const rows = _evalFilteredRows();
+
+  if (!rows.length) {
+    summaryEl.innerHTML = '';
+    out.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted)">لا توجد استبانات مكتملة ضمن الفلاتر الحالية.</div>`;
+    return;
+  }
+
+  const activityRows = rows.map(r => {
+    let total = 0, n = 0;
+    (r.responses||[]).forEach(resp => { (resp.answers||[]).forEach(a => { if (EVAL_SCALE_SCORES[a]) { total += EVAL_SCALE_SCORES[a]; n++; } }); });
+    return { activity: r.activity, date: r.date, organizer: r.organizer, count: (r.responses||[]).length, avg: n ? (total/n) : 0 };
+  }).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  const qTotals = new Array(EVAL_QUESTIONS.length).fill(0);
+  const qCounts = new Array(EVAL_QUESTIONS.length).fill(0);
+  rows.forEach(r => {
+    (r.responses||[]).forEach(resp => {
+      (resp.answers||[]).forEach((a, qi) => { if (EVAL_SCALE_SCORES[a]) { qTotals[qi] += EVAL_SCALE_SCORES[a]; qCounts[qi]++; } });
+    });
+  });
+  const totalResponses = rows.reduce((s,r) => s + (r.responses||[]).length, 0);
+  const overallAvg = activityRows.reduce((s,r) => s + r.avg*r.count, 0) / (totalResponses || 1);
+
+  summaryEl.innerHTML = `
+  <div class="g4" style="margin-bottom:14px">
+    <div style="background:#EAF3DE;border-radius:var(--r);padding:14px;text-align:center"><div style="font-size:24px;font-weight:700;color:#1B6B3A">${activityRows.length}</div><div style="font-size:11px;color:#1B6B3A;margin-top:4px">نشاط مُقيَّم</div></div>
+    <div style="background:#E8F4FD;border-radius:var(--r);padding:14px;text-align:center"><div style="font-size:24px;font-weight:700;color:#1B5E9A">${totalResponses}</div><div style="font-size:11px;color:#1B5E9A;margin-top:4px">إجمالي الإجابات</div></div>
+    <div style="background:#FAEEDA;border-radius:var(--r);padding:14px;text-align:center"><div style="font-size:24px;font-weight:700;color:#633806">${overallAvg.toFixed(2)}</div><div style="font-size:11px;color:#633806;margin-top:4px">المتوسط العام من 5</div></div>
+  </div>`;
+
+  out.innerHTML = `
+  <div class="card">
+    <div class="ct">متوسط كل سؤال عبر كل الأنشطة المُقيَّمة</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#F0FAF4"><th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:right">السؤال</th><th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center;width:100px">المتوسط</th></tr></thead>
+      <tbody>${EVAL_QUESTIONS.map((q,qi) => {
+        const avg = qCounts[qi] ? (qTotals[qi]/qCounts[qi]) : null;
+        return `<tr><td style="padding:6px 9px;border:1px solid #eee">${q}</td><td style="padding:6px 9px;border:1px solid #eee;text-align:center;font-weight:700;color:${avg!==null&&avg<3?'#8A1F1F':'#1B6B3A'}">${avg!==null?avg.toFixed(2):'-'}</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="ct">تفاصيل حسب النشاط</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#F0FAF4">
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:right">النشاط</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center">التاريخ</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:right">الجهة</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center">عدد الإجابات</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center">المتوسط</th>
+      </tr></thead>
+      <tbody>${activityRows.map(r => `<tr>
+        <td style="padding:6px 9px;border:1px solid #eee">${r.activity||''}</td>
+        <td style="padding:6px 9px;border:1px solid #eee;text-align:center">${r.date||''}</td>
+        <td style="padding:6px 9px;border:1px solid #eee">${r.organizer||''}</td>
+        <td style="padding:6px 9px;border:1px solid #eee;text-align:center">${r.count}</td>
+        <td style="padding:6px 9px;border:1px solid #eee;text-align:center;font-weight:700;color:${r.avg<3?'#8A1F1F':'#1B6B3A'}">${r.avg.toFixed(2)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function exportEvalReport() {
+  const rows = _evalFilteredRows();
+  if (!rows.length) { alert('لا توجد بيانات للتصدير ضمن الفلاتر الحالية'); return; }
+
+  const sheetRows = [];
+  rows.forEach(r => {
+    (r.responses||[]).forEach(resp => {
+      const row = { 'النشاط': r.activity||'', 'التاريخ': r.date||'', 'الجهة المنظِّمة': r.organizer||'', 'الرقم الجامعي': resp.uni_id||'' };
+      EVAL_QUESTIONS.forEach((q, qi) => { row[q] = (resp.answers && resp.answers[qi]) || ''; });
+      row['ملاحظات'] = resp.comments || '';
+      sheetRows.push(row);
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(sheetRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'تقييم الفعاليات');
+  XLSX.writeFile(wb, `تقرير_تقييم_الفعاليات_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
 async function loadCategoryReport() {
   const panel = document.getElementById('panel-cat_report');
   const cats = (typeof ACTIVITY_CATEGORIES!=='undefined') ? ACTIVITY_CATEGORIES : [];

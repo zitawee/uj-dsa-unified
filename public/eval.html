@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استمارة تقييم فعالية — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  .wrap{max-width:720px;margin:0 auto;padding:16px 14px 48px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:14px}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0 0 4px;line-height:1.6}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input,textarea{
+    width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);
+    font-size:16px;margin-bottom:6px;font-family:inherit;-webkit-appearance:none;appearance:none;
+    min-height:44px
+  }
+  textarea{min-height:70px;resize:vertical}
+  button{
+    width:100%;padding:13px 18px;border:none;border-radius:var(--r);background:var(--g);color:#fff;
+    font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px
+  }
+  button:disabled{opacity:.6;cursor:default}
+  #captchaQ{font-weight:700;color:var(--g)}
+  #f-captcha{max-width:160px}
+  .msg{margin-top:10px;font-size:12.5px;border-radius:var(--r);padding:10px 12px;display:none;line-height:1.6}
+  .ok{background:#EAF3DE;color:#27500A;border:1px solid #cfe3bd}
+  .err{background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5}
+  .done-box{background:#fff;border:2px solid var(--g);border-radius:12px;padding:26px 18px;text-align:center}
+  .info-box{background:#EAF3DE;border:1px solid #cfe3bd;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#27500A;line-height:1.7}
+  .center{text-align:center;color:var(--muted);font-size:13px;padding:30px 10px}
+  .qnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--g);color:#fff;font-size:11px;font-weight:700;flex:none}
+  .qrow{border-bottom:1px solid var(--border);padding:14px 0}
+  .qrow:last-child{border-bottom:none}
+  .qtitle{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;font-size:13px;font-weight:600;line-height:1.5}
+  .scale{display:flex;flex-wrap:wrap;gap:6px}
+  .scale-btn{
+    flex:1 1 auto;min-width:70px;text-align:center;padding:9px 6px;border:1.5px solid var(--border);border-radius:8px;
+    font-size:11.5px;font-weight:600;cursor:pointer;color:#444;background:#fafafa;user-select:none;transition:.12s
+  }
+  .scale-btn.sel{background:var(--g);border-color:var(--g);color:#fff}
+  @media(max-width:480px){ .scale-btn{min-width:58px;font-size:10.5px;padding:8px 4px} }
+</style>
+</head>
+<body>
+<header>📋 عمادة شؤون الطلبة — استمارة تقييم فعالية</header>
+<div class="wrap">
+
+  <div id="loadingArea" class="card center">جارٍ التحقق من الرابط...</div>
+
+  <div id="invalidArea" style="display:none" class="card center">
+    ❌ هذا الرابط غير صالح أو تمت إزالة النشاط المرتبط به. يرجى التواصل مع الجهة المنظِّمة للتأكد من الرابط الصحيح.
+  </div>
+
+  <div id="formWrap" style="display:none">
+    <div class="card">
+      <h1>استمارة تقييم فعالية</h1>
+      <p class="sub">
+        حرصاً من مركز الاعتماد وضمان الجودة بالجامعة الأردنية على قياس مستوى الأداء للفعاليات التي يتم تنظيمها داخل حرم الجامعة الأردنية، تم وضع هذا الاستبيان لتتعرَّف اللجنة العليا المنظِّمة على آراء المشاركين حول الإيجابيات وأوجه الاستفادة لتفعيلها مستقبلاً، وعلى السلبيات لمحاولة تلافيها مستقبلاً. وإذ تشكر اللجنة تفضّلكم بتقديم الثمين من وقتكم لاستيفاء هذا الاستبيان راجياً منكم الإجابة على جميع البنود.
+      </p>
+      <div class="info-box" id="activityInfo"></div>
+    </div>
+
+    <div id="formArea">
+      <div class="card">
+        <label>الرقم الجامعي *</label>
+        <input id="f-uniid" type="text" placeholder="أدخل رقمك الجامعي">
+      </div>
+
+      <div class="card" id="questionsCard"></div>
+
+      <div class="card">
+        <label>ملاحظات ومقترحات (اختياري)</label>
+        <textarea id="f-comments" placeholder="أي ملاحظات أو مقترحات لتطوير الفعاليات القادمة..."></textarea>
+      </div>
+
+      <div class="card">
+        <label id="captchaLbl">كم يساوي <span id="captchaQ">...</span> ؟ *</label>
+        <input id="f-captcha" type="number" style="max-width:140px">
+        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+          <button id="submitBtn" onclick="submitEval()">📨 إرسال التقييم</button>
+        </div>
+        <div id="msg" class="msg"></div>
+      </div>
+    </div>
+
+    <div id="doneArea" style="display:none">
+      <div class="done-box">
+        <div style="font-size:14px;color:var(--g);font-weight:700">✅ تم إرسال تقييمك بنجاح</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:6px">شاكرين لك وقتك في تقييم هذه الفعالية.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// يجب أن تطابق حرفياً EVAL_QUESTIONS/EVAL_SCALE في server.js
+const EVAL_QUESTIONS = [
+  'طريقة الإعلان عن الفعالية مناسبة',
+  'تم دعوتي للحضور قبل مدة مناسبة',
+  'برنامج الفعالية وأهدافها واضحة ومحكمة',
+  'مدة وتوقيت الفعالية مناسب',
+  'الموضوعات التي تضمّنتها الفعالية مرتبطة بالأهداف وحقّقتها',
+  'موضوعات الفعالية متكاملة وتسير في تسلسل منطقي',
+  'موضوعات الفعالية مثيرة ومرتبطة باهتماماتي',
+  'تم إعطاء الفرصة للمشاركين للاستفسار وتقديم المقترحات',
+  'أضافت الفعالية لي معارف وخبرات جديدة',
+  'تم التعامل مع المشاركين باحترام ومهنية',
+  'مكان الفعالية مناسب',
+  'أنا راضٍ عن الفعالية بشكل عام',
+];
+const EVAL_SCALE = ['ممتازة','جيدة جداً','جيد','مقبول','ضعيف'];
+
+const answers = new Array(EVAL_QUESTIONS.length).fill(null);
+
+function renderQuestions() {
+  const card = document.getElementById('questionsCard');
+  card.innerHTML = EVAL_QUESTIONS.map((q, qi) => `
+    <div class="qrow">
+      <div class="qtitle"><span class="qnum">${qi+1}</span><span>${q}</span></div>
+      <div class="scale" id="scale-${qi}">
+        ${EVAL_SCALE.map((opt, oi) => `<div class="scale-btn" data-q="${qi}" data-o="${oi}" onclick="selectAnswer(${qi},${oi})">${opt}</div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function selectAnswer(qi, oi) {
+  answers[qi] = EVAL_SCALE[oi];
+  document.querySelectorAll(`#scale-${qi} .scale-btn`).forEach(b => b.classList.remove('sel'));
+  document.querySelector(`#scale-${qi} .scale-btn[data-o="${oi}"]`).classList.add('sel');
+}
+renderQuestions();
+
+const params = new URLSearchParams(location.search);
+const EID = params.get('id');
+
+let CAPTCHA_TOKEN=null;
+async function loadCaptcha(){
+  const res = await fetch('/api/public/captcha');
+  const data = await res.json();
+  CAPTCHA_TOKEN = data.token;
+  document.getElementById('captchaQ').textContent = data.question;
+}
+
+function v(id){ return document.getElementById(id).value.trim(); }
+function showMsg(txt, err){
+  const el=document.getElementById('msg');
+  el.textContent=txt; el.className='msg '+(err?'err':'ok'); el.style.display='block';
+}
+
+async function init(){
+  if(!EID){
+    document.getElementById('loadingArea').style.display='none';
+    document.getElementById('invalidArea').style.display='block';
+    return;
+  }
+  try{
+    const res = await fetch('/api/public/eval-info/'+EID);
+    const r = await res.json();
+    if(!res.ok){
+      document.getElementById('loadingArea').style.display='none';
+      document.getElementById('invalidArea').style.display='block';
+      return;
+    }
+    document.getElementById('activityInfo').innerHTML =
+      `📌 النشاط: <b>${r.activity||'—'}</b><br>📅 التاريخ: <b>${r.date||'—'}</b>` +
+      (r.organizer?`<br>🏛️ الجهة المنظِّمة: <b>${r.organizer}</b>`:'');
+    document.getElementById('loadingArea').style.display='none';
+    document.getElementById('formWrap').style.display='block';
+    loadCaptcha();
+  }catch(e){
+    document.getElementById('loadingArea').style.display='none';
+    document.getElementById('invalidArea').style.display='block';
+  }
+}
+init();
+
+async function submitEval(){
+  const uniId = v('f-uniid');
+  if(!uniId){ showMsg('يرجى إدخال الرقم الجامعي', true); return; }
+  if(answers.some(a => a===null)){ showMsg('يرجى الإجابة على جميع الأسئلة (' + (EVAL_QUESTIONS.length - answers.filter(a=>a!==null).length) + ' سؤال متبقٍّ)', true); return; }
+  if(!v('f-captcha')){ showMsg('يرجى الإجابة على سؤال التحقق', true); return; }
+
+  const data = {
+    uni_id: uniId, answers, comments: v('f-comments'),
+    captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
+  };
+
+  const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='جارٍ الإرسال...';
+  try{
+    const res = await fetch('/api/public/eval/'+EID+'/submit', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+    });
+    const r = await res.json();
+    if(!res.ok){ showMsg(r.error||'تعذر إرسال التقييم', true); btn.disabled=false; btn.textContent='📨 إرسال التقييم'; loadCaptcha(); return; }
+    document.getElementById('formArea').style.display='none';
+    document.getElementById('doneArea').style.display='block';
+  }catch(e){
+    showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
+    btn.disabled=false; btn.textContent='📨 إرسال التقييم';
+  }
+}
+</script>
+</body>
+</html>
