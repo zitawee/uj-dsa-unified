@@ -66,6 +66,18 @@ function buildParticipantsRecordFromRequest(req) {
   };
 }
 
+// بناء سجل «استبانة تقييم فعالية» المُرحَّل من طلب معتمد (بالحقول المشتركة فقط، بدون إجابات بعد)
+function buildEvalRecordFromRequest(req) {
+  return {
+    activity:   req.title || '',
+    date:       req.activity_date || '',
+    organizer:  req.organizer || '',
+    responses:  [],
+    request_id: String(req._id),
+    source:     `مُرحَّل من طلب نشاط رقم ${req._id} — ${req.title}`,
+  };
+}
+
 // دوائر العمادة (يجب أن تطابق حرفياً قائمة DEANSHIP_DEPTS في public/app.js)
 const DEANSHIP_DEPTS = [
   'دائرة الهيئات والخدمات الطلابية',
@@ -86,7 +98,7 @@ const TABLES = [
   'staff_training','staff_innovation','staff_honors','uni_committees',
   'environment','dialogues','campaigns',
   'activity_requests','announcements','hall_bookings',
-  'participants','committees','meeting_invites','meeting_minutes'
+  'participants','committees','meeting_invites','meeting_minutes','activity_evaluations'
 ];
 
 const models = {};
@@ -245,6 +257,73 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// أسئلة استبانة تقييم الفعالية الاثني عشر (يجب أن تطابق حرفياً قائمة EVAL_QUESTIONS في public/eval.html)
+const EVAL_QUESTIONS = [
+  'طريقة الإعلان عن الفعالية مناسبة',
+  'تم دعوتي للحضور قبل مدة مناسبة',
+  'برنامج الفعالية وأهدافها واضحة ومحكمة',
+  'مدة وتوقيت الفعالية مناسب',
+  'الموضوعات التي تضمّنتها الفعالية مرتبطة بالأهداف وحقّقتها',
+  'موضوعات الفعالية متكاملة وتسير في تسلسل منطقي',
+  'موضوعات الفعالية مثيرة ومرتبطة باهتماماتي',
+  'تم إعطاء الفرصة للمشاركين للاستفسار وتقديم المقترحات',
+  'أضافت الفعالية لي معارف وخبرات جديدة',
+  'تم التعامل مع المشاركين باحترام ومهنية',
+  'مكان الفعالية مناسب',
+  'أنا راضٍ عن الفعالية بشكل عام',
+];
+// خيارات الإجابة الخمسة (يجب أن تطابق حرفياً قائمة EVAL_SCALE في public/eval.html)
+const EVAL_SCALE = ['ممتازة','جيدة جداً','جيد','مقبول','ضعيف'];
+
+// ══ رابط عام لاستبانة تقييم فعالية (بدون تسجيل دخول) ══
+app.get('/api/public/eval-info/:id', async (req, res) => {
+  try {
+    const doc = await models['activity_evaluations'].findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'رابط غير صالح أو تمت إزالة النشاط' });
+    res.json({
+      activity: doc.activity || '', date: doc.date || '', organizer: doc.organizer || '',
+      response_count: Array.isArray(doc.responses) ? doc.responses.length : 0,
+    });
+  } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
+});
+
+// يضيف إجابة استبانة واحدة — كابتشا فقط (بلا حدّ معدّل، بنفس سياسة apply/register) + منع التكرار بالرقم الجامعي
+app.post('/api/public/eval/:id/submit', async (req, res) => {
+  try {
+    const { captcha_token, captcha_answer } = req.body;
+    const cap = publicCaptchas[captcha_token];
+    if (!cap || Date.now() > cap.expires || Number(captcha_answer) !== cap.answer)
+      return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[captcha_token];
+
+    const doc = await models['activity_evaluations'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'رابط الاستبانة غير صالح' });
+
+    const uniId = (req.body.uni_id || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+
+    const responses = Array.isArray(doc.responses) ? doc.responses : [];
+    if (responses.some(r => (r.uni_id || '').trim() === uniId))
+      return res.status(400).json({ error: 'لقد قمتِ/قمتَ بتعبئة هذه الاستبانة مسبقاً بنفس الرقم الجامعي' });
+
+    const answers = Array.isArray(req.body.answers) ? req.body.answers : [];
+    if (answers.length !== EVAL_QUESTIONS.length || answers.some(a => !EVAL_SCALE.includes(a)))
+      return res.status(400).json({ error: 'يرجى الإجابة على جميع الأسئلة' });
+
+    responses.push({
+      uni_id: uniId,
+      answers,
+      comments: (req.body.comments || '').trim(),
+      submitted_at: new Date().toISOString(),
+    });
+    doc.responses = responses;
+    doc.markModified('responses');
+    await doc.save();
+
+    res.json({ ok: true, message: 'تم إرسال تقييمك بنجاح، شاكرين لك وقتك', count: responses.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 function auth(roles = []) {
   return (req, res, next) => {
     const u = sessions[(req.headers.authorization||'').replace('Bearer ','')];
@@ -392,6 +471,7 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
       });
       await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
       await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
+      await models['activity_evaluations'].create({ ...buildEvalRecordFromRequest(doc), created_by: req.user.username });
       return res.json({ message: 'تم الاعتماد المباشر بنجاح' });
     }
 
@@ -445,6 +525,7 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
         await Model.findByIdAndUpdate(doc._id, { status: 'approved', approved_by: req.user.fullName, approved_at: now, approval_note: note || '', categories });
         await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
         await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
+        await models['activity_evaluations'].create({ ...buildEvalRecordFromRequest(doc), created_by: req.user.username });
         return res.json({ message: 'تم الاعتماد النهائي بنجاح' });
       }
       if (action === 'reject') {
@@ -626,6 +707,15 @@ app.get('/api/export/:table', auth(), async (req, res) => {
 });
 
 // ══ الأرشفة السنوية: تصدير نسخة كاملة من كل بيانات النظام (بدون حسابات المستخدمين) ══
+// يبحث عن سجل استبانة تقييم الفعالية المرتبط بنفس طلب النشاط الأصلي (لعرض بطاقة الرابط الفورية في شاشة الأنشطة الطلابية)
+app.get('/api/eval-by-request/:requestId', auth(), async (req, res) => {
+  try {
+    const doc = await models['activity_evaluations'].findOne({ request_id: req.params.requestId }).lean();
+    if (!doc) return res.json(null);
+    res.json({ id: doc._id, activity: doc.activity, date: doc.date, organizer: doc.organizer, responses: doc.responses || [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/export-archive', auth(['admin']), async (req, res) => {
   try {
     const dump = {};
