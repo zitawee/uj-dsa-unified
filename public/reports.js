@@ -615,7 +615,7 @@ function renderEvalReport() {
   const activityRows = rows.map(r => {
     let total = 0, n = 0;
     (r.responses||[]).forEach(resp => { (resp.answers||[]).forEach(a => { if (EVAL_SCALE_SCORES[a]) { total += EVAL_SCALE_SCORES[a]; n++; } }); });
-    return { activity: r.activity, date: r.date, organizer: r.organizer, count: (r.responses||[]).length, avg: n ? (total/n) : 0 };
+    return { id: r.id, activity: r.activity, date: r.date, organizer: r.organizer, count: (r.responses||[]).length, avg: n ? (total/n) : 0 };
   }).sort((a,b) => (b.date||'').localeCompare(a.date||''));
 
   const qTotals = new Array(EVAL_QUESTIONS.length).fill(0);
@@ -655,6 +655,7 @@ function renderEvalReport() {
         <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:right">الجهة</th>
         <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center">عدد الإجابات</th>
         <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center">المتوسط</th>
+        <th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center">الإجراءات</th>
       </tr></thead>
       <tbody>${activityRows.map(r => `<tr>
         <td style="padding:6px 9px;border:1px solid #eee">${r.activity||''}</td>
@@ -662,9 +663,100 @@ function renderEvalReport() {
         <td style="padding:6px 9px;border:1px solid #eee">${r.organizer||''}</td>
         <td style="padding:6px 9px;border:1px solid #eee;text-align:center">${r.count}</td>
         <td style="padding:6px 9px;border:1px solid #eee;text-align:center;font-weight:700;color:${r.avg<3?'#8A1F1F':'#1B6B3A'}">${r.avg.toFixed(2)}</td>
+        <td style="padding:6px 9px;border:1px solid #eee;text-align:center"><button class="btn btn-sm" onclick="viewEvalActivity('${r.id}')" title="عرض تفاصيل الأسئلة وطباعة تقرير هذا النشاط">👁️ عرض/طباعة</button></td>
       </tr>`).join('')}</tbody>
     </table>
   </div>`;
+}
+
+function _evalActivityQuestionAverages(rec) {
+  const responses = rec.responses || [];
+  const qTotals = new Array(EVAL_QUESTIONS.length).fill(0);
+  const qCounts = new Array(EVAL_QUESTIONS.length).fill(0);
+  responses.forEach(resp => {
+    (resp.answers||[]).forEach((a, qi) => { if (EVAL_SCALE_SCORES[a]) { qTotals[qi] += EVAL_SCALE_SCORES[a]; qCounts[qi]++; } });
+  });
+  let total = 0, n = 0;
+  qTotals.forEach((t, qi) => { total += t; n += qCounts[qi]; });
+  return { qTotals, qCounts, responses, overallAvg: n ? (total/n) : 0 };
+}
+
+function viewEvalActivity(id) {
+  const rec = (_evalReportData||[]).find(r => r.id === id);
+  if (!rec) { alert('تعذر العثور على بيانات هذا النشاط'); return; }
+  const { qTotals, qCounts, responses, overallAvg } = _evalActivityQuestionAverages(rec);
+
+  let ov = document.getElementById('mod-eval-view');
+  if (!ov) { ov = document.createElement('div'); ov.className = 'modal-ov'; ov.id = 'mod-eval-view'; document.body.appendChild(ov); }
+  const rowsHTML = EVAL_QUESTIONS.map((q, qi) => {
+    const avg = qCounts[qi] ? (qTotals[qi]/qCounts[qi]) : null;
+    return `<tr><td style="padding:6px 9px;border:1px solid #eee">${q}</td><td style="padding:6px 9px;border:1px solid #eee;text-align:center;font-weight:700;color:${avg!==null&&avg<3?'#8A1F1F':'#1B6B3A'}">${avg!==null?avg.toFixed(2):'-'}</td></tr>`;
+  }).join('');
+  ov.innerHTML = `
+    <div class="modal" style="max-width:600px;max-height:88vh;overflow-y:auto">
+      <h3>📋 تفاصيل تقييم: ${rec.activity||''}</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        📅 ${rec.date||'—'} &nbsp;|&nbsp; 🏛️ ${rec.organizer||'—'} &nbsp;|&nbsp; عدد الإجابات: <b>${responses.length}</b> &nbsp;|&nbsp; المتوسط العام: <b>${overallAvg.toFixed(2)}</b> من 5
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px">
+        <thead><tr style="background:#F0FAF4"><th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:right">السؤال</th><th style="padding:6px 9px;border:1px solid #C6E8D3;text-align:center;width:90px">المتوسط</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="closeEvalViewModal()">إغلاق</button>
+        <button class="btn btn-b" onclick="printSingleEvalActivity('${id}')"><i class="ti ti-printer"></i> طباعة تقرير هذا النشاط</button>
+      </div>
+    </div>`;
+  ov.classList.add('open');
+}
+
+function closeEvalViewModal() { const ov = document.getElementById('mod-eval-view'); if (ov) ov.classList.remove('open'); }
+
+function printSingleEvalActivity(id) {
+  const rec = (_evalReportData||[]).find(r => r.id === id);
+  if (!rec) return;
+  const { qTotals, qCounts, responses, overallAvg } = _evalActivityQuestionAverages(rec);
+
+  const rowsHTML = EVAL_QUESTIONS.map((q, qi) => {
+    const avg = qCounts[qi] ? (qTotals[qi]/qCounts[qi]) : null;
+    return `<tr><td style="padding:6px 9px;border:1px solid #ccc">${q}</td><td style="padding:6px 9px;border:1px solid #ccc;text-align:center;font-weight:700">${avg!==null?avg.toFixed(2):'-'}</td></tr>`;
+  }).join('');
+
+  const fullDoc = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير تقييم نشاط — ${rec.activity||''}</title>
+<style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
+  img{max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+  th{background:#1B6B3A;color:#fff;padding:4px 6px;text-align:right;border:1px solid #ccc}
+  td{padding:4px 6px;border:1px solid #ccc}
+  tr:nth-child(even) td{background:#F0FAF4}
+  @media print{@page{margin:5mm 8mm}}
+</style>
+</head>
+<body>
+  <div style="text-align:center;padding:10px;border-bottom:3px solid #1B6B3A;margin-bottom:14px">
+    <img src="/logo.png" style="width:60px;height:60px;object-fit:contain;margin-bottom:5px">
+    <div style="font-size:18px;font-weight:700;color:#1B6B3A">الجامعة الأردنية</div>
+    <div style="font-size:12px;font-weight:600;color:#333;margin:2px 0">عمادة شؤون الطلبة — Dean of Student Affairs</div>
+    <div style="background:#1B6B3A;color:#fff;padding:6px 20px;border-radius:6px;display:inline-block;margin:8px 0;font-size:14px;font-weight:700">تقرير تقييم فعالية</div>
+    <div style="font-size:13px;font-weight:700;color:#333;margin-top:4px">${rec.activity||''}</div>
+    <div style="font-size:11px;color:#333">📅 ${rec.date||''} &nbsp;|&nbsp; 🏛️ ${rec.organizer||''}</div>
+    <div style="font-size:10px;color:#aaa;margin-top:2px">تاريخ الإصدار: ${today()}</div>
+  </div>
+  <div style="text-align:center;margin-bottom:12px;font-size:11pt">
+    عدد الإجابات: <b>${responses.length}</b> &nbsp;&nbsp;|&nbsp;&nbsp; المتوسط العام: <b>${overallAvg.toFixed(2)}</b> من 5
+  </div>
+  <table>
+    <thead><tr><th>السؤال</th><th style="width:90px">المتوسط</th></tr></thead>
+    <tbody>${rowsHTML}</tbody>
+  </table>
+</body></html>`;
+  printDocument(fullDoc);
 }
 
 function printEvalReport() {
