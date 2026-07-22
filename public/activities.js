@@ -382,24 +382,8 @@ function vrow(label, val, color) {
 }
 function vsec(title) { return `<div style="font-size:12.5px;font-weight:700;color:var(--g);margin:16px 0 4px">${title}</div>`; }
 
-async function viewAR(id) {
-  const r=await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات الطلب');return;}
-  const saList=await getCombinedActivitiesList();
-  const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
-  const existing=document.getElementById('view-ar-modal'); if(existing) existing.remove();
-  const modal=document.createElement('div');
-  modal.id='view-ar-modal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
-  modal.innerHTML=`
-  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:680px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
-      <div>
-        <div style="font-size:16px;font-weight:700;color:var(--g)">👁️ ${r.title||'-'}</div>
-        <div style="margin-top:6px">${stBadge(r.status||'pending')} ${r.ref_code?`<span style="font-size:11px;color:var(--muted);margin-right:8px">${r.ref_code}</span>`:''} ${r.submitted_via==='public_link'?`<span style="font-size:11px;color:#8A4B0F;margin-right:8px">🌐 من الرابط العام</span>`:''}</div>
-      </div>
-      <button onclick="document.getElementById('view-ar-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);flex-shrink:0">✕</button>
-    </div>
-
+function arViewBodyHTML(r, cats) {
+  return `
     ${vsec('بيانات النشاط')}
     ${vrow('نوع النشاط', r.type)}
     ${vrow('وصف النشاط', r.description)}
@@ -440,8 +424,27 @@ async function viewAR(id) {
     ${vrow('إرجاع العميد للمدير', r.dean_return_note ? `${r.dean_return_by||''} — ${r.dean_return_note}` : '', '#8A4B0F')}
     ${vrow('سبب الرفض النهائي', r.rejection_note ? `(${r.rejected_stage==='coordinator'?'من المنسّق':'من المدير'}) ${r.rejection_note}` : '', '#791F1F')}
     ${vrow('إعادة فتح الطلب', r.reopened_by ? `${r.reopened_by} — ${(r.reopened_at||'').split('T')[0]||r.reopened_at}` : '', '#1B6B3A')}
-    ${r.admin_override?vrow('ملاحظة', 'تم الاعتماد مباشرة من مدير النظام (تجاوز التسلسل)', '#5B4636'):''}
+    ${r.admin_override?vrow('ملاحظة', 'تم الاعتماد مباشرة من مدير النظام (تجاوز التسلسل)', '#5B4636'):''}`;
+}
 
+async function viewAR(id) {
+  const r=await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات الطلب');return;}
+  const saList=await getCombinedActivitiesList();
+  const cats=(typeof resolveReqCategories==='function')?resolveReqCategories(r, saList):(r.categories||[]);
+  const existing=document.getElementById('view-ar-modal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='view-ar-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:680px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--g)">👁️ ${r.title||'-'}</div>
+        <div style="margin-top:6px">${stBadge(r.status||'pending')} ${r.ref_code?`<span style="font-size:11px;color:var(--muted);margin-right:8px">${r.ref_code}</span>`:''} ${r.submitted_via==='public_link'?`<span style="font-size:11px;color:#8A4B0F;margin-right:8px">🌐 من الرابط العام</span>`:''}</div>
+      </div>
+      <button onclick="document.getElementById('view-ar-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);flex-shrink:0">✕</button>
+    </div>
+    ${arViewBodyHTML(r, cats)}
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
       ${r.status==='rejected' && ['coordinator','admin'].includes(ME?.role) ? `<button class="btn" style="color:#1B6B3A;border-color:#1B6B3A" onclick="reopenAR('${r.id}', function(){document.getElementById('view-ar-modal').remove();typeof filterAR==='function'&&filterAR();typeof filterARExternal==='function'&&filterARExternal();})">↩️ إعادة فتح</button>` : ''}
       <button class="btn" onclick="document.getElementById('view-ar-modal').remove()">إغلاق</button>

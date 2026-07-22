@@ -21,7 +21,7 @@ async function loadIncomplete() {
     <td>${r.date||'-'}</td>
     <td style="font-size:10px;color:var(--g)">${r.source||'-'}</td>
     <td><div class="rb">
-      <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewIncomplete('${r._table}','${r.id}')">👁️ عرض</button>
+      <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="${hasLinks?`viewAR('${r.request_id}')`:`viewIncomplete('${r._table}','${r.id}')`}">👁️ عرض</button>
       ${hasLinks?`<button class="btn btn-sm btn-g" onclick="copyIncompleteRegLink('${r.request_id}')">🔗 رابط التسجيل</button>
       <button class="btn btn-sm btn-g" onclick="copyIncompleteEvalLink('${r.request_id}')">📋 رابط التقييم</button>
       <button class="btn btn-sm btn-b" onclick="printIncompleteQR('${r._table}','${r.id}','${r.request_id}')">🔳 QR Code</button>`:''}
@@ -34,26 +34,50 @@ async function loadIncomplete() {
 // ═ عرض تفاصيل سجل «غير مكتمل» للقراءة فقط ═
 async function viewIncomplete(table, id) {
   const r = await api('/api/'+table+'/'+id); if(!r||r.error){alert('تعذر تحميل بيانات السجل');return;}
-  const cfg = (typeof QCFG!=='undefined') ? QCFG[table] : null;
   const existing=document.getElementById('view-inc-modal'); if(existing) existing.remove();
+
+  // إن وُجد طلب النشاط الأصلي (request_id) نعرض كامل بياناته كما تظهر في «طلبات إقامة نشاط»
+  let orig = null;
+  if (r.request_id) {
+    const o = await api('/api/activity_requests/'+r.request_id);
+    if (o && !o.error) orig = o;
+  }
+
   const modal=document.createElement('div');
   modal.id='view-inc-modal';
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
-  const rowsHTML = cfg ? cfg.fields.map(f=>vrow(f.l.replace('*',''), r[f.id])).join('') : `<div style="font-size:12.5px;color:var(--muted)">تعذّر تحديد حقول هذا الجدول</div>`;
-  modal.innerHTML=`
-  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+
+  let bodyHTML, headerHTML;
+  if (orig) {
+    const saList = await getCombinedActivitiesList();
+    const cats = (typeof resolveReqCategories==='function') ? resolveReqCategories(orig, saList) : (orig.categories||[]);
+    headerHTML = `
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--g)">👁️ ${orig.title||r.title||r.name||'-'}</div>
+        <div style="margin-top:6px">${(typeof stBadge==='function')?stBadge(orig.status||'approved'):''} ${orig.ref_code?`<span style="font-size:11px;color:var(--muted);margin-right:8px">${orig.ref_code}</span>`:''}</div>
+      </div>`;
+    bodyHTML = arViewBodyHTML(orig, cats);
+  } else {
+    const cfg = (typeof QCFG!=='undefined') ? QCFG[table] : null;
+    headerHTML = `
       <div>
         <div style="font-size:16px;font-weight:700;color:var(--g)">👁️ ${r.title||r.name||'-'}</div>
         <div style="margin-top:6px;font-size:11px;color:var(--muted)">${cfg?cfg.title:''}</div>
-      </div>
+      </div>`;
+    const rowsHTML = cfg ? cfg.fields.map(f=>vrow(f.l.replace('*',''), r[f.id])).join('') : `<div style="font-size:12.5px;color:var(--muted)">تعذّر تحديد حقول هذا الجدول</div>`;
+    bodyHTML = `${vsec('بيانات السجل')}${rowsHTML}${r.source?vrow('المصدر', r.source):''}`;
+  }
+
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:680px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+      ${headerHTML}
       <button onclick="document.getElementById('view-inc-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);flex-shrink:0">✕</button>
     </div>
-    ${vsec('بيانات السجل')}
-    ${rowsHTML}
-    ${r.source?vrow('المصدر', r.source):''}
+    ${bodyHTML}
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
       <button class="btn" onclick="document.getElementById('view-inc-modal').remove()">إغلاق</button>
+      ${orig?`<button class="btn btn-b" onclick="printAR('${orig.id}')">🖨️ طباعة</button>`:''}
       <button class="btn btn-b" onclick="document.getElementById('view-inc-modal').remove();goEditQ('${table}','${id}')">✏️ تعديل</button>
     </div>
   </div>`;
@@ -81,7 +105,7 @@ function qrDataURL(text) {
 }
 
 async function printIncompleteQR(table, id, requestId) {
-  if(!window.QRCode){ alert('يرجى الانتظار قليلاً حتى يكتمل تحميل الصفحة ثم إعادة المحاولة'); return; }
+  if(!window.QRCode){ alert('تعذّر تحميل مكتبة توليد QR. يرجى تحديث الصفحة (Refresh) والتأكد من الاتصال بالإنترنت ثم إعادة المحاولة.'); return; }
   const [rec, part, ev] = await Promise.all([
     api('/api/'+table+'/'+id),
     api('/api/participants-by-request/'+requestId),
