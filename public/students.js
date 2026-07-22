@@ -12,17 +12,113 @@ async function loadIncomplete() {
   ${!(rows||[]).length ? `<div style="text-align:center;padding:40px;color:var(--muted)"><i class="ti ti-circle-check" style="font-size:48px;color:#27500A;display:block;margin-bottom:10px"></i>لا توجد طلبات غير مكتملة</div>` : `
   <div class="msg warn" style="display:block">⚠️ هذه السجلات رُحِّلت من نماذج الأنشطة المعتمدة وتحتاج إدخال بيانات إضافية — اضغط على "تعديل" لإكمالها.</div>
   <div class="tw"><table><thead><tr><th>#</th><th>الجدول</th><th>اسم النشاط</th><th>التاريخ</th><th>المصدر</th><th></th></tr></thead>
-  <tbody>${(rows||[]).map((r,i)=>`<tr>
+  <tbody>${(rows||[]).map((r,i)=>{
+    const hasLinks = r._table!=='community_svc' && r.request_id;
+    return `<tr>
     <td>${i+1}</td>
     <td><span class="st st-p">${TNAMES[r._table]||r._table}</span></td>
     <td><strong>${r.name||r.title||'-'}</strong></td>
     <td>${r.date||'-'}</td>
     <td style="font-size:10px;color:var(--g)">${r.source||'-'}</td>
     <td><div class="rb">
+      <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewIncomplete('${r._table}','${r.id}')">👁️ عرض</button>
+      ${hasLinks?`<button class="btn btn-sm btn-g" onclick="copyIncompleteRegLink('${r.request_id}')">🔗 رابط التسجيل</button>
+      <button class="btn btn-sm btn-g" onclick="copyIncompleteEvalLink('${r.request_id}')">📋 رابط التقييم</button>
+      <button class="btn btn-sm btn-b" onclick="printIncompleteQR('${r._table}','${r.id}','${r.request_id}')">🔳 QR Code</button>`:''}
       <button class="btn btn-sm btn-b" onclick="goEditQ('${r._table}','${r.id}')">✏️ تعديل</button>
       <button class="btn btn-sm btn-g" onclick="markComplete('${r._table}','${r.id}')">✅ مكتمل</button>
     </div></td>
-  </tr>`).join('')}</tbody></table></div>`}`;
+  </tr>`;}).join('')}</tbody></table></div>`}`;
+}
+
+// ═ عرض تفاصيل سجل «غير مكتمل» للقراءة فقط ═
+async function viewIncomplete(table, id) {
+  const r = await api('/api/'+table+'/'+id); if(!r||r.error){alert('تعذر تحميل بيانات السجل');return;}
+  const cfg = (typeof QCFG!=='undefined') ? QCFG[table] : null;
+  const existing=document.getElementById('view-inc-modal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='view-inc-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
+  const rowsHTML = cfg ? cfg.fields.map(f=>vrow(f.l.replace('*',''), r[f.id])).join('') : `<div style="font-size:12.5px;color:var(--muted)">تعذّر تحديد حقول هذا الجدول</div>`;
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--g)">👁️ ${r.title||r.name||'-'}</div>
+        <div style="margin-top:6px;font-size:11px;color:var(--muted)">${cfg?cfg.title:''}</div>
+      </div>
+      <button onclick="document.getElementById('view-inc-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);flex-shrink:0">✕</button>
+    </div>
+    ${vsec('بيانات السجل')}
+    ${rowsHTML}
+    ${r.source?vrow('المصدر', r.source):''}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+      <button class="btn" onclick="document.getElementById('view-inc-modal').remove()">إغلاق</button>
+      <button class="btn btn-b" onclick="document.getElementById('view-inc-modal').remove();goEditQ('${table}','${id}')">✏️ تعديل</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+// ═ روابط وQR التسجيل/التقييم لسجلات «غير مكتملة» (بحسب رقم الطلب الأصلي المشترك request_id) ═
+async function copyIncompleteRegLink(requestId) {
+  const p = await api('/api/participants-by-request/'+requestId);
+  if(!p){ alert('لا يوجد رابط تسجيل مُنشَأ لهذا النشاط بعد.'); return; }
+  copyRegLink(`${location.origin}/register.html?id=${p.id}`);
+}
+
+async function copyIncompleteEvalLink(requestId) {
+  const e = await api('/api/eval-by-request/'+requestId);
+  if(!e){ alert('لا يوجد رابط تقييم مُنشَأ لهذا النشاط بعد.'); return; }
+  copyRegLink(`${location.origin}/eval.html?id=${e.id}`);
+}
+
+function qrDataURL(text) {
+  return new Promise((resolve,reject)=>{
+    if(!window.QRCode){ reject(new Error('QR library not loaded')); return; }
+    QRCode.toDataURL(text, {width:220,margin:1}, (err,url)=>{ if(err) reject(err); else resolve(url); });
+  });
+}
+
+async function printIncompleteQR(table, id, requestId) {
+  if(!window.QRCode){ alert('يرجى الانتظار قليلاً حتى يكتمل تحميل الصفحة ثم إعادة المحاولة'); return; }
+  const [rec, part, ev] = await Promise.all([
+    api('/api/'+table+'/'+id),
+    api('/api/participants-by-request/'+requestId),
+    api('/api/eval-by-request/'+requestId)
+  ]);
+  if(!rec||rec.error){ alert('تعذر تحميل بيانات النشاط'); return; }
+  if(!part){ alert('لا يوجد رابط تسجيل مُنشَأ لهذا النشاط بعد.'); return; }
+  if(!ev){ alert('لا يوجد رابط تقييم مُنشَأ لهذا النشاط بعد.'); return; }
+  const regLink = `${location.origin}/register.html?id=${part.id}`;
+  const evalLink = `${location.origin}/eval.html?id=${ev.id}`;
+  let regQR, evalQR;
+  try { [regQR, evalQR] = await Promise.all([qrDataURL(regLink), qrDataURL(evalLink)]); }
+  catch(e){ alert('تعذّر توليد رمز QR'); return; }
+  const title = rec.title||rec.name||'-';
+  const date = rec.date||'-';
+  const organizer = rec.organizer||'-';
+  const metaHTML = `<div class="qrmeta"><span><strong>اسم النشاط:</strong> ${title}</span><span><strong>تاريخ عقد النشاط:</strong> ${date}</span><span><strong>الجهة المسؤولة:</strong> ${organizer}</span></div>`;
+  const html = `
+  <style>
+  .qrcard{border:2px solid #1B6B3A;border-radius:8px;padding:12px 16px;margin-bottom:16px;page-break-inside:avoid}
+  .qrtitle{background:#1B6B3A;color:#fff;text-align:center;padding:6px;font-size:12pt;font-weight:700;border-radius:4px;margin:9px 0 9px}
+  .qrmeta{font-size:9pt;color:#333;margin-bottom:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .qrimg{display:block;margin:4px auto 2px;width:170px;height:170px}
+  </style>
+  <div class="qrcard">
+    ${UNIHEADER}<div>تاريخ الطباعة: ${today()}</div></div></div>
+    <div class="qrtitle">تسجيل المشاركة في النشاط</div>
+    ${metaHTML}
+    <img class="qrimg" src="${regQR}">
+  </div>
+  <div class="qrcard">
+    ${UNIHEADER}<div>تاريخ الطباعة: ${today()}</div></div></div>
+    <div class="qrtitle">تقييم النشاط</div>
+    ${metaHTML}
+    <img class="qrimg" src="${evalQR}">
+  </div>`;
+  openPrint(html);
 }
 
 async function markComplete(table, id) {
