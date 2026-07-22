@@ -424,7 +424,7 @@ TABLES.forEach(table => {
     } catch(e) { res.status(500).json({ error: e.message }); }
   });
 
-  const AR_QUALITY = ['student_activities','student_activities_external'];
+  const AR_QUALITY = ['student_activities','student_activities_external','participants'];
   const putRoles = AR_QUALITY.includes(table) ? ['admin','editor','coordinator','manager'] : ['admin','editor'];
   app.put(`/api/${table}/:id`, auth(putRoles), async (req, res) => {
     try {
