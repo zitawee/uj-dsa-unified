@@ -273,12 +273,12 @@ async function saveAR() {
   document.getElementById('ar-form').style.display='none';
   // ترحيل تلقائي لنموذج الإعلانات
   await api('/api/announcements','POST',{
-    title:      data.title,
+    title:      data.ad_title || data.title,
     type:       data.type,
     date:       data.activity_date,
     time:       data.time_from ? `${data.time_from} — ${data.time_to||''}` : '',
     location:   data.location,
-    organizer:  data.student_name,
+    organizer:  data.organizer,
     contact:    data.phone,
     description:data.description,
     notes:      '',

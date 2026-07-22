@@ -693,11 +693,12 @@ async function filterPart() {
     rows=(rows||[]).filter(r=>r.organizer===ME.department);
   }
   const canEdit=canEditGlobal();
+  const canEditPart = canEdit || (['coordinator','manager'].includes(ME?.role) && !!ME.department);
   document.getElementById('tbl-part').innerHTML=(rows||[]).map((r,i)=>`<tr>
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
     <td>${r.organizer||'-'}</td><td>${(r.students||[]).length||0}</td>
     <td><div class="rb">
-      ${canEdit?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
+      ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
