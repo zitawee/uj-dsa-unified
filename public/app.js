@@ -140,7 +140,7 @@ function printDocument(fullDoc) {
 
 const PRINT_STYLES = `
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
-    body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
+    body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;padding:8mm 10mm;color:#000;font-size:9.5pt;margin:0}
     .ph2{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1B6B3A;padding-bottom:7px;margin-bottom:9px}
     .plogo{width:62px;height:62px;object-fit:contain}
     .puni{text-align:center;flex:1}.puni .ar{font-size:14pt;font-weight:700;color:#1B6B3A}.puni .en{font-size:8.5pt;color:#555}.puni .dep{font-size:9pt;color:#333;font-weight:600;margin-top:2px}
@@ -165,7 +165,7 @@ const PRINT_STYLES = `
     @media print{@page{margin:5mm 8mm}}`;
 
 function openPrint(html) {
-  const fullDoc = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>طباعة — عمادة شؤون الطلبة</title><style>${PRINT_STYLES}</style></head><body>${html}</body></html>`;
+  const fullDoc = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"><title>طباعة — عمادة شؤون الطلبة</title><style>${PRINT_STYLES}</style></head><body>${html}</body></html>`;
   printDocument(fullDoc);
 }
 const badge = act => { const[bg,fg]=ACOLORS[act]||['#eee','#555']; return `<span class="ab" style="background:${bg};color:${fg}">${act}</span>`; };
