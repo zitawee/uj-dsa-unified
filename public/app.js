@@ -306,6 +306,11 @@ function closeSidebar() {
   document.getElementById('sb-overlay')?.classList.remove('open');
 }
 
+function goToIncomplete() {
+  const nav = document.querySelector(`.ni[onclick*="go('incomplete'"]`);
+  go('incomplete', nav);
+}
+
 function go(name, el) {
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -341,8 +346,17 @@ async function loadDash() {
     .filter(r=>!(['coordinator','manager'].includes(ME?.role) && ME.department) || r.organizer===ME.department);
   const deptStats = await api('/api/dept-stats');
 
+  const incBanner = (['coordinator','manager'].includes(ME?.role) && (stats.incomplete||0) > 0) ? `
+  <div class="card" style="background:#FDEBD0;border:1px solid #F0C36D">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div style="color:#8A4B0F;font-weight:700;font-size:13px">⚠️ لديك ${stats.incomplete} ${stats.incomplete===1?'طلب غير مكتمل':'طلبات غير مكتملة'} بحاجة لإكمال البيانات — من نشاط تم اعتماده مؤخراً</div>
+      <button class="btn btn-sm" style="background:#8A4B0F;color:#fff;border-color:#8A4B0F" onclick="goToIncomplete()">📋 عرض الطلبات غير المكتملة</button>
+    </div>
+  </div>` : '';
+
   document.getElementById('panel-dash').innerHTML = `
   <div class="ph"><div><div class="pt">لوحة التحكم الموحدة</div><div class="ps">الجامعة الأردنية — عمادة شؤون الطلبة</div></div></div>
+  ${incBanner}
   ${(pending||[]).length ? (()=>{
     const returnedCount = pending.filter(r=>(r.status==='pending'&&r.manager_return_note)||(r.status==='awaiting_manager'&&r.dean_return_note)).length;
     return `
