@@ -732,6 +732,15 @@ app.get('/api/eval-by-request/:requestId', auth(), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// يبحث عن سجل أسماء المشاركين المرتبط بنفس طلب النشاط الأصلي (لتوليد رابط/QR التسجيل من بوابة الطلبات غير المكتملة)
+app.get('/api/participants-by-request/:requestId', auth(), async (req, res) => {
+  try {
+    const doc = await models['participants'].findOne({ request_id: req.params.requestId }).lean();
+    if (!doc) return res.json(null);
+    res.json({ id: doc._id, activity: doc.activity, date: doc.date, organizer: doc.organizer, count: (doc.students||[]).length, cap: doc.max_capacity || null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/export-archive', auth(['admin']), async (req, res) => {
   try {
     const dump = {};
