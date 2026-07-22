@@ -283,6 +283,7 @@ async function saveAR() {
     description:data.description,
     notes:      '',
     source:     `مرحَّل من طلب نشاط — ${data.title}`,
+    request_id: r.id,
     completed:  false
   });
   filterAR(); loadDash();
