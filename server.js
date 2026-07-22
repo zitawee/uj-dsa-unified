@@ -637,11 +637,13 @@ app.get('/api/stats', auth(), async (req, res) => {
     stats.pending_requests = await models['activity_requests'].countDocuments(pendingQuery);
     const Q = ['student_activities','student_activities_external','community_svc'];
     let incomplete = 0;
-    await Promise.all(Q.map(async t => {
-      incomplete += await models[t].countDocuments({ 
+    const incQuery = {
       source: { $exists: true, $ne: null, $ne: '' },
       $or: [{ completed: { $exists: false } }, { completed: false }]
-    });
+    };
+    if (['coordinator','manager'].includes(req.user.role) && req.user.department) incQuery.organizer = req.user.department;
+    await Promise.all(Q.map(async t => {
+      incomplete += await models[t].countDocuments(incQuery);
     }));
     stats.incomplete = incomplete;
     res.json(stats);
