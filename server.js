@@ -445,14 +445,15 @@ TABLES.forEach(table => {
     try {
       const deleted = await Model.findByIdAndDelete(req.params.id);
       // ══ حذف تسلسلي (Cascade Delete): عند حذف طلب نشاط أو سجل جودة نشاط،
-      // تُحذف تلقائياً سجلات «أسماء المشاركين» و«استبانة تقييم الفعالية» المرتبطة
-      // بنفس النشاط (عبر request_id المشترك) — فيتوقف رابط التسجيل ورابط الاستبانة فوراً.
+      // تُحذف تلقائياً سجلات «أسماء المشاركين» و«استبانة تقييم الفعالية» و«الإعلان المُرحَّل» المرتبطة
+      // بنفس النشاط (عبر request_id المشترك) — فيتوقف رابط التسجيل ورابط الاستبانة فوراً ويُحذف الإعلان.
       if (deleted && ['activity_requests','student_activities','student_activities_external'].includes(table)) {
         // معرّف الطلب الأصلي: للسجل في activity_requests هو _id نفسه، ولبقية الجداول هو حقل request_id
         const reqId = table === 'activity_requests' ? String(deleted._id) : (deleted.request_id || null);
         if (reqId) {
           await models['participants'].deleteMany({ request_id: reqId });
           await models['activity_evaluations'].deleteMany({ request_id: reqId });
+          await models['announcements'].deleteMany({ request_id: reqId });
           // عند حذف الطلب الأصلي نفسه، تُحذف أيضاً سجلات الجودة المُرحَّلة منه
           if (table === 'activity_requests') {
             await models['student_activities'].deleteMany({ request_id: reqId });
