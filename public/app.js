@@ -189,15 +189,15 @@ function buildSidebar() {
   <div class="ni" onclick="go('incomplete',this)"><i class="ti ti-alert-circle" style="color:#633806"></i>طلبات غير مكتملة<span class="cnt inc" id="c-inc">0</span></div>
 
   <!-- نظام الأنشطة -->
-  <div class="folder-hdr" onclick="toggleFolder('f-acts')"><i class="ti ti-chevron-down folder-arrow" id="arr-f-acts"></i><i class="ti ti-users"></i>نظام الأنشطة</div>
-  <div class="folder-body" id="f-acts">
+  <div class="folder-hdr sec-acts" onclick="toggleFolder('f-acts')"><i class="ti ti-chevron-down folder-arrow" id="arr-f-acts"></i><i class="ti ti-users"></i>نظام الأنشطة</div>
+  <div class="folder-body sec-acts" id="f-acts">
     <div class="ni" onclick="go('students',this)"><i class="ti ti-users"></i>الطلبة المسجلون<span class="cnt" id="c-students">0</span></div>
     <div class="ni" onclick="go('achievements',this)"><i class="ti ti-trophy"></i>الإنجازات والتكريم<span class="cnt" id="c-achievements">0</span></div>
   </div>
 
   <!-- النماذج الرسمية -->
-  <div class="folder-hdr" onclick="toggleFolder('f-forms')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-forms"></i><i class="ti ti-files"></i>النماذج الرسمية</div>
-  <div class="folder-body" id="f-forms" style="display:none">
+  <div class="folder-hdr sec-forms" onclick="toggleFolder('f-forms')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-forms"></i><i class="ti ti-files"></i>النماذج الرسمية</div>
+  <div class="folder-body sec-forms" id="f-forms" style="display:none">
     <div class="ni" onclick="go('activity_requests',this)"><i class="ti ti-file-plus"></i>طلبات إقامة نشاط<span class="cnt" id="c-activity_requests">0</span></div>
     <div class="ni" onclick="go('activity_requests_external',this)"><i class="ti ti-world"></i>طلبات إقامة نشاط خارجية<span class="cnt" id="c-activity_requests_external">0</span></div>
     <div class="ni" onclick="go('announcements',this)"><i class="ti ti-speakerphone"></i>الإعلانات<span class="cnt" id="c-announcements">0</span></div>
@@ -209,8 +209,8 @@ function buildSidebar() {
   </div>
 
   <!-- بيانات الجودة -->
-  <div class="folder-hdr" onclick="toggleFolder('f-quality')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-quality"></i><i class="ti ti-certificate"></i>بيانات الجودة</div>
-  <div class="folder-body" id="f-quality" style="display:none">
+  <div class="folder-hdr sec-quality" onclick="toggleFolder('f-quality')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-quality"></i><i class="ti ti-certificate"></i>بيانات الجودة</div>
+  <div class="folder-body sec-quality" id="f-quality" style="display:none">
     <div class="ni" onclick="go('governance',this)"><i class="ti ti-building-community"></i>مجالس الحاكمية<span class="cnt" id="c-governance">0</span></div>
     <div class="ni" onclick="go('student_activities',this)"><i class="ti ti-confetti"></i>الأنشطة الطلابية<span class="cnt" id="c-student_activities">0</span></div>
     <div class="ni" onclick="go('student_activities_external',this)"><i class="ti ti-world"></i>الأنشطة الطلابية الخارجية<span class="cnt" id="c-student_activities_external">0</span></div>
@@ -224,8 +224,8 @@ function buildSidebar() {
   </div>
 
   <!-- الأدوات -->
-  <div class="folder-hdr" onclick="toggleFolder('f-tools')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-tools"></i><i class="ti ti-tools"></i>الأدوات</div>
-  <div class="folder-body" id="f-tools" style="display:none">
+  <div class="folder-hdr sec-tools" onclick="toggleFolder('f-tools')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-tools"></i><i class="ti ti-tools"></i>الأدوات</div>
+  <div class="folder-body sec-tools" id="f-tools" style="display:none">
     <div class="ni" onclick="go('reports',this)"><i class="ti ti-file-analytics"></i>التقارير الموحدة</div>
     <div class="ni" onclick="go('committee_report',this)"><i class="ti ti-clipboard-list"></i>تقرير اجتماعات اللجان</div>
     <div class="ni" onclick="go('sa_report',this)"><i class="ti ti-chart-bar"></i>تقرير الأنشطة الطلابية</div>
