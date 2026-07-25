@@ -257,6 +257,34 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// تسجيل حضور طالب مسجَّل مسبقاً فقط (لا يُقبل حضور غير مسجَّل بالكشف الأصلي) — بلا كابتشا لضمان السرعة عند الباب
+app.post('/api/public/participants/:id/attend', async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'رابط الحضور غير صالح' });
+
+    const uniId = (req.body.uni_id || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+
+    const students = Array.isArray(doc.students) ? doc.students : [];
+    const idx = students.findIndex(s => (s.id || '').trim() === uniId);
+    if (idx === -1)
+      return res.status(404).json({ error: 'أنت غير مسجَّل في هذا النشاط. يرجى التسجيل أولاً من رابط التسجيل قبل تسجيل الحضور' });
+
+    if (students[idx].attended) {
+      return res.json({ ok: true, already: true, name: students[idx].name, message: 'تم تسجيل حضورك مسبقاً لهذا النشاط' });
+    }
+
+    students[idx].attended = true;
+    students[idx].attend_time = new Date().toISOString();
+    doc.students = students;
+    doc.markModified('students');
+    await doc.save();
+
+    res.json({ ok: true, name: students[idx].name, message: 'تم تسجيل حضورك بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // أسئلة استبانة تقييم الفعالية الاثني عشر (يجب أن تطابق حرفياً قائمة EVAL_QUESTIONS في public/eval.html)
 const EVAL_QUESTIONS = [
   'طريقة الإعلان عن الفعالية مناسبة',
