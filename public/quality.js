@@ -703,6 +703,7 @@ async function filterPart() {
     <td><div class="rb">
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
+      <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ طباعة الحاضرين</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>

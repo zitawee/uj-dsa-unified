@@ -137,6 +137,15 @@ async function printPart(id) {
   openPrint(html);
 }
 
+// ═ طباعة كشف يضم الطلبة الذين حضروا فعلياً فقط (وليس كل المسجَّلين) ═
+async function printPartAttended(id) {
+  const r=await api('/api/participants/'+id); if(!r||r.error)return;
+  const attendedOnly = (r.students||[]).filter(s=>s.attended);
+  if(!attendedOnly.length){ alert('لا يوجد أي طالب مسجَّل حضوره فعلياً بعد لهذا النشاط.'); return; }
+  const html=prtHeader('كشف الطلبة الحاضرين فعلياً — '+((r.students||[]).length?`${attendedOnly.length} من ${(r.students||[]).length} مسجَّل`:''),'DSA-02-01-02')+buildPartBodyHTML({...r, students: attendedOnly});
+  openPrint(html);
+}
+
 // ═ طباعة صفحة QR (تسجيل + حضور + تقييم) مباشرة من شاشة أسماء المشاركين ═
 async function printPartQR(id) {
   const r = await api('/api/participants/'+id); if(!r||r.error){alert('تعذر تحميل بيانات النشاط');return;}
