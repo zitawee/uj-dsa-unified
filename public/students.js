@@ -104,7 +104,7 @@ function qrDataURL(text) {
   });
 }
 
-// ═ يبني ويطبع صفحة QR (تسجيل + حضور + تقييم إن وُجد) لأي نشاط، بمعرفة رقم كشف المشاركين ═
+// ═ يبني ويطبع صفحة QR (تسجيل + حضور + تقييم إن وُجد) لأي نشاط، بمعرفة رقم كشف المشاركين — مضغوطة في صفحة A4 واحدة ═
 async function buildAndPrintQRSet({title, date, organizer, partId, evalId}) {
   if(!window.QRCode){ alert('تعذّر تحميل مكتبة توليد QR. يرجى تحديث الصفحة (Refresh) والتأكد من الاتصال بالإنترنت ثم إعادة المحاولة.'); return; }
   const regLink    = `${location.origin}/register.html?id=${partId}`;
@@ -115,24 +115,34 @@ async function buildAndPrintQRSet({title, date, organizer, partId, evalId}) {
     [regQR, attendQR] = await Promise.all([qrDataURL(regLink), qrDataURL(attendLink)]);
     if (evalLink) evalQR = await qrDataURL(evalLink);
   } catch(e){ alert('تعذّر توليد رمز QR'); return; }
-  const metaHTML = `<div class="qrmeta"><span><strong>اسم النشاط:</strong> ${title||'-'}</span><span><strong>تاريخ عقد النشاط:</strong> ${date||'-'}</span><span><strong>الجهة المسؤولة:</strong> ${organizer||'-'}</span></div>`;
   const card = (heading, qr) => `
   <div class="qrcard">
-    ${UNIHEADER}<div>تاريخ الطباعة: ${today()}</div></div></div>
     <div class="qrtitle">${heading}</div>
-    ${metaHTML}
-    <img class="qrimg" src="${qr}">
+    ${qr?`<img class="qrimg" src="${qr}">`:`<div class="qrmissing">⚠️<br>لم يُنشأ رابط<br>تقييم بعد</div>`}
   </div>`;
   const html = `
   <style>
-  .qrcard{border:2px solid #1B6B3A;border-radius:8px;padding:12px 16px;margin-bottom:16px;page-break-inside:avoid}
-  .qrtitle{background:#1B6B3A;color:#fff;text-align:center;padding:6px;font-size:12pt;font-weight:700;border-radius:4px;margin:9px 0 9px}
-  .qrmeta{font-size:9pt;color:#333;margin-bottom:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
-  .qrimg{display:block;margin:4px auto 2px;width:170px;height:170px}
+  .qrpage{padding-top:2mm}
+  .qrmetabar{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:9pt;color:#222;background:#F0FAF4;border:1px solid #C6E8D3;border-radius:6px;padding:8px 12px;margin-bottom:14px}
+  .qrgrid{display:flex;gap:10px;justify-content:space-between}
+  .qrcard{flex:1;border:2px solid #1B6B3A;border-radius:8px;padding:10px 8px;text-align:center}
+  .qrtitle{background:#1B6B3A;color:#fff;padding:6px 4px;font-size:10pt;font-weight:700;border-radius:4px;margin-bottom:10px;line-height:1.3}
+  .qrimg{width:150px;height:150px;margin:0 auto;display:block}
+  .qrmissing{width:150px;height:150px;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8A4B0F;font-size:8.5pt;line-height:1.6}
   </style>
-  ${card('تسجيل المشاركة في النشاط', regQR)}
-  ${card('تسجيل الحضور عند بدء النشاط', attendQR)}
-  ${evalQR?card('تقييم النشاط', evalQR):`<div class="qrcard" style="text-align:center;color:#8A4B0F;font-size:10.5pt">⚠️ لم يُنشأ رابط تقييم لهذا النشاط بعد</div>`}`;
+  <div class="qrpage">
+    ${UNIHEADER}<div>تاريخ الطباعة: ${today()}</div></div></div>
+    <div class="qrmetabar">
+      <span><strong>اسم النشاط:</strong> ${title||'-'}</span>
+      <span><strong>تاريخ عقد النشاط:</strong> ${date||'-'}</span>
+      <span><strong>الجهة المسؤولة:</strong> ${organizer||'-'}</span>
+    </div>
+    <div class="qrgrid">
+      ${card('تسجيل المشاركة في النشاط', regQR)}
+      ${card('تسجيل الحضور عند بدء النشاط', attendQR)}
+      ${card('تقييم النشاط', evalQR)}
+    </div>
+  </div>`;
   openPrint(html);
 }
 
