@@ -694,15 +694,19 @@ async function filterPart() {
   }
   const canEdit=canEditGlobal();
   const canEditPart = canEdit || (['coordinator','manager'].includes(ME?.role) && !!ME.department);
-  document.getElementById('tbl-part').innerHTML=(rows||[]).map((r,i)=>`<tr>
+  document.getElementById('tbl-part').innerHTML=(rows||[]).map((r,i)=>{
+    const total=(r.students||[]).length;
+    const attended=(r.students||[]).filter(s=>s.attended).length;
+    return `<tr>
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
-    <td>${r.organizer||'-'}</td><td>${(r.students||[]).length||0}</td>
+    <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div></td>
     <td><div class="rb">
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
+      <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
-  </tr>`).join('')||`<tr class="erow"><td colspan="6">لا توجد نماذج</td></tr>`;
+  </tr>`;}).join('')||`<tr class="erow"><td colspan="6">لا توجد نماذج</td></tr>`;
   const cnt=document.getElementById('c-participants'); if(cnt) cnt.textContent=rows?.length||0;
 }
 

@@ -121,9 +121,10 @@ function buildPartBodyHTML(r) {
     <div class="fr"><span class="fl">رقم النشاط للتقييم:</span><span class="fv">${r.eval_num||''}</span></div>
   </div>
   <table class="ptbl" style="margin-top:10px">
-    <thead><tr><th>ت</th><th>اسم الطالب</th><th>الرقم الجامعي</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>المستوى</th><th>رقم الهاتف</th></tr></thead>
-    <tbody>${students.length?students.map((s,i)=>`<tr><td>${i+1}</td><td>${s.name||''}</td><td>${s.id||''}</td><td>${s.gender||''}</td><td>${s.nationality||''}</td><td>${s.college||''}</td><td>${s.major||''}</td><td>${s.year||''}</td><td>${s.phone||''}</td></tr>`).join(''):Array(25).fill(0).map((_,i)=>`<tr><td>${i+1}</td>${Array(8).fill('<td>&nbsp;</td>').join('')}</tr>`).join('')}</tbody>
+    <thead><tr><th>ت</th><th>اسم الطالب</th><th>الرقم الجامعي</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>المستوى</th><th>رقم الهاتف</th><th>الحضور</th></tr></thead>
+    <tbody>${students.length?students.map((s,i)=>`<tr><td>${i+1}</td><td>${s.name||''}</td><td>${s.id||''}</td><td>${s.gender||''}</td><td>${s.nationality||''}</td><td>${s.college||''}</td><td>${s.major||''}</td><td>${s.year||''}</td><td>${s.phone||''}</td><td>${s.attended?'✅':''}</td></tr>`).join(''):Array(25).fill(0).map((_,i)=>`<tr><td>${i+1}</td>${Array(9).fill('<td>&nbsp;</td>').join('')}</tr>`).join('')}</tbody>
   </table>
+  ${students.length?`<div style="margin-top:6px;font-size:8.5pt;color:#333"><strong>إجمالي المسجَّلين:</strong> ${students.length} — <strong>إجمالي الحاضرين:</strong> ${students.filter(s=>s.attended).length}</div>`:''}
   <div style="margin-top:9px;font-size:8.5pt">
     <strong>المشرفون:</strong> ${(r.supervisors||'').split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('  ')||'1. ............  2. ............  3. ............'}
     <br><br><strong>الموظفون:</strong> ${(r.staff||'').split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('  ')||'1. ............  2. ............'}
@@ -134,6 +135,17 @@ async function printPart(id) {
   const r=await api('/api/participants/'+id); if(!r||r.error)return;
   const html=prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02')+buildPartBodyHTML(r);
   openPrint(html);
+}
+
+// ═ طباعة صفحة QR (تسجيل + حضور + تقييم) مباشرة من شاشة أسماء المشاركين ═
+async function printPartQR(id) {
+  const r = await api('/api/participants/'+id); if(!r||r.error){alert('تعذر تحميل بيانات النشاط');return;}
+  let ev = null;
+  if (r.request_id) ev = await api('/api/eval-by-request/'+r.request_id);
+  await buildAndPrintQRSet({
+    title: r.activity||'-', date: r.date||'-', organizer: r.organizer||'-',
+    partId: r.id, evalId: ev ? ev.id : null
+  });
 }
 
 function printBlankPart() {

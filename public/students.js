@@ -104,25 +104,25 @@ function qrDataURL(text) {
   });
 }
 
-async function printIncompleteQR(table, id, requestId) {
+// ═ يبني ويطبع صفحة QR (تسجيل + حضور + تقييم إن وُجد) لأي نشاط، بمعرفة رقم كشف المشاركين ═
+async function buildAndPrintQRSet({title, date, organizer, partId, evalId}) {
   if(!window.QRCode){ alert('تعذّر تحميل مكتبة توليد QR. يرجى تحديث الصفحة (Refresh) والتأكد من الاتصال بالإنترنت ثم إعادة المحاولة.'); return; }
-  const [rec, part, ev] = await Promise.all([
-    api('/api/'+table+'/'+id),
-    api('/api/participants-by-request/'+requestId),
-    api('/api/eval-by-request/'+requestId)
-  ]);
-  if(!rec||rec.error){ alert('تعذر تحميل بيانات النشاط'); return; }
-  if(!part){ alert('لا يوجد رابط تسجيل مُنشَأ لهذا النشاط بعد.'); return; }
-  if(!ev){ alert('لا يوجد رابط تقييم مُنشَأ لهذا النشاط بعد.'); return; }
-  const regLink = `${location.origin}/register.html?id=${part.id}`;
-  const evalLink = `${location.origin}/eval.html?id=${ev.id}`;
-  let regQR, evalQR;
-  try { [regQR, evalQR] = await Promise.all([qrDataURL(regLink), qrDataURL(evalLink)]); }
-  catch(e){ alert('تعذّر توليد رمز QR'); return; }
-  const title = rec.title||rec.name||'-';
-  const date = rec.date||'-';
-  const organizer = rec.organizer||'-';
-  const metaHTML = `<div class="qrmeta"><span><strong>اسم النشاط:</strong> ${title}</span><span><strong>تاريخ عقد النشاط:</strong> ${date}</span><span><strong>الجهة المسؤولة:</strong> ${organizer}</span></div>`;
+  const regLink    = `${location.origin}/register.html?id=${partId}`;
+  const attendLink = `${location.origin}/attend.html?id=${partId}`;
+  const evalLink   = evalId ? `${location.origin}/eval.html?id=${evalId}` : null;
+  let regQR, attendQR, evalQR;
+  try {
+    [regQR, attendQR] = await Promise.all([qrDataURL(regLink), qrDataURL(attendLink)]);
+    if (evalLink) evalQR = await qrDataURL(evalLink);
+  } catch(e){ alert('تعذّر توليد رمز QR'); return; }
+  const metaHTML = `<div class="qrmeta"><span><strong>اسم النشاط:</strong> ${title||'-'}</span><span><strong>تاريخ عقد النشاط:</strong> ${date||'-'}</span><span><strong>الجهة المسؤولة:</strong> ${organizer||'-'}</span></div>`;
+  const card = (heading, qr) => `
+  <div class="qrcard">
+    ${UNIHEADER}<div>تاريخ الطباعة: ${today()}</div></div></div>
+    <div class="qrtitle">${heading}</div>
+    ${metaHTML}
+    <img class="qrimg" src="${qr}">
+  </div>`;
   const html = `
   <style>
   .qrcard{border:2px solid #1B6B3A;border-radius:8px;padding:12px 16px;margin-bottom:16px;page-break-inside:avoid}
@@ -130,19 +130,24 @@ async function printIncompleteQR(table, id, requestId) {
   .qrmeta{font-size:9pt;color:#333;margin-bottom:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
   .qrimg{display:block;margin:4px auto 2px;width:170px;height:170px}
   </style>
-  <div class="qrcard">
-    ${UNIHEADER}<div>تاريخ الطباعة: ${today()}</div></div></div>
-    <div class="qrtitle">تسجيل المشاركة في النشاط</div>
-    ${metaHTML}
-    <img class="qrimg" src="${regQR}">
-  </div>
-  <div class="qrcard">
-    ${UNIHEADER}<div>تاريخ الطباعة: ${today()}</div></div></div>
-    <div class="qrtitle">تقييم النشاط</div>
-    ${metaHTML}
-    <img class="qrimg" src="${evalQR}">
-  </div>`;
+  ${card('تسجيل المشاركة في النشاط', regQR)}
+  ${card('تسجيل الحضور عند بدء النشاط', attendQR)}
+  ${evalQR?card('تقييم النشاط', evalQR):`<div class="qrcard" style="text-align:center;color:#8A4B0F;font-size:10.5pt">⚠️ لم يُنشأ رابط تقييم لهذا النشاط بعد</div>`}`;
   openPrint(html);
+}
+
+async function printIncompleteQR(table, id, requestId) {
+  const [rec, part, ev] = await Promise.all([
+    api('/api/'+table+'/'+id),
+    api('/api/participants-by-request/'+requestId),
+    api('/api/eval-by-request/'+requestId)
+  ]);
+  if(!rec||rec.error){ alert('تعذر تحميل بيانات النشاط'); return; }
+  if(!part){ alert('لا يوجد كشف مشاركين مُنشَأ لهذا النشاط بعد.'); return; }
+  await buildAndPrintQRSet({
+    title: rec.title||rec.name||'-', date: rec.date||'-', organizer: rec.organizer||'-',
+    partId: part.id, evalId: ev ? ev.id : null
+  });
 }
 
 async function markComplete(table, id) {
