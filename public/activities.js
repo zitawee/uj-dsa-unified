@@ -237,6 +237,9 @@ function buildARRow(r, i, role, isAdmin, canEdit, refreshFn) {
   if(status==='rejected' && ['coordinator','admin'].includes(role)){
     actions+=`<button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="reopenAR('${r.id}',${refreshFn})">↩️ إعادة فتح</button>`;
   }
+  if(status==='approved' && (r.svc_activity_point==='نعم' || r.svc_community_service==='نعم')){
+    actions+=`<button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="openCommunityLetterModal('${r.id}')">📄 كتاب مركز خدمة المجتمع</button>`;
+  }
   const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
   const returnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
   const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
@@ -413,7 +416,67 @@ async function mgrReturn(id) {
   if(r.error){alert(r.error);return;}
   filterAR(); loadDash();
 }
-// ══ العميد: تحويل طلب حجز المكان لمدير دائرة الخدمات الفنية والتطوير ══
+// ═ حساب نص الفقرة الأساسية لكتاب مركز تنمية وخدمة المجتمع تلقائياً من بيانات النشاط ═
+function communityLetterBodyText(r) {
+  const both = r.svc_activity_point==='نعم' && r.svc_community_service==='نعم';
+  const phrase = both ? 'احتساب نقطة نشاط واحتساب خدمة مجتمع' : (r.svc_activity_point==='نعم' ? 'احتساب نقطة نشاط' : 'احتساب خدمة مجتمع');
+  let weekday='';
+  if(r.activity_date){ try{ weekday=new Date(r.activity_date+'T00:00:00').toLocaleDateString('ar-JO',{weekday:'long'}); }catch(e){} }
+  return `يرجى التفضل بالموافقة على ${phrase} للنشاط الذي يحمل عنوان (${r.title||''}) والذي سيعقد يوم ${weekday} بتاريخ (${r.activity_date||''}) والذي سيقام في (${r.location||''}) للطلبة المشاركين.`;
+}
+
+// ═ نافذة معاينة/تعديل كتاب مركز تنمية وخدمة المجتمع قبل الطباعة ═
+async function openCommunityLetterModal(id) {
+  const r = await api('/api/activity_requests/'+id); if(!r||r.error){alert('تعذر تحميل بيانات النشاط');return;}
+  const existing=document.getElementById('cl-modal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='cl-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:700;color:var(--g)">📄 كتاب مركز تنمية وخدمة المجتمع</div>
+      <button onclick="document.getElementById('cl-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">يمكنك تعديل نص الفقرة أدناه قبل الطباعة إن احتجت لذلك:</div>
+    <textarea id="cl-body-text" style="width:100%;min-height:120px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical">${communityLetterBodyText(r)}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn" onclick="document.getElementById('cl-modal').remove()">إغلاق</button>
+      <button class="btn btn-b" onclick="printCommunityLetter()"><i class="ti ti-printer"></i> طباعة الكتاب</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function printCommunityLetter() {
+  const bodyText = document.getElementById('cl-body-text').value.trim();
+  const fullDoc = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap">
+<title>كتاب مركز تنمية وخدمة المجتمع</title>
+<style>
+@page{size:A4;margin-top:7cm;margin-bottom:2cm;margin-right:2.5cm;margin-left:2.5cm}
+body{margin:0;font-family:'Scheherazade New',serif;font-size:14pt;font-weight:700;line-height:2.2;color:#000}
+.body-text{margin:22px 0;text-align:justify;white-space:pre-wrap}
+.attach-note{font-size:10pt}
+.sig-block{margin-top:60px}
+.footer-note{font-size:10pt;margin-top:70px}
+</style></head>
+<body>
+  <div>مدير مركز تنمية وخدمة المجتمع</div>
+  <div style="margin-top:14px">تحية طيبة، وبعد،</div>
+  <div class="body-text">${bodyText}</div>
+  <div>وتفضلوا بقبول فائق الاحترام والتقدير</div>
+  <div class="attach-note" style="margin-top:16px">مرفق كشف بأسماء الطلبة المشاركين في النشاط</div>
+  <div class="sig-block">
+    <div>عميد شؤون الطلبة</div>
+    <div>الأستاذ الدكتور صفوان الشياب</div>
+  </div>
+  <div class="footer-note">نسخة نائب العميد لشؤون الطلبة والأنشطة</div>
+</body></html>`;
+  printDocument(fullDoc);
+  document.getElementById('cl-modal').remove();
+}
 async function sendToFacilities(id) {
   if(!confirm('تحويل طلب حجز المكان لمدير دائرة الخدمات الفنية والتطوير للموافقة عليه؟')) return;
   const r=await api(`/api/activity_requests/${id}/send-to-facilities`,'POST',{});
