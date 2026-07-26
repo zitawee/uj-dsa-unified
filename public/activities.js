@@ -455,21 +455,23 @@ function printCommunityLetter() {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap">
 <title>كتاب مركز تنمية وخدمة المجتمع</title>
 <style>
-@page{size:A4;margin-top:7cm;margin-bottom:2cm;margin-right:2.5cm;margin-left:2.5cm}
-body{margin:0;font-family:'Scheherazade New',serif;font-size:14pt;font-weight:700;line-height:2.2;color:#000}
+@page{size:A4;margin:0}
+body{margin:0;padding:7cm 2.5cm 2cm 2.5cm;box-sizing:border-box;font-family:'Scheherazade New',serif;font-size:14pt;font-weight:700;line-height:2.2;color:#000}
+.center{text-align:center}
 .body-text{margin:22px 0;text-align:justify;white-space:pre-wrap}
 .attach-note{font-size:10pt}
-.sig-block{margin-top:60px}
-.footer-note{font-size:10pt;margin-top:70px}
+.sig-block{margin-top:60px;text-align:left}
+.sig-block .sig-line1{margin-bottom:60px}
+.footer-note{font-size:10pt;margin-top:230px;text-align:left}
 </style></head>
 <body>
-  <div>مدير مركز تنمية وخدمة المجتمع</div>
+  <div class="center">مدير مركز تنمية وخدمة المجتمع</div>
   <div style="margin-top:14px">تحية طيبة، وبعد،</div>
   <div class="body-text">${bodyText}</div>
-  <div>وتفضلوا بقبول فائق الاحترام والتقدير</div>
+  <div class="center">وتفضلوا بقبول فائق الاحترام والتقدير</div>
   <div class="attach-note" style="margin-top:16px">مرفق كشف بأسماء الطلبة المشاركين في النشاط</div>
   <div class="sig-block">
-    <div>عميد شؤون الطلبة</div>
+    <div class="sig-line1">عميد شؤون الطلبة</div>
     <div>الأستاذ الدكتور صفوان الشياب</div>
   </div>
   <div class="footer-note">نسخة نائب العميد لشؤون الطلبة والأنشطة</div>
