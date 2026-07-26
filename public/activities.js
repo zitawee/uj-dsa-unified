@@ -460,9 +460,10 @@ body{margin:0;padding:7cm 2.5cm 2cm 2.5cm;box-sizing:border-box;font-family:'Sch
 .center{text-align:center}
 .body-text{margin:22px 0;text-align:justify;white-space:pre-wrap}
 .attach-note{font-size:10pt}
-.sig-block{margin-top:60px;text-align:left}
+.sig-block{margin-top:60px;width:290px;margin-right:auto;margin-left:0}
+.sig-block div{text-align:center}
 .sig-block .sig-line1{margin-bottom:60px}
-.footer-note{font-size:10pt;margin-top:230px;text-align:left}
+.footer-note{font-size:10pt;margin-top:110px;text-align:left}
 </style></head>
 <body>
   <div class="center">مدير مركز تنمية وخدمة المجتمع</div>
