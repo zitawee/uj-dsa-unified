@@ -48,6 +48,10 @@ const DEANSHIP_DEPTS = [
   'مكتب شؤون الطلبة الدوليين',
   'اتحاد طلبة الجامعة الأردنية'
 ];
+// الدائرة الوحيدة المخوَّلة بالموافقة/الرفض على طلبات حجز الأماكن المُحالة من العميد
+const FACILITIES_DEPT = 'دائرة الخدمات الفنية والتطوير';
+// نفس قائمة القاعات المستخدمة في نموذج «حجز القاعات» — مصدر واحد مشترك مع طلب إقامة النشاط
+const HALLS_LIST = ['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات'];
 // ألوان خفيفة مميّزة لكل دائرة في بطاقات لوحة التحكم [خلفية, نص]
 const DEPT_COLORS = {
   'دائرة الهيئات والخدمات الطلابية':      ['#EAF3DE','#27500A'],
@@ -83,6 +87,8 @@ async function api(url, method='GET', body=null) {
   } catch(e) { return {error:'تعذّر الاتصال بالخادم. تحقّقي من الإنترنت ثم أعيدي المحاولة.'}; }
 }
 const g = id => { const el=document.getElementById(id); return el?el.value.trim():''; };
+const gc = id => { const el=document.getElementById(id); return (el&&el.checked)?'نعم':'لا'; };
+const setc = (id,val) => { const el=document.getElementById(id); if(el) el.checked = (val==='نعم'); };
 const sg = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
 const today = () => new Date().toLocaleDateString('ar-JO',{year:'numeric',month:'long',day:'numeric'});
 

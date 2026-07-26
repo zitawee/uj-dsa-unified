@@ -14,6 +14,7 @@ async function loadAR() {
       <a class="btn" href="/track.html" target="_blank" style="text-decoration:none">🔗 رابط تتبّع الطالب</a>
     </div>
   </div>
+  <div id="facilities-pending-box"></div>
   <div id="ar-form" style="display:none">
     <div id="msg-ar" class="msg"></div>
     <div id="ar-form-title" style="font-size:14px;font-weight:700;color:var(--g);margin-bottom:10px">طلب جديد</div>
@@ -47,7 +48,29 @@ async function loadAR() {
         <div class="fg"><label>من الساعة</label><input id="ar-tfrom" type="time"></div>
         <div class="fg"><label>إلى الساعة</label><input id="ar-tto" type="time"></div>
         <div class="fg full"><label>مكان انعقاد النشاط</label><input id="ar-loc" type="text"></div>
-        <div class="fg full"><label>الخدمات المساندة المطلوبة</label><textarea id="ar-srv" placeholder="حجز قاعة، مخاطبة الأمن، احتساب نقطة نشاط..."></textarea></div>
+        <div class="fg full">
+          <label>الخدمات المساندة المطلوبة</label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid var(--border);border-radius:8px;padding:10px;background:#FAFBFA">
+            <div>
+              <div style="font-weight:700;font-size:11.5px;color:var(--g);margin-bottom:6px">حجز المدرجات والقاعات</div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="ar-svc-hall" onchange="document.getElementById('ar-svc-hall-place-wrap').style.display=this.checked?'block':'none'"> طلب حجز مكان</label>
+              <div id="ar-svc-hall-place-wrap" style="display:none">
+                <select id="ar-svc-hall-place"><option value="">اختر المكان...</option>${HALLS_LIST.map(h=>`<option>${h}</option>`).join('')}</select>
+              </div>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:11.5px;color:var(--g);margin-bottom:6px">مركز تنمية وخدمة المجتمع</div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="ar-svc-actpoint"> احتساب نقطة نشاط</label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="ar-svc-comsvc"> احتساب خدمة مجتمع</label>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:11.5px;color:var(--g);margin-bottom:6px">الأمن الجامعي</div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="ar-svc-security"> توفر الأمن الجامعي</label>
+            </div>
+          </div>
+          <label style="margin-top:8px;display:block">خدمات أخرى</label>
+          <input id="ar-svc-other" type="text" placeholder="اكتب أي خدمات أخرى...">
+        </div>
       </div>
     </div>
     <div class="card">
@@ -86,13 +109,39 @@ async function loadAR() {
 
   document.getElementById('ar-sdate').valueAsDate = new Date();
   document.getElementById('ar-date').valueAsDate = new Date();
+  loadFacilitiesPending();
   filterAR();
+}
+
+// ═ قسم خاص بمدير دائرة الخدمات الفنية والتطوير: طلبات حجز الأماكن المُحالة إليه من العميد فقط ═
+async function loadFacilitiesPending() {
+  const box = document.getElementById('facilities-pending-box'); if(!box) return;
+  if(!(ME?.role==='manager' && ME.department===FACILITIES_DEPT)){ box.innerHTML=''; return; }
+  const all = await api('/api/activity_requests');
+  const pending = (all||[]).filter(r => r.hall_review_status==='pending');
+  if(!pending.length){ box.innerHTML=''; return; }
+  box.innerHTML = `
+  <div class="card" style="background:#EAF3FB;border:1px solid #B9D8EF;margin-bottom:14px">
+    <div class="ct" style="color:#1B5E9A">📥 طلبات حجز أماكن مُحالة إليك من العميد (${pending.length})</div>
+    <div class="tw"><table><thead><tr><th>#</th><th>النشاط</th><th>المكان المطلوب</th><th>التاريخ</th><th>من</th><th>إلى</th><th>الغرض</th><th>المشرف</th><th></th></tr></thead>
+    <tbody>${pending.map((r,i)=>`<tr>
+      <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.svc_hall_place||'-'}</td>
+      <td>${r.activity_date||'-'}</td><td>${r.time_from||'-'}</td><td>${r.time_to||'-'}</td>
+      <td>${r.title||'-'}</td><td>${r.supervisor||'-'}</td>
+      <td><div class="rb">
+        <button class="btn btn-sm btn-g" onclick="facilitiesDecision('${r.id}','approve')">✅ موافقة</button>
+        <button class="btn btn-sm btn-r" onclick="facilitiesDecision('${r.id}','reject')">❌ رفض</button>
+      </div></td>
+    </tr>`).join('')}</tbody></table></div>
+  </div>`;
 }
 
 function showARForm() {
   const f=document.getElementById('ar-form'); f.style.display='block';
   delete f.dataset.editId;
-  f.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>el.value='');
+  f.querySelectorAll('input:not([type=file]):not([type=checkbox]),select,textarea').forEach(el=>el.value='');
+  f.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=false);
+  document.getElementById('ar-svc-hall-place-wrap').style.display='none';
   document.getElementById('ar-sdate').valueAsDate=new Date();
   document.getElementById('ar-date').valueAsDate=new Date();
   const t=document.getElementById('ar-form-title'); if(t) t.textContent='طلب جديد';
@@ -115,7 +164,11 @@ async function editContentAR(id) {
   set('ar-org',r.organizer); set('ar-sname',r.student_name); set('ar-sid',r.student_id);
   set('ar-phone',r.phone); set('ar-col',r.college); set('ar-sdate',r.submit_date);
   set('ar-date',r.activity_date); set('ar-tfrom',r.time_from); set('ar-tto',r.time_to);
-  set('ar-loc',r.location); set('ar-srv',r.services);
+  set('ar-loc',r.location);
+  setc('ar-svc-hall',r.svc_hall); set('ar-svc-hall-place',r.svc_hall_place);
+  document.getElementById('ar-svc-hall-place-wrap').style.display = (r.svc_hall==='نعم')?'block':'none';
+  setc('ar-svc-actpoint',r.svc_activity_point); setc('ar-svc-comsvc',r.svc_community_service); setc('ar-svc-security',r.svc_security);
+  set('ar-svc-other',r.svc_other);
   set('ar-sup',r.supervisor); set('ar-supcol',r.sup_college); set('ar-supph',r.sup_phone);
   set('ar-guest',r.guests); set('ar-ext-name',r.ext_name); set('ar-ext-people',r.ext_people);
   const t=document.getElementById('ar-form-title'); if(t) t.textContent='✏️ تعديل بيانات الطلب — '+(r.ref_code||'');
@@ -134,7 +187,10 @@ async function saveEditAR() {
     student_name:g('ar-sname'),student_id:g('ar-sid'),phone:g('ar-phone'),
     college:g('ar-col'),submit_date:g('ar-sdate'),
     activity_date:g('ar-date'),time_from:g('ar-tfrom'),time_to:g('ar-tto'),
-    location:g('ar-loc'),services:g('ar-srv'),
+    location:g('ar-loc'),
+    svc_hall:gc('ar-svc-hall'),svc_hall_place:g('ar-svc-hall-place'),
+    svc_activity_point:gc('ar-svc-actpoint'),svc_community_service:gc('ar-svc-comsvc'),svc_security:gc('ar-svc-security'),
+    svc_other:g('ar-svc-other'),
     supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),
     guests:g('ar-guest'),ext_name:g('ar-ext-name'),ext_people:document.getElementById('ar-ext-people')?.value||''
   };
@@ -168,7 +224,10 @@ function buildARRow(r, i, role, isAdmin, canEdit, refreshFn) {
     actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة وتمرير</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="mgrReturn('${r.id}')">↩️ إرجاع للمنسّق</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️ تعديل</button>`;
   }
   if(status==='awaiting_dean' && ['dean','admin'].includes(role)){
-    actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد نهائي</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع للمدير</button>`;
+    if(r.svc_hall==='نعم' && !r.hall_review_status){
+      actions+=`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="sendToFacilities('${r.id}')">📤 تحويل حجز المكان لمدير الخدمات الفنية</button>`;
+    }
+    actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد نهائي</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع للمدير</button><button class="btn btn-sm btn-r" onclick="deanFinalReject('${r.id}')">❌ رفض نهائي</button>`;
   }
   if(isAdmin && !['approved','rejected'].includes(status)){
     actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 اعتماد مباشر</button>`;
@@ -179,11 +238,15 @@ function buildARRow(r, i, role, isAdmin, canEdit, refreshFn) {
   const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
   const returnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
   const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
+  const hallNote = (r.svc_hall==='نعم' && r.hall_review_status) ?
+    (r.hall_review_status==='pending' ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">⏳ بانتظار رد مدير الخدمات الفنية بشأن المكان</div>`
+    : r.hall_review_status==='approved' ? `<div style="font-size:10.5px;color:#27500A;margin-top:3px">✅ مدير الخدمات الفنية: المكان متاح</div>`
+    : `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">❌ مدير الخدمات الفنية: المكان غير متاح${r.hall_review_note?` (${r.hall_review_note})`:''}</div>`) : '';
   return `<tr>
   <td>${i+1}</td><td><strong>${r.title||'-'}</strong>${r.ref_code?`<div style="font-size:10.5px;color:var(--muted)">${r.ref_code}</div>`:''}</td><td>${r.type||'-'}</td>
   <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
   <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
-  <td>${stBadge(status)}${mgrReturnNote}${returnNote}${rejNote}</td>
+  <td>${stBadge(status)}${mgrReturnNote}${returnNote}${rejNote}${hallNote}</td>
   <td style="font-size:11px;color:var(--g)">${(r._cats&&r._cats.length)?r._cats.map(c=>`• ${c}`).join('<br>'):'-'}</td>
   <td><div class="rb">
     ${actions}
@@ -261,7 +324,10 @@ async function saveAR() {
     student_name:g('ar-sname'),student_id:g('ar-sid'),phone:g('ar-phone'),
     college:g('ar-col'),submit_date:g('ar-sdate'),
     activity_date:g('ar-date'),time_from:g('ar-tfrom'),time_to:g('ar-tto'),
-    location:g('ar-loc'),services:g('ar-srv'),
+    location:g('ar-loc'),
+    svc_hall:gc('ar-svc-hall'),svc_hall_place:g('ar-svc-hall-place'),
+    svc_activity_point:gc('ar-svc-actpoint'),svc_community_service:gc('ar-svc-comsvc'),svc_security:gc('ar-svc-security'),
+    svc_other:g('ar-svc-other'),
     supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),
     guests:g('ar-guest'),ext_name:g('ar-ext-name'),ext_people:document.getElementById('ar-ext-people')?.value||'',
     status:'pending'
@@ -345,7 +411,32 @@ async function mgrReturn(id) {
   if(r.error){alert(r.error);return;}
   filterAR(); loadDash();
 }
-// ══ إعادة فتح طلب مرفوض (بعد استكمال الطالب للنواقص) — يعود لمرحلة المنسّق من جديد ══
+// ══ العميد: تحويل طلب حجز المكان لمدير دائرة الخدمات الفنية والتطوير ══
+async function sendToFacilities(id) {
+  if(!confirm('تحويل طلب حجز المكان لمدير دائرة الخدمات الفنية والتطوير للموافقة عليه؟')) return;
+  const r=await api(`/api/activity_requests/${id}/send-to-facilities`,'POST',{});
+  if(r.error){alert(r.error);return;}
+  filterAR(); loadDash(); loadFacilitiesPending();
+}
+
+// ══ العميد: رفض نهائي للطلب من مرحلته هو (جديد) ══
+async function deanFinalReject(id) {
+  const note=prompt('سبب الرفض النهائي (سيُنهى الطلب ولن يعود لأي مرحلة):','');
+  if(note===null) return;
+  const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'final_reject', note});
+  if(r.error){alert(r.error);return;}
+  filterAR(); loadDash(); loadFacilitiesPending();
+}
+
+// ══ مدير دائرة الخدمات الفنية والتطوير: موافقة/رفض توفر المكان ══
+async function facilitiesDecision(id, action) {
+  let note='';
+  if(action==='reject'){ note=prompt('سبب عدم توفر المكان (سيظهر للعميد):',''); if(note===null) return; }
+  else if(!confirm('تأكيد أن المكان متاح لهذا النشاط؟')) return;
+  const r=await api(`/api/activity_requests/${id}/facilities-decision`,'POST',{action, note});
+  if(r.error){alert(r.error);return;}
+  filterAR(); loadDash(); loadFacilitiesPending();
+}
 async function reopenAR(id, refreshFn) {
   if(!confirm('إعادة فتح هذا الطلب ستعيده لمرحلة رئيس شعبة من جديد. متابعة؟')) return;
   const r=await api(`/api/activity_requests/${id}/decision`,'POST',{action:'reopen'});
@@ -383,6 +474,27 @@ function vrow(label, val, color) {
 }
 function vsec(title) { return `<div style="font-size:12.5px;font-weight:700;color:var(--g);margin:16px 0 4px">${title}</div>`; }
 
+// ═ يبني ملخصاً نصياً مقروءاً للخدمات المساندة المُهيكَلة ═
+function svcSummary(r) {
+  const parts=[];
+  if(r.svc_hall==='نعم') parts.push(`حجز مكان: ${r.svc_hall_place||'(لم يُحدَّد المكان)'}`);
+  if(r.svc_activity_point==='نعم') parts.push('احتساب نقطة نشاط');
+  if(r.svc_community_service==='نعم') parts.push('احتساب خدمة مجتمع');
+  if(r.svc_security==='نعم') parts.push('توفر الأمن الجامعي');
+  if(r.svc_other) parts.push(`خدمات أخرى: ${r.svc_other}`);
+  return parts.join('\n');
+}
+
+// ═ يعرض حالة الرد على طلب حجز المكان (بانتظار/موافقة/رفض) بجانب النشاط ═
+function hallReviewStatusHTML(r) {
+  if(r.svc_hall!=='نعم') return '';
+  if(!r.hall_review_status) return vrow('حالة حجز المكان', 'لم يُحوَّل لمدير دائرة الخدمات الفنية بعد', '#8A4B0F');
+  if(r.hall_review_status==='pending') return vrow('حالة حجز المكان', `⏳ بانتظار رد مدير دائرة الخدمات الفنية (حُوِّل بواسطة ${r.hall_review_sent_by||''})`, '#8A4B0F');
+  if(r.hall_review_status==='approved') return vrow('حالة حجز المكان', `✅ تمت الموافقة على توفر المكان — ${r.hall_review_by||''}${r.hall_review_note?` (${r.hall_review_note})`:''}`, '#27500A');
+  if(r.hall_review_status==='rejected') return vrow('حالة حجز المكان', `❌ المكان غير متاح — ${r.hall_review_by||''}${r.hall_review_note?` (${r.hall_review_note})`:''}`, '#791F1F');
+  return '';
+}
+
 function arViewBodyHTML(r, cats) {
   return `
     ${vsec('بيانات النشاط')}
@@ -398,7 +510,8 @@ function arViewBodyHTML(r, cats) {
     ${vrow('تاريخ انعقاد النشاط', r.activity_date)}
     ${vrow('من الساعة — إلى', (r.time_from||r.time_to)?`${r.time_from||'-'} — ${r.time_to||'-'}`:'')}
     ${vrow('مكان الانعقاد', r.location)}
-    ${vrow('الخدمات المساندة المطلوبة', r.services)}
+    ${vrow('الخدمات المساندة المطلوبة', svcSummary(r))}
+    ${hallReviewStatusHTML(r)}
 
     ${vsec('مقدّم الطلب')}
     ${vrow('الاسم', r.student_name)}

@@ -58,7 +58,7 @@ function buildARBodyHTML(r, cats) {
   </div>
   <div class="fr"><span class="fl">مكان انعقاد النشاط:</span><span class="fv">${r.location||''}</span></div>
   <div class="psub">الخدمات المساندة المطلوبة</div>
-  <div style="font-size:8.5pt;padding:3px 0">${(r.services||'').split('\n').map((s,i)=>`${i+1}. ${s}`).join('<br>')||'1. ..........  2. ..........  3. ..........'}</div>
+  <div style="font-size:8.5pt;padding:3px 0">${svcSummary(r).split('\n').filter(Boolean).map((s,i)=>`${i+1}. ${s}`).join('<br>')||'لا يوجد'}</div>
   <div class="psub">مشرف النشاط</div>
   <div class="fg3">
     <div class="fr"><span class="fl">الاسم:</span><span class="fv">${r.supervisor||''}</span></div>

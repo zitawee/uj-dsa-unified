@@ -90,7 +90,29 @@
         <div><label>من الساعة</label><input id="f-tfrom" type="time"></div>
         <div><label>إلى الساعة</label><input id="f-tto" type="time"></div>
         <div class="full"><label>مكان انعقاد النشاط</label><input id="f-loc" type="text"></div>
-        <div class="full"><label>الخدمات المساندة المطلوبة</label><textarea id="f-srv" placeholder="حجز قاعة، مخاطبة الأمن، احتساب نقطة نشاط..."></textarea></div>
+        <div class="full">
+          <label>الخدمات المساندة المطلوبة</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;border:1px solid #e3e6e0;border-radius:8px;padding:10px;background:#FAFBFA">
+            <div>
+              <div style="font-weight:700;font-size:11.5px;color:#0F5132;margin-bottom:6px">حجز المدرجات والقاعات</div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="f-svc-hall" onchange="document.getElementById('f-svc-hall-place-wrap').style.display=this.checked?'block':'none'"> طلب حجز مكان</label>
+              <div id="f-svc-hall-place-wrap" style="display:none">
+                <select id="f-svc-hall-place"><option value="">اختر المكان...</option>${['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات'].map(h=>`<option>${h}</option>`).join('')}</select>
+              </div>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:11.5px;color:#0F5132;margin-bottom:6px">مركز تنمية وخدمة المجتمع</div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="f-svc-actpoint"> احتساب نقطة نشاط</label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="f-svc-comsvc"> احتساب خدمة مجتمع</label>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:11.5px;color:#0F5132;margin-bottom:6px">الأمن الجامعي</div>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="f-svc-security"> توفر الأمن الجامعي</label>
+            </div>
+          </div>
+          <label style="margin-top:8px;display:block">خدمات أخرى</label>
+          <input id="f-svc-other" type="text" placeholder="اكتب أي خدمات أخرى...">
+        </div>
       </div>
     </div>
 
@@ -152,6 +174,7 @@ async function loadCaptcha(){
 loadCaptcha();
 
 function v(id){ return document.getElementById(id).value.trim(); }
+function vc(id){ const el=document.getElementById(id); return (el&&el.checked)?'نعم':'لا'; }
 function showMsg(txt, err){
   const el=document.getElementById('msg');
   el.textContent=txt; el.className='msg '+(err?'err':'ok'); el.style.display='block';
@@ -169,7 +192,10 @@ async function submitRequest(){
     audience:v('f-aud'), cost:v('f-cost'), organizer:v('f-org'),
     student_name:v('f-sname'), student_id:v('f-sid'), phone:v('f-phone'), college:v('f-col'),
     activity_date:v('f-date'), time_from:v('f-tfrom'), time_to:v('f-tto'),
-    location:v('f-loc'), services:v('f-srv'),
+    location:v('f-loc'),
+    svc_hall:vc('f-svc-hall'), svc_hall_place:v('f-svc-hall-place'),
+    svc_activity_point:vc('f-svc-actpoint'), svc_community_service:vc('f-svc-comsvc'), svc_security:vc('f-svc-security'),
+    svc_other:v('f-svc-other'),
     supervisor:v('f-sup'), sup_college:v('f-supcol'), sup_phone:v('f-supph'),
     guests:v('f-guest'), ext_name:v('f-ext-name'), ext_people:v('f-ext-people'),
     captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
