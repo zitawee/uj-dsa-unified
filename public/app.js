@@ -317,6 +317,11 @@ function goToIncomplete() {
   go('incomplete', nav);
 }
 
+function goToFacilitiesQueue() {
+  const nav = document.querySelector(`.ni[onclick*="go('activity_requests'"]`);
+  go('activity_requests', nav);
+}
+
 function go(name, el) {
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -352,6 +357,15 @@ async function loadDash() {
     .filter(r=>!(['coordinator','manager'].includes(ME?.role) && ME.department) || r.organizer===ME.department);
   const deptStats = await api('/api/dept-stats');
 
+  const facilitiesPendingCount = (ME?.role==='manager' && ME.department===FACILITIES_DEPT) ? (pendingAll||[]).filter(r=>r.hall_review_status==='pending').length : 0;
+  const facBanner = facilitiesPendingCount>0 ? `
+  <div class="card" style="background:#EAF3FB;border:1px solid #B9D8EF">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div style="color:#1B5E9A;font-weight:700;font-size:13px">📥 لديك ${facilitiesPendingCount} ${facilitiesPendingCount===1?'طلب حجز مكان':'طلبات حجز أماكن'} مُحالة إليك من العميد بانتظار ردّك</div>
+      <button class="btn btn-sm" style="background:#1B5E9A;color:#fff;border-color:#1B5E9A" onclick="goToFacilitiesQueue()">📥 عرض طلبات حجز الأماكن</button>
+    </div>
+  </div>` : '';
+
   const incBanner = (['coordinator','manager'].includes(ME?.role) && (stats.incomplete||0) > 0) ? `
   <div class="card" style="background:#FDEBD0;border:1px solid #F0C36D">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
@@ -362,6 +376,7 @@ async function loadDash() {
 
   document.getElementById('panel-dash').innerHTML = `
   <div class="ph"><div><div class="pt">لوحة التحكم الموحدة</div><div class="ps">الجامعة الأردنية — عمادة شؤون الطلبة</div></div></div>
+  ${facBanner}
   ${incBanner}
   ${(pending||[]).length ? (()=>{
     const returnedCount = pending.filter(r=>(r.status==='pending'&&r.manager_return_note)||(r.status==='awaiting_manager'&&r.dean_return_note)).length;
