@@ -50,25 +50,27 @@ async function loadAR() {
         <div class="fg full"><label>مكان انعقاد النشاط</label><input id="ar-loc" type="text"></div>
         <div class="fg full">
           <label>الخدمات المساندة المطلوبة</label>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid var(--border);border-radius:8px;padding:10px;background:#FAFBFA">
-            <div>
-              <div style="font-weight:700;font-size:11.5px;color:var(--g);margin-bottom:6px">حجز المدرجات والقاعات</div>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="ar-svc-hall" onchange="document.getElementById('ar-svc-hall-place-wrap').style.display=this.checked?'block':'none'"> طلب حجز مكان</label>
-              <div id="ar-svc-hall-place-wrap" style="display:none">
-                <select id="ar-svc-hall-place"><option value="">اختر المكان...</option>${HALLS_LIST.map(h=>`<option>${h}</option>`).join('')}</select>
+          <div class="svc-block">
+            <div class="svc-cols">
+              <div class="svc-col">
+                <div class="svc-h">حجز المدرجات والقاعات</div>
+                <label><input type="checkbox" id="ar-svc-hall" onchange="document.getElementById('ar-svc-hall-place-wrap').style.display=this.checked?'block':'none'"> طلب حجز مكان</label>
+                <div id="ar-svc-hall-place-wrap" style="display:none">
+                  <select id="ar-svc-hall-place"><option value="">اختر المكان...</option>${HALLS_LIST.map(h=>`<option>${h}</option>`).join('')}</select>
+                </div>
+              </div>
+              <div class="svc-col">
+                <div class="svc-h">مركز تنمية وخدمة المجتمع</div>
+                <label><input type="checkbox" id="ar-svc-actpoint"> احتساب نقطة نشاط</label>
+                <label><input type="checkbox" id="ar-svc-comsvc"> احتساب خدمة مجتمع</label>
+              </div>
+              <div class="svc-col">
+                <div class="svc-h">الأمن الجامعي</div>
+                <label><input type="checkbox" id="ar-svc-security"> توفر الأمن الجامعي</label>
               </div>
             </div>
-            <div>
-              <div style="font-weight:700;font-size:11.5px;color:var(--g);margin-bottom:6px">مركز تنمية وخدمة المجتمع</div>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="ar-svc-actpoint"> احتساب نقطة نشاط</label>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="ar-svc-comsvc"> احتساب خدمة مجتمع</label>
-            </div>
-            <div>
-              <div style="font-weight:700;font-size:11.5px;color:var(--g);margin-bottom:6px">الأمن الجامعي</div>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="ar-svc-security"> توفر الأمن الجامعي</label>
-            </div>
           </div>
-          <label style="margin-top:8px;display:block">خدمات أخرى</label>
+          <label style="margin-top:10px;display:block">خدمات أخرى</label>
           <input id="ar-svc-other" type="text" placeholder="اكتب أي خدمات أخرى...">
         </div>
       </div>

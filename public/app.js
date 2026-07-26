@@ -374,15 +374,24 @@ async function loadDash() {
     const status=r.status||'pending'; const role=ME?.role; let actions='';
     if(status==='pending' && ['coordinator','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول</button><button class="btn btn-sm btn-r" onclick="coordDecision('${r.id}','reject')">❌ رفض</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️</button>`;
     if(status==='awaiting_manager' && ['manager','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="mgrReturn('${r.id}')">↩️ للمنسّق</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️</button>`;
-    if(status==='awaiting_dean' && ['dean','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع</button>`;
+    if(status==='awaiting_dean' && ['dean','admin'].includes(role)){
+      if(r.svc_hall==='نعم' && !r.hall_review_status){
+        actions+=`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="sendToFacilities('${r.id}')">📤 تحويل حجز المكان</button>`;
+      }
+      actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع</button><button class="btn btn-sm btn-r" onclick="deanFinalReject('${r.id}')">❌ رفض نهائي</button>`;
+    }
     if(role==='admin') actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 تجاوز</button>`;
     const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
     const deanReturnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
+    const hallNote = (r.svc_hall==='نعم' && r.hall_review_status) ?
+      (r.hall_review_status==='pending' ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">⏳ بانتظار رد مدير الخدمات الفنية بشأن المكان</div>`
+      : r.hall_review_status==='approved' ? `<div style="font-size:10.5px;color:#27500A;margin-top:3px">✅ مدير الخدمات الفنية: المكان متاح</div>`
+      : `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">❌ مدير الخدمات الفنية: المكان غير متاح${r.hall_review_note?` (${r.hall_review_note})`:''}</div>`) : '';
     return `<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
     <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
     <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
-    <td>${stBadge(status)}${mgrReturnNote}${deanReturnNote}</td>
+    <td>${stBadge(status)}${mgrReturnNote}${deanReturnNote}${hallNote}</td>
     <td><div class="rb">
       ${actions}
       <button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="viewAR('${r.id}')">👁️</button>

@@ -31,8 +31,14 @@
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
   .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px}
   .full{grid-column:1/-1}
+  .svc-block{border-top:3px solid var(--g);padding-top:12px;margin-top:2px}
+  .svc-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .svc-h{font-weight:700;font-size:12px;color:var(--g);margin-bottom:9px}
+  .svc-col label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;margin-bottom:9px;cursor:pointer}
+  .svc-col select{margin-top:2px;width:100%}
   @media(max-width:640px){
     .g2,.g3{grid-template-columns:1fr}
+    .svc-cols{grid-template-columns:1fr}
     .card{padding:14px;border-radius:10px}
     h1{font-size:15px}
   }
@@ -92,25 +98,37 @@
         <div class="full"><label>مكان انعقاد النشاط</label><input id="f-loc" type="text"></div>
         <div class="full">
           <label>الخدمات المساندة المطلوبة</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;border:1px solid #e3e6e0;border-radius:8px;padding:10px;background:#FAFBFA">
-            <div>
-              <div style="font-weight:700;font-size:11.5px;color:#0F5132;margin-bottom:6px">حجز المدرجات والقاعات</div>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="f-svc-hall" onchange="document.getElementById('f-svc-hall-place-wrap').style.display=this.checked?'block':'none'"> طلب حجز مكان</label>
-              <div id="f-svc-hall-place-wrap" style="display:none">
-                <select id="f-svc-hall-place"><option value="">اختر المكان...</option>${['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات'].map(h=>`<option>${h}</option>`).join('')}</select>
+          <div class="svc-block">
+            <div class="svc-cols">
+              <div class="svc-col">
+                <div class="svc-h">حجز المدرجات والقاعات</div>
+                <label><input type="checkbox" id="f-svc-hall" onchange="document.getElementById('f-svc-hall-place-wrap').style.display=this.checked?'block':'none'"> طلب حجز مكان</label>
+                <div id="f-svc-hall-place-wrap" style="display:none">
+                  <select id="f-svc-hall-place">
+                    <option value="">اختر المكان...</option>
+                    <option>مدرج الحسن بن طلال</option>
+                    <option>المدرج الصغير</option>
+                    <option>قاعة الإعلام والاتصال</option>
+                    <option>قاعة المعارض الكبرى</option>
+                    <option>قاعة معاذ الكساسبة</option>
+                    <option>قاعة اجتماعات العمادة</option>
+                    <option>حديقة العمادة الداخلية</option>
+                    <option>الصوتيات</option>
+                  </select>
+                </div>
+              </div>
+              <div class="svc-col">
+                <div class="svc-h">مركز تنمية وخدمة المجتمع</div>
+                <label><input type="checkbox" id="f-svc-actpoint"> احتساب نقطة نشاط</label>
+                <label><input type="checkbox" id="f-svc-comsvc"> احتساب خدمة مجتمع</label>
+              </div>
+              <div class="svc-col">
+                <div class="svc-h">الأمن الجامعي</div>
+                <label><input type="checkbox" id="f-svc-security"> توفر الأمن الجامعي</label>
               </div>
             </div>
-            <div>
-              <div style="font-weight:700;font-size:11.5px;color:#0F5132;margin-bottom:6px">مركز تنمية وخدمة المجتمع</div>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="f-svc-actpoint"> احتساب نقطة نشاط</label>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="f-svc-comsvc"> احتساب خدمة مجتمع</label>
-            </div>
-            <div>
-              <div style="font-weight:700;font-size:11.5px;color:#0F5132;margin-bottom:6px">الأمن الجامعي</div>
-              <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" id="f-svc-security"> توفر الأمن الجامعي</label>
-            </div>
           </div>
-          <label style="margin-top:8px;display:block">خدمات أخرى</label>
+          <label style="margin-top:10px;display:block">خدمات أخرى</label>
           <input id="f-svc-other" type="text" placeholder="اكتب أي خدمات أخرى...">
         </div>
       </div>
