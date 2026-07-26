@@ -493,7 +493,10 @@ async function loadStudentActivitiesReport() {
   </div>
   <div id="sar-out"><div style="padding:20px;text-align:center;color:var(--muted)">جارٍ التحميل...</div></div>`;
 
-  _saReportData = (await api('/api/student_activities')) || [];
+  const [internalActs, externalActs] = await Promise.all([
+    api('/api/student_activities'), api('/api/student_activities_external')
+  ]);
+  _saReportData = [...(internalActs||[]), ...(externalActs||[])];
   renderSAReport();
 }
 
@@ -878,7 +881,10 @@ async function loadCategoryReport() {
   </div>
   <div id="cat-out"><div style="padding:20px;text-align:center;color:var(--muted)">اختر تصنيفاً لعرض أنشطته.</div></div>`;
 
-  _catReportData = (await api('/api/student_activities')) || [];
+  const [internalActs2, externalActs2] = await Promise.all([
+    api('/api/student_activities'), api('/api/student_activities_external')
+  ]);
+  _catReportData = [...(internalActs2||[]), ...(externalActs2||[])];
   renderCategoryReport();
 }
 
