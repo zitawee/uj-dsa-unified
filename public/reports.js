@@ -121,7 +121,7 @@ function buildPartBodyHTML(r) {
     <div class="fr"><span class="fl">رقم النشاط للتقييم:</span><span class="fv">${r.eval_num||''}</span></div>
   </div>
   <table class="ptbl" style="margin-top:10px">
-    <thead><tr><th>ت</th><th>اسم الطالب</th><th>الرقم الجامعي</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>المستوى</th><th>رقم الهاتف</th><th>الحضور</th></tr></thead>
+    <thead><tr><th>ت</th><th>اسم الطالب</th><th>الرقم الجامعي</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>${r.level_field_type==='national_id'?'الرقم الوطني':'المستوى'}</th><th>رقم الهاتف</th><th>الحضور</th></tr></thead>
     <tbody>${students.length?students.map((s,i)=>`<tr><td>${i+1}</td><td>${s.name||''}</td><td>${s.id||''}</td><td>${s.gender||''}</td><td>${s.nationality||''}</td><td>${s.college||''}</td><td>${s.major||''}</td><td>${s.year||''}</td><td>${s.phone||''}</td><td>${s.attended?'✅':''}</td></tr>`).join(''):Array(25).fill(0).map((_,i)=>`<tr><td>${i+1}</td>${Array(9).fill('<td>&nbsp;</td>').join('')}</tr>`).join('')}</tbody>
   </table>
   ${students.length?`<div style="margin-top:6px;font-size:8.5pt;color:#333"><strong>إجمالي المسجَّلين:</strong> ${students.length} — <strong>إجمالي الحاضرين:</strong> ${students.filter(s=>s.attended).length}</div>`:''}

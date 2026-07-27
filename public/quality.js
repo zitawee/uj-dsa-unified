@@ -536,11 +536,21 @@ function showPForm() {
   addPartRow(); f.scrollIntoView({behavior:'smooth'});
 }
 
+// ═ تبديل حقل «المستوى» إلى «الرقم الوطني» (أو العكس) لنشاط مُعيّن — يؤثر فقط على نموذج التسجيل الذاتي والكشف المطبوع لهذا النشاط ═
+async function toggleLevelField(id, newValue) {
+  const label = newValue==='national_id' ? 'الرقم الوطني' : 'المستوى';
+  if(!confirm(`تبديل هذا الحقل إلى «${label}» لهذا النشاط تحديداً؟ (سيظهر بهذا الشكل في رابط التسجيل الذاتي والكشف المطبوع)`)) return;
+  const r = await api('/api/participants/'+id, 'PUT', { level_field_type: newValue });
+  if(r.error){ alert(r.error); return; }
+  filterPart();
+}
+
 async function editPart(id) {
   const r = await api('/api/participants/'+id);
   if(!r||r.error){alert('تعذر تحميل السجل');return;}
   const f=document.getElementById('part-form'); f.style.display='block';
   f.dataset.editId=id;
+  f.dataset.levelFieldType=r.level_field_type||'level';
   document.getElementById('pf-act').value=r.activity||'';
   document.getElementById('pf-date').value=r.date||'';
   document.getElementById('pf-org').value=r.organizer||'';
@@ -550,7 +560,7 @@ async function editPart(id) {
   document.getElementById('pf-staff').value=r.staff||'';
   const c=document.getElementById('part-rows'); c.innerHTML='';
   (r.students&&r.students.length?r.students:[{}]).forEach(s=>{
-    const div=document.createElement('div'); div.innerHTML=partRowHTML(s); c.appendChild(div.firstElementChild);
+    const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
   renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null });
@@ -558,9 +568,12 @@ async function editPart(id) {
   f.scrollIntoView({behavior:'smooth'});
 }
 
-function partRowHTML(s={}) {
+function partRowHTML(s={}, levelFieldType='level') {
   const colSel=COLS.map(c=>`<option${s.college===c?' selected':''}>${c}</option>`).join('');
   const yrSel=YEARS.map(y=>`<option${s.year===y?' selected':''}>${y}</option>`).join('');
+  const levelField = levelFieldType==='national_id'
+    ? `<div class="fg"><label>الرقم الوطني</label><input type="text" class="pr-year" value="${s.year||''}"></div>`
+    : `<div class="fg"><label>المستوى</label><select class="pr-year"><option value="">...</option>${yrSel}</select></div>`;
   return `<div class="g3 part-row" style="margin-bottom:7px;border-bottom:1px solid var(--border);padding-bottom:7px">
     <div class="fg"><label>الاسم الكامل</label><input type="text" class="pr-name" value="${s.name||''}"></div>
     <div class="fg"><label>الرقم الجامعي</label><input type="text" class="pr-id" value="${s.id||''}"></div>
@@ -568,7 +581,7 @@ function partRowHTML(s={}) {
     <div class="fg"><label>الجنسية</label><input type="text" class="pr-nat" value="${s.nationality||''}" placeholder="أردني..."></div>
     <div class="fg"><label>الكلية</label><select class="pr-col"><option value="">اختر...</option>${colSel}</select></div>
     <div class="fg"><label>التخصص</label><input type="text" class="pr-major" value="${s.major||''}"></div>
-    <div class="fg"><label>المستوى</label><select class="pr-year"><option value="">...</option>${yrSel}</select></div>
+    ${levelField}
     <div class="fg"><label>رقم الهاتف</label><input type="text" class="pr-phone" value="${s.phone||''}"></div>
     <div class="fg" style="align-self:flex-end"><button class="btn btn-r" onclick="this.closest('.part-row').remove();updatePartCnt()">حذف</button></div>
   </div>`;
@@ -576,7 +589,8 @@ function partRowHTML(s={}) {
 
 function addPartRow() {
   const c=document.getElementById('part-rows'); if(!c) return;
-  const div=document.createElement('div'); div.innerHTML=partRowHTML();
+  const levelFieldType = document.getElementById('part-form')?.dataset.levelFieldType;
+  const div=document.createElement('div'); div.innerHTML=partRowHTML({}, levelFieldType);
   c.appendChild(div.firstElementChild); updatePartCnt();
 }
 
@@ -618,7 +632,7 @@ async function importPart(input) {
   parsed.rows.forEach(row=>{
     const get=f=>{const col=findC(parsed.headers,f);return col?(row[col]||''):'';};
     const s={name:get('name'),id:get('id'),gender:get('gender'),nationality:get('nationality'),college:get('college'),major:get('major'),year:get('year'),phone:get('phone')};
-    if(s.name||s.id){const div=document.createElement('div');div.innerHTML=partRowHTML(s);c.appendChild(div.firstElementChild);added++;}
+    if(s.name||s.id){const div=document.createElement('div');div.innerHTML=partRowHTML(s, document.getElementById('part-form')?.dataset.levelFieldType);c.appendChild(div.firstElementChild);added++;}
   });
   updatePartCnt(); alert(`✅ تم استيراد ${added} طالب بنجاح`);
 }
@@ -656,7 +670,7 @@ async function refreshPartStudents(id) {
   if(!r||r.error){alert('تعذر تحديث القائمة');return;}
   const c=document.getElementById('part-rows'); c.innerHTML='';
   (r.students&&r.students.length?r.students:[{}]).forEach(s=>{
-    const div=document.createElement('div'); div.innerHTML=partRowHTML(s); c.appendChild(div.firstElementChild);
+    const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
   renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null });
@@ -703,6 +717,7 @@ async function filterPart() {
     <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div></td>
     <td><div class="rb">
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
+      ${canEditPart?`<button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="toggleLevelField('${r.id}','${r.level_field_type==='national_id'?'level':'national_id'}')">${r.level_field_type==='national_id'?'🪪 الحقل: الرقم الوطني':'🎓 الحقل: المستوى'}</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
       <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ طباعة الحاضرين</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>

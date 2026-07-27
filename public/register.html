@@ -80,7 +80,7 @@
           <div><label>الجنسية</label><input id="f-nat" type="text" placeholder="أردني..."></div>
           <div><label>الكلية</label><select id="f-col"><option value="">اختر...</option></select></div>
           <div><label>التخصص</label><input id="f-major" type="text"></div>
-          <div><label>المستوى</label><select id="f-year"><option value="">اختر...</option></select></div>
+          <div id="f-year-wrap"><label>المستوى</label><select id="f-year"><option value="">اختر...</option></select></div>
         </div>
       </div>
 
@@ -149,6 +149,9 @@ async function init(){
       (r.max_capacity?`<br>🎟️ المقاعد المتبقية: <b>${Math.max(0, r.max_capacity - r.registered_count)}</b> من ${r.max_capacity}`:'');
     document.getElementById('loadingArea').style.display='none';
     document.getElementById('formWrap').style.display='block';
+    if(r.level_field_type==='national_id'){
+      document.getElementById('f-year-wrap').innerHTML = `<label>الرقم الوطني</label><input id="f-year" type="text" inputmode="numeric" placeholder="الرقم الوطني الأردني">`;
+    }
     if(r.max_capacity && r.registered_count >= r.max_capacity){
       document.getElementById('activityInfo').innerHTML += `<br><br>❌ <b>عذراً، اكتمل العدد المسموح به من التسجيل لهذا النشاط.</b>`;
       document.getElementById('formArea').style.display='none';
