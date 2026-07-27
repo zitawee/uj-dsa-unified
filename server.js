@@ -91,10 +91,15 @@ const DEANSHIP_DEPTS = [
   'اتحاد طلبة الجامعة الأردنية'
 ];
 
-// الدائرة الوحيدة المخوَّلة بالموافقة/الرفض على طلبات حجز الأماكن المُحالة من العميد
+// الدائرة الوحيدة المخوَّلة بالموافقة/الرفض على طلبات حجز أماكنها
 const FACILITIES_DEPT = 'دائرة الخدمات الفنية والتطوير';
-// نفس قائمة القاعات المستخدمة في نموذج «حجز القاعات» — مصدر واحد مشترك مع طلب إقامة النشاط
-const HALLS_LIST = ['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات'];
+const SPORTS_DEPT = 'دائرة النشاطات الرياضية';
+// الأماكن الخاضعة لموافقة مدير دائرة الخدمات الفنية والتطوير
+const FACILITIES_PLACES = ['مدرج الحسن بن طلال','مدرج الأردن','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','حديقة العمادة الخارجية','بهو مدرج الحسن'];
+// الأماكن الخاضعة لموافقة مدير دائرة النشاطات الرياضية
+const SPORTS_PLACES = ['الصالة الرياضية','استاد الجامعة','صالة التايكواندو','مضمار استاد الجامعة'];
+// نفس قائمة الأماكن الكاملة تُستخدم أيضاً في نموذج «حجز القاعات» اليدوي — مصدر واحد مشترك
+const HALLS_LIST = [...FACILITIES_PLACES, ...SPORTS_PLACES];
 const AR_WEEKDAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 function weekdayNameFromDate(dateStr) {
   if (!dateStr) return '';
@@ -507,54 +512,69 @@ TABLES.forEach(table => {
   });
 });
 
-// ══ العميد يُحيل طلب حجز المكان لمدير دائرة الخدمات الفنية والتطوير (إجراء اختياري يدوي) ══
-app.post('/api/activity_requests/:id/send-to-facilities', auth(['dean','admin']), async (req, res) => {
+// ══ العميد يُحيل طلب الخدمات اللوجستية (حجز أماكن) لمدير/مديرَي الدوائر المعنية بضغطة واحدة ══
+app.post('/api/activity_requests/:id/send-logistics', auth(['dean','admin']), async (req, res) => {
   try {
     const Model = models['activity_requests'];
     const doc = await Model.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'الطلب غير موجود' });
     if ((doc.status||'pending') !== 'awaiting_dean') return res.status(400).json({ error: 'هذا الإجراء متاح فقط أثناء مرحلة اعتماد العميد' });
-    if (doc.svc_hall !== 'نعم') return res.status(400).json({ error: 'لم يُطلَب حجز مكان لهذا النشاط' });
-    if (doc.hall_review_status === 'pending') return res.status(400).json({ error: 'تم تحويل طلب حجز المكان مسبقاً وينتظر الرد' });
-    await Model.findByIdAndUpdate(doc._id, {
-      hall_review_status: 'pending', hall_review_sent_by: req.user.fullName, hall_review_sent_at: new Date().toISOString(),
-      hall_review_by: '', hall_review_at: '', hall_review_note: ''
-    });
-    res.json({ message: 'تم تحويل طلب حجز المكان لمدير دائرة الخدمات الفنية والتطوير' });
+    const places = Array.isArray(doc.svc_places) ? doc.svc_places : [];
+    const needsFacilities = places.some(p => FACILITIES_PLACES.includes(p));
+    const needsSports = places.some(p => SPORTS_PLACES.includes(p));
+    if (!needsFacilities && !needsSports) return res.status(400).json({ error: 'لم يُطلَب أي مكان يحتاج موافقة ضمن هذا الطلب' });
+    const now = new Date().toISOString();
+    const update = {};
+    if (needsFacilities) { update.facilities_review_status = 'pending'; update.facilities_review_sent_by = req.user.fullName; update.facilities_review_sent_at = now; update.facilities_review_by=''; update.facilities_review_at=''; update.facilities_review_note=''; }
+    if (needsSports) { update.sports_review_status = 'pending'; update.sports_review_sent_by = req.user.fullName; update.sports_review_sent_at = now; update.sports_review_by=''; update.sports_review_at=''; update.sports_review_note=''; }
+    await Model.findByIdAndUpdate(doc._id, update);
+    res.json({ message: 'تم تحويل طلب الخدمات اللوجستية للجهات المعنية' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ══ مدير دائرة الخدمات الفنية والتطوير: موافقة/رفض توفر المكان ══
-app.post('/api/activity_requests/:id/facilities-decision', auth(['manager','admin']), async (req, res) => {
+// دالة مشتركة: موافقة/رفض مدير دائرة على الأماكن الخاصة بدائرته ضمن طلب مُحال إليه
+async function logisticsDecision(req, res, { dept, places, statusField, byField, atField, noteField, bookingIdsField }) {
   try {
-    if (req.user.role==='manager' && req.user.department !== FACILITIES_DEPT)
-      return res.status(403).json({ error: 'هذا الإجراء مخصص لمدير دائرة الخدمات الفنية والتطوير فقط' });
+    if (req.user.role==='manager' && req.user.department !== dept)
+      return res.status(403).json({ error: `هذا الإجراء مخصص لمدير ${dept} فقط` });
     const Model = models['activity_requests'];
     const doc = await Model.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'الطلب غير موجود' });
-    if (doc.hall_review_status !== 'pending') return res.status(400).json({ error: 'لا يوجد طلب حجز مكان بانتظار ردّك لهذا النشاط' });
+    if (doc[statusField] !== 'pending') return res.status(400).json({ error: 'لا يوجد طلب بانتظار ردّك لهذا النشاط' });
     const { action, note } = req.body;
     const now = new Date().toISOString();
     if (action === 'approve') {
-      const booking = await models['hall_bookings'].create({
-        hall: doc.svc_hall_place || '', day: weekdayNameFromDate(doc.activity_date), date: doc.activity_date || '',
-        time_from: doc.time_from || '', time_to: doc.time_to || '', purpose: doc.title || '', supervisor: doc.supervisor || '',
-        confirmed: false, request_id: String(doc._id), created_by: req.user.username,
-        source: `محجوز مبدئياً بانتظار الاعتماد النهائي للنشاط — ${doc.title}`
-      });
-      await Model.findByIdAndUpdate(doc._id, {
-        hall_review_status: 'approved', hall_review_by: req.user.fullName, hall_review_at: now, hall_review_note: note || '',
-        hall_booking_id: String(booking._id)
-      });
-      return res.json({ message: 'تمت الموافقة على توفر المكان، وتم إنشاء حجز مبدئي بانتظار اعتماد العميد النهائي' });
+      const myPlaces = (doc.svc_places||[]).filter(p => places.includes(p));
+      const bookingIds = [];
+      for (const place of myPlaces) {
+        const booking = await models['hall_bookings'].create({
+          hall: place, day: weekdayNameFromDate(doc.activity_date), date: doc.activity_date || '',
+          time_from: doc.time_from || '', time_to: doc.time_to || '', purpose: doc.title || '', supervisor: doc.supervisor || '',
+          confirmed: false, request_id: String(doc._id), created_by: req.user.username,
+          source: `محجوز مبدئياً بانتظار الاعتماد النهائي للنشاط — ${doc.title}`
+        });
+        bookingIds.push(String(booking._id));
+      }
+      await Model.findByIdAndUpdate(doc._id, { [statusField]:'approved', [byField]:req.user.fullName, [atField]:now, [noteField]:note||'', [bookingIdsField]:bookingIds });
+      return res.json({ message: 'تمت الموافقة على الأماكن المطلوبة، وتم إنشاء حجز مبدئي بانتظار اعتماد العميد النهائي' });
     }
     if (action === 'reject') {
-      await Model.findByIdAndUpdate(doc._id, { hall_review_status: 'rejected', hall_review_by: req.user.fullName, hall_review_at: now, hall_review_note: note || '' });
-      return res.json({ message: 'تم إرسال رفض توفر المكان للعميد' });
+      await Model.findByIdAndUpdate(doc._id, { [statusField]:'rejected', [byField]:req.user.fullName, [atField]:now, [noteField]:note||'' });
+      return res.json({ message: 'تم إرسال الرفض للعميد' });
     }
     return res.status(400).json({ error: 'إجراء غير معروف' });
   } catch(e) { res.status(500).json({ error: e.message }); }
-});
+}
+
+// ══ مدير دائرة الخدمات الفنية والتطوير: موافقة/رفض الأماكن الخاصة بدائرته ══
+app.post('/api/activity_requests/:id/facilities-decision', auth(['manager','admin']), (req, res) =>
+  logisticsDecision(req, res, { dept: FACILITIES_DEPT, places: FACILITIES_PLACES, statusField:'facilities_review_status', byField:'facilities_review_by', atField:'facilities_review_at', noteField:'facilities_review_note', bookingIdsField:'facilities_booking_ids' })
+);
+
+// ══ مدير دائرة النشاطات الرياضية: موافقة/رفض الأماكن الخاصة بدائرته ══
+app.post('/api/activity_requests/:id/sports-decision', auth(['manager','admin']), (req, res) =>
+  logisticsDecision(req, res, { dept: SPORTS_DEPT, places: SPORTS_PLACES, statusField:'sports_review_status', byField:'sports_review_by', atField:'sports_review_at', noteField:'sports_review_note', bookingIdsField:'sports_booking_ids' })
+);
 
 // ══ مسار قرارات طلب إقامة النشاط (منسّق ← مدير ← عميد) ══
 app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
@@ -627,39 +647,36 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
 
     if (status === 'awaiting_dean') {
       if (!['dean','admin'].includes(role)) return res.status(403).json({ error: 'هذا الإجراء مخصص للعميد فقط' });
+      const allBookingIds = [...(doc.facilities_booking_ids||[]), ...(doc.sports_booking_ids||[])];
       if (action === 'approve') {
         if (!Array.isArray(categories) || !categories.length) return res.status(400).json({ error: 'يرجى اختيار تصنيف واحد على الأقل' });
         await Model.findByIdAndUpdate(doc._id, { status: 'approved', approved_by: req.user.fullName, approved_at: now, approval_note: note || '', categories });
         await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
         await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
         await models['activity_evaluations'].create({ ...buildEvalRecordFromRequest(doc), created_by: req.user.username });
-        // تأكيد الحجز المبدئي للمكان (إن وُجد) بعد الاعتماد النهائي
-        if (doc.hall_booking_id) {
-          await models['hall_bookings'].findByIdAndUpdate(doc.hall_booking_id, {
-            confirmed: true, source: `تم تأكيد الحجز — النشاط معتمَد نهائياً — ${doc.title}`
-          });
+        // تأكيد كل الحجوزات المبدئية للأماكن (إن وُجدت) بعد الاعتماد النهائي
+        for (const bId of allBookingIds) {
+          await models['hall_bookings'].findByIdAndUpdate(bId, { confirmed: true, source: `تم تأكيد الحجز — النشاط معتمَد نهائياً — ${doc.title}` });
         }
         return res.json({ message: 'تم الاعتماد النهائي بنجاح' });
       }
       if (action === 'final_reject') {
-        // إلغاء الحجز المبدئي للمكان (إن وُجد) لأن الطلب رُفض نهائياً
-        if (doc.hall_booking_id) {
-          await models['hall_bookings'].findByIdAndDelete(doc.hall_booking_id);
-        }
+        // إلغاء كل الحجوزات المبدئية للأماكن (إن وُجدت) لأن الطلب رُفض نهائياً
+        for (const bId of allBookingIds) { await models['hall_bookings'].findByIdAndDelete(bId); }
         await Model.findByIdAndUpdate(doc._id, {
           status: 'rejected', rejected_by: req.user.fullName, rejected_at: now, rejection_note: note || '', rejected_stage: 'dean',
-          hall_booking_id: '', hall_review_status: '', hall_review_by: '', hall_review_at: '', hall_review_note: ''
+          facilities_booking_ids: [], facilities_review_status: '', facilities_review_by: '', facilities_review_at: '', facilities_review_note: '',
+          sports_booking_ids: [], sports_review_status: '', sports_review_by: '', sports_review_at: '', sports_review_note: ''
         });
         return res.json({ message: 'تم رفض الطلب نهائياً' });
       }
       if (action === 'reject') {
-        // إلغاء الحجز المبدئي للمكان (إن وُجد) لأن الطلب عاد خطوة للخلف ويحتاج مراجعة من جديد
-        if (doc.hall_booking_id) {
-          await models['hall_bookings'].findByIdAndDelete(doc.hall_booking_id);
-        }
+        // إلغاء كل الحجوزات المبدئية للأماكن (إن وُجدت) لأن الطلب عاد خطوة للخلف ويحتاج مراجعة من جديد
+        for (const bId of allBookingIds) { await models['hall_bookings'].findByIdAndDelete(bId); }
         await Model.findByIdAndUpdate(doc._id, {
           status: 'awaiting_manager', dean_return_by: req.user.fullName, dean_return_at: now, dean_return_note: note || '',
-          hall_booking_id: '', hall_review_status: '', hall_review_by: '', hall_review_at: '', hall_review_note: '', hall_review_sent_by: '', hall_review_sent_at: ''
+          facilities_booking_ids: [], facilities_review_status: '', facilities_review_by: '', facilities_review_at: '', facilities_review_note: '', facilities_review_sent_by: '', facilities_review_sent_at: '',
+          sports_booking_ids: [], sports_review_status: '', sports_review_by: '', sports_review_at: '', sports_review_note: '', sports_review_sent_by: '', sports_review_sent_at: ''
         });
         return res.json({ message: 'تم إرجاع الطلب إلى المدير' });
       }
@@ -687,7 +704,7 @@ const AR_EDITABLE_FIELDS = [
   'type','title','ad_title','description','goals','audience','cost','organizer',
   'student_name','student_id','phone','college','submit_date',
   'activity_date','time_from','time_to','location',
-  'svc_hall','svc_hall_place','svc_activity_point','svc_community_service','svc_security','svc_other',
+  'svc_places','svc_activity_point','svc_community_service','svc_security','svc_other',
   'supervisor','sup_college','sup_phone','guests','ext_name','ext_people'
 ];
 app.post('/api/activity_requests/:id/edit-content', auth(), async (req, res) => {
