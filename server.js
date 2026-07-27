@@ -597,8 +597,8 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
         status: 'approved', approved_by: req.user.fullName, approved_at: now,
         approval_note: note || '', categories, admin_override: true
       });
-      await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
-      await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
+      const participantsDoc1 = await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
+      await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username, attached_participant_id: String(participantsDoc1._id) });
       await models['activity_evaluations'].create({ ...buildEvalRecordFromRequest(doc), created_by: req.user.username });
       return res.json({ message: 'تم الاعتماد المباشر بنجاح' });
     }
@@ -652,8 +652,8 @@ app.post('/api/activity_requests/:id/decision', auth(), async (req, res) => {
       if (action === 'approve') {
         if (!Array.isArray(categories) || !categories.length) return res.status(400).json({ error: 'يرجى اختيار تصنيف واحد على الأقل' });
         await Model.findByIdAndUpdate(doc._id, { status: 'approved', approved_by: req.user.fullName, approved_at: now, approval_note: note || '', categories });
-        await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username });
-        await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
+        const participantsDoc2 = await models['participants'].create({ ...buildParticipantsRecordFromRequest(doc), created_by: req.user.username });
+        await models[doc.submitted_via==='public_link'?'student_activities_external':'student_activities'].create({ ...buildActivityRecordFromRequest(doc, categories), created_by: req.user.username, attached_participant_id: String(participantsDoc2._id) });
         await models['activity_evaluations'].create({ ...buildEvalRecordFromRequest(doc), created_by: req.user.username });
         // تأكيد كل الحجوزات المبدئية للأماكن (إن وُجدت) بعد الاعتماد النهائي
         for (const bId of allBookingIds) {
