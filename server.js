@@ -229,6 +229,7 @@ app.get('/api/public/participants-info/:id', async (req, res) => {
       activity: doc.activity || '', date: doc.date || '', organizer: doc.organizer || '',
       max_capacity: doc.max_capacity || null,
       registered_count: Array.isArray(doc.students) ? doc.students.length : 0,
+      level_field_type: doc.level_field_type || 'level',
     });
   } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
 });
