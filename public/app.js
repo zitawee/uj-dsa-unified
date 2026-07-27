@@ -48,10 +48,15 @@ const DEANSHIP_DEPTS = [
   'مكتب شؤون الطلبة الدوليين',
   'اتحاد طلبة الجامعة الأردنية'
 ];
-// الدائرة الوحيدة المخوَّلة بالموافقة/الرفض على طلبات حجز الأماكن المُحالة من العميد
+// الدائرة الوحيدة المخوَّلة بالموافقة/الرفض على طلبات حجز أماكنها
 const FACILITIES_DEPT = 'دائرة الخدمات الفنية والتطوير';
-// نفس قائمة القاعات المستخدمة في نموذج «حجز القاعات» — مصدر واحد مشترك مع طلب إقامة النشاط
-const HALLS_LIST = ['مدرج الحسن بن طلال','المدرج الصغير','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','الصوتيات'];
+const SPORTS_DEPT = 'دائرة النشاطات الرياضية';
+// الأماكن الخاضعة لموافقة مدير دائرة الخدمات الفنية والتطوير
+const FACILITIES_PLACES = ['مدرج الحسن بن طلال','مدرج الأردن','قاعة الإعلام والاتصال','قاعة المعارض الكبرى','قاعة معاذ الكساسبة','قاعة اجتماعات العمادة','حديقة العمادة الداخلية','حديقة العمادة الخارجية','بهو مدرج الحسن'];
+// الأماكن الخاضعة لموافقة مدير دائرة النشاطات الرياضية
+const SPORTS_PLACES = ['الصالة الرياضية','استاد الجامعة','صالة التايكواندو','مضمار استاد الجامعة'];
+// نفس قائمة الأماكن الكاملة تُستخدم أيضاً في نموذج «حجز القاعات» اليدوي — مصدر واحد مشترك
+const HALLS_LIST = [...FACILITIES_PLACES, ...SPORTS_PLACES];
 // ألوان خفيفة مميّزة لكل دائرة في بطاقات لوحة التحكم [خلفية, نص]
 const DEPT_COLORS = {
   'دائرة الهيئات والخدمات الطلابية':      ['#EAF3DE','#27500A'],
@@ -322,6 +327,40 @@ function goToFacilitiesQueue() {
   go('activity_requests', nav);
 }
 
+// ═ هل يحتاج الطلب زر «تحويل خدمات لوجستية» (مكان لم يُحوَّل بعد لأي من الدائرتين المعنيتين) ═
+function needsLogisticsTransfer(r) {
+  const places = r.svc_places||[];
+  const needsFac = places.some(p=>FACILITIES_PLACES.includes(p)) && !r.facilities_review_status;
+  const needsSpo = places.some(p=>SPORTS_PLACES.includes(p)) && !r.sports_review_status;
+  return needsFac || needsSpo;
+}
+
+// ═ سطور حالة الرد من مدير/مديرَي الدوائر المعنية بحجز الأماكن ═
+function logisticsNoteHTML(r) {
+  let html = '';
+  if (r.facilities_review_status) {
+    html += r.facilities_review_status==='pending' ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">⏳ بانتظار رد مدير الخدمات الفنية والتطوير</div>`
+      : r.facilities_review_status==='approved' ? `<div style="font-size:10.5px;color:#27500A;margin-top:3px">✅ مدير الخدمات الفنية: الأماكن متاحة</div>`
+      : `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">❌ مدير الخدمات الفنية: غير متاح${r.facilities_review_note?` (${r.facilities_review_note})`:''}</div>`;
+  }
+  if (r.sports_review_status) {
+    html += r.sports_review_status==='pending' ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">⏳ بانتظار رد مدير النشاطات الرياضية</div>`
+      : r.sports_review_status==='approved' ? `<div style="font-size:10.5px;color:#27500A;margin-top:3px">✅ مدير النشاطات الرياضية: الأماكن متاحة</div>`
+      : `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">❌ مدير النشاطات الرياضية: غير متاح${r.sports_review_note?` (${r.sports_review_note})`:''}</div>`;
+  }
+  return html;
+}
+
+// ══ العميد: تحويل طلب الخدمات اللوجستية (حجز أماكن) بضغطة واحدة لكل الدوائر المعنية ══
+async function sendLogistics(id) {
+  if(!confirm('تحويل طلب الخدمات اللوجستية (الأماكن المطلوبة) للدوائر المعنية للموافقة عليها؟')) return;
+  const r=await api(`/api/activity_requests/${id}/send-logistics`,'POST',{});
+  if(r.error){alert(r.error);return;}
+  if(typeof filterAR==='function') filterAR();
+  loadDash();
+  if(typeof loadFacilitiesPending==='function') loadFacilitiesPending();
+}
+
 function go(name, el) {
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -357,11 +396,14 @@ async function loadDash() {
     .filter(r=>!(['coordinator','manager'].includes(ME?.role) && ME.department) || r.organizer===ME.department);
   const deptStats = await api('/api/dept-stats');
 
-  const facilitiesPendingCount = (ME?.role==='manager' && ME.department===FACILITIES_DEPT) ? (pendingAll||[]).filter(r=>r.hall_review_status==='pending').length : 0;
-  const facBanner = facilitiesPendingCount>0 ? `
+  const myLogisticsDept = (ME?.role==='manager' && ME.department===FACILITIES_DEPT) ? 'facilities'
+    : (ME?.role==='manager' && ME.department===SPORTS_DEPT) ? 'sports' : null;
+  const logisticsPendingCount = myLogisticsDept==='facilities' ? (pendingAll||[]).filter(r=>r.facilities_review_status==='pending').length
+    : myLogisticsDept==='sports' ? (pendingAll||[]).filter(r=>r.sports_review_status==='pending').length : 0;
+  const facBanner = logisticsPendingCount>0 ? `
   <div class="card" style="background:#EAF3FB;border:1px solid #B9D8EF">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div style="color:#1B5E9A;font-weight:700;font-size:13px">📥 لديك ${facilitiesPendingCount} ${facilitiesPendingCount===1?'طلب حجز مكان':'طلبات حجز أماكن'} مُحالة إليك من العميد بانتظار ردّك</div>
+      <div style="color:#1B5E9A;font-weight:700;font-size:13px">📥 لديك ${logisticsPendingCount} ${logisticsPendingCount===1?'طلب حجز مكان':'طلبات حجز أماكن'} مُحالة إليك من العميد بانتظار ردّك</div>
       <button class="btn btn-sm" style="background:#1B5E9A;color:#fff;border-color:#1B5E9A" onclick="goToFacilitiesQueue()">📥 عرض طلبات حجز الأماكن</button>
     </div>
   </div>` : '';
@@ -390,18 +432,15 @@ async function loadDash() {
     if(status==='pending' && ['coordinator','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="coordDecision('${r.id}','forward')">✅ قبول</button><button class="btn btn-sm btn-r" onclick="coordDecision('${r.id}','reject')">❌ رفض</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️</button>`;
     if(status==='awaiting_manager' && ['manager','admin'].includes(role)) actions+=`<button class="btn btn-sm btn-g" onclick="mgrDecision('${r.id}','forward')">✅ موافقة</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="mgrReturn('${r.id}')">↩️ للمنسّق</button><button class="btn btn-sm btn-r" onclick="mgrDecision('${r.id}','reject')">❌ رفض نهائي</button><button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="editContentAR('${r.id}')">✏️</button>`;
     if(status==='awaiting_dean' && ['dean','admin'].includes(role)){
-      if(r.svc_hall==='نعم' && !r.hall_review_status){
-        actions+=`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="sendToFacilities('${r.id}')">📤 تحويل حجز المكان</button>`;
+      if(needsLogisticsTransfer(r)){
+        actions+=`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="sendLogistics('${r.id}')">📤 تحويل خدمات لوجستية</button>`;
       }
       actions+=`<button class="btn btn-sm btn-g" onclick="openApprove('${r.id}','approve')">✅ اعتماد</button><button class="btn btn-sm" style="color:#8A4B0F;border-color:#8A4B0F" onclick="deanReturn('${r.id}')">↩️ إرجاع</button><button class="btn btn-sm btn-r" onclick="deanFinalReject('${r.id}')">❌ رفض نهائي</button>`;
     }
     if(role==='admin') actions+=`<button class="btn btn-sm" style="background:#5B4636;color:#fff;border-color:#5B4636" onclick="openApprove('${r.id}','admin_approve')">🚀 تجاوز</button>`;
     const mgrReturnNote = (status==='pending' && r.manager_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده المدير: ${r.manager_return_note}</div>` : '';
     const deanReturnNote = (status==='awaiting_manager' && r.dean_return_note) ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">↩️ أعاده العميد: ${r.dean_return_note}</div>` : '';
-    const hallNote = (r.svc_hall==='نعم' && r.hall_review_status) ?
-      (r.hall_review_status==='pending' ? `<div style="font-size:10.5px;color:#8A4B0F;margin-top:3px">⏳ بانتظار رد مدير الخدمات الفنية بشأن المكان</div>`
-      : r.hall_review_status==='approved' ? `<div style="font-size:10.5px;color:#27500A;margin-top:3px">✅ مدير الخدمات الفنية: المكان متاح</div>`
-      : `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">❌ مدير الخدمات الفنية: المكان غير متاح${r.hall_review_note?` (${r.hall_review_note})`:''}</div>`) : '';
+    const hallNote = logisticsNoteHTML(r);
     return `<tr>
     <td>${i+1}</td><td><strong>${r.title||'-'}</strong></td><td>${r.type||'-'}</td>
     <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
