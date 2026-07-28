@@ -545,6 +545,23 @@ async function toggleLevelField(id, newValue) {
   filterPart();
 }
 
+// ═ تصدير كشف أسماء المشاركين إلى ملف Excel (.xlsx) — نفس بيانات الكشف المطبوع ═
+async function exportPartExcel(id) {
+  const r = await api('/api/participants/'+id); if(!r||r.error){alert('تعذر تحميل بيانات النشاط');return;}
+  const students = r.students||[];
+  if(!students.length){ alert('لا يوجد طلبة مسجَّلون في هذا النشاط بعد.'); return; }
+  const levelLabel = r.level_field_type==='national_id' ? 'الرقم الوطني' : 'المستوى';
+  const sheetRows = students.map((s,i)=>({
+    '#': i+1, 'اسم الطالب': s.name||'', 'الرقم الجامعي': s.id||'', 'الجنس': s.gender||'',
+    'الجنسية': s.nationality||'', 'الكلية': s.college||'', 'التخصص': s.major||'',
+    [levelLabel]: s.year||'', 'رقم الهاتف': s.phone||'', 'الحضور': s.attended?'حاضر':''
+  }));
+  const ws = XLSX.utils.json_to_sheet(sheetRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'المشاركون');
+  XLSX.writeFile(wb, `كشف_مشاركين_${(r.activity||'نشاط').replace(/[\\/:*?"<>|]/g,'')}.xlsx`);
+}
+
 async function editPart(id) {
   const r = await api('/api/participants/'+id);
   if(!r||r.error){alert('تعذر تحميل السجل');return;}
@@ -719,6 +736,7 @@ async function filterPart() {
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       ${canEditPart?`<button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="toggleLevelField('${r.id}','${r.level_field_type==='national_id'?'level':'national_id'}')">${r.level_field_type==='national_id'?'🪪 الحقل: الرقم الوطني':'🎓 الحقل: المستوى'}</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
+      <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcel('${r.id}')">📊 Excel</button>
       <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ طباعة الحاضرين</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
