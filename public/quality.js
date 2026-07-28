@@ -545,11 +545,30 @@ async function toggleLevelField(id, newValue) {
   filterPart();
 }
 
+// ═ نافذة اختيار نوع بيانات التصدير: كل المسجَّلين أم الحاضرين فقط ═
+function exportPartExcelChoice(id) {
+  const existing=document.getElementById('excel-choice-modal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='excel-choice-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-size:14px;font-weight:700;color:var(--g);margin-bottom:14px">📊 تصدير Excel — اختر البيانات</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-b" onclick="document.getElementById('excel-choice-modal').remove();exportPartExcel('${id}','all')">👥 كل المسجَّلين</button>
+      <button class="btn btn-g" onclick="document.getElementById('excel-choice-modal').remove();exportPartExcel('${id}','attended')">✅ الحاضرين فقط</button>
+    </div>
+    <div style="text-align:left;margin-top:14px"><button class="btn" onclick="document.getElementById('excel-choice-modal').remove()">إلغاء</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
 // ═ تصدير كشف أسماء المشاركين إلى ملف Excel (.xlsx) — نفس بيانات الكشف المطبوع ═
-async function exportPartExcel(id) {
+async function exportPartExcel(id, mode='all') {
   const r = await api('/api/participants/'+id); if(!r||r.error){alert('تعذر تحميل بيانات النشاط');return;}
-  const students = r.students||[];
-  if(!students.length){ alert('لا يوجد طلبة مسجَّلون في هذا النشاط بعد.'); return; }
+  let students = r.students||[];
+  if(mode==='attended') students = students.filter(s=>s.attended);
+  if(!students.length){ alert(mode==='attended'?'لا يوجد أي طالب مسجَّل حضوره فعلياً بعد.':'لا يوجد طلبة مسجَّلون في هذا النشاط بعد.'); return; }
   const levelLabel = r.level_field_type==='national_id' ? 'الرقم الوطني' : 'المستوى';
   const sheetRows = students.map((s,i)=>({
     '#': i+1, 'اسم الطالب': s.name||'', 'الرقم الجامعي': s.id||'', 'الجنس': s.gender||'',
@@ -559,7 +578,8 @@ async function exportPartExcel(id) {
   const ws = XLSX.utils.json_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'المشاركون');
-  XLSX.writeFile(wb, `كشف_مشاركين_${(r.activity||'نشاط').replace(/[\\/:*?"<>|]/g,'')}.xlsx`);
+  const suffix = mode==='attended' ? '_الحاضرين' : '_المسجلين';
+  XLSX.writeFile(wb, `كشف${suffix}_${(r.activity||'نشاط').replace(/[\\/:*?"<>|]/g,'')}.xlsx`);
 }
 
 async function editPart(id) {
@@ -735,9 +755,9 @@ async function filterPart() {
     <td><div class="rb">
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       ${canEditPart?`<button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="toggleLevelField('${r.id}','${r.level_field_type==='national_id'?'level':'national_id'}')">${r.level_field_type==='national_id'?'🪪 الحقل: الرقم الوطني':'🎓 الحقل: المستوى'}</button>`:''}
-      <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ طباعة</button>
-      <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcel('${r.id}')">📊 Excel</button>
-      <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ طباعة الحاضرين</button>
+      <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ المسجلين</button>
+      <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ الحاضرين</button>
+      <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcelChoice('${r.id}')">📊 Excel</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
