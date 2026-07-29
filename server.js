@@ -2,6 +2,7 @@ const express  = require('express');
 const bcrypt   = require('bcryptjs');
 const mongoose = require('mongoose');
 const path     = require('path');
+const fs       = require('fs');
 
 const app  = express();
 app.set('trust proxy', true);
@@ -145,6 +146,39 @@ async function initAdmin() {
 }
 
 app.use(express.json({ limit: '50mb' }));
+// يُخدَّم قبل express.static ليُحقن بيانات Open Graph الخاصة بفعالية بعينها عند وجود ?id= في الرابط
+// (المتصفح العادي يعرض نفس الصفحة تماماً؛ الفرق يظهر فقط لبرامج فيسبوك/واتساب عند قراءة الصفحة لبناء بطاقة المعاينة)
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+app.get('/events.html', async (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'events.html');
+  try {
+    let html = fs.readFileSync(filePath, 'utf8');
+    const id = req.query.id;
+    if (id) {
+      const doc = await models['announcements'].findById(id).lean().catch(()=>null);
+      if (doc) {
+        const title = `${doc.title || 'فعالية'} — عمادة شؤون الطلبة`;
+        const descParts = [];
+        if (doc.date) descParts.push(`بتاريخ ${doc.date}`);
+        if (doc.organizer) descParts.push(`الجهة المنظِّمة: ${doc.organizer}`);
+        if (doc.location) descParts.push(`المكان: ${doc.location}`);
+        const desc = (descParts.join(' — ') || 'فعالية طلابية في الجامعة الأردنية').slice(0, 200);
+        const url = `https://ju-dsa.up.railway.app/events.html?id=${id}`;
+        html = html
+          .replace(/<title>[\s\S]*?<\/title>/, `<title>${escHtml(title)}</title>`)
+          .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${escHtml(title)}">`)
+          .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${escHtml(desc)}">`)
+          .replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${url}">`)
+          .replace(/<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${escHtml(title)}">`)
+          .replace(/<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${escHtml(desc)}">`);
+      }
+    }
+    res.send(html);
+  } catch(e) {
+    res.sendFile(filePath);
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ══ Sessions ══
