@@ -264,12 +264,16 @@ app.get('/api/public/events', async (req, res) => {
     const docs = await models['announcements'].find({}).sort({ date: -1 }).lean();
     const reqIds = docs.map(d => d.request_id).filter(Boolean);
     const parts = reqIds.length ? await models['participants'].find({ request_id: { $in: reqIds } }).lean() : [];
+    const evals = reqIds.length ? await models['activity_evaluations'].find({ request_id: { $in: reqIds } }).lean() : [];
     const partByReq = {};
     parts.forEach(p => { partByReq[p.request_id] = String(p._id); });
+    const evalByReq = {};
+    evals.forEach(e => { evalByReq[e.request_id] = String(e._id); });
     res.json(docs.map(d => ({
       id: String(d._id), title: d.title || '', type: d.type || '', date: d.date || '', time: d.time || '',
       location: d.location || '', organizer: d.organizer || '', description: d.description || '', goals: d.goals || '',
-      participant_id: d.request_id ? (partByReq[d.request_id] || null) : null
+      participant_id: d.request_id ? (partByReq[d.request_id] || null) : null,
+      eval_id: d.request_id ? (evalByReq[d.request_id] || null) : null
     })));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
