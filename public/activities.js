@@ -104,8 +104,10 @@ async function loadAR() {
   <div class="fb">
     <input type="text" id="arf-q" placeholder="بحث..." oninput="filterAR()">
     <select id="arf-st" onchange="filterAR()"><option value="">جميع الحالات</option><option value="pending">🟡 قيد مراجعة المنسّق</option><option value="awaiting_manager">🟠 قيد مراجعة المدير</option><option value="awaiting_dean">🔵 قيد اعتماد العميد</option><option value="approved">✅ معتمد</option><option value="rejected">❌ مرفوض</option></select>
+    <button class="btn btn-b" onclick="printSelected('tbl-ar')">🖨️ طباعة المحدَّد</button>
   </div>
   <div class="tw"><table><thead><tr>
+    <th><input type="checkbox" onchange="toggleSelectAll('tbl-ar', this.checked)"></th>
     <th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>الحالة</th><th>التصنيفات المعتمدة</th><th></th>
   </tr></thead><tbody id="tbl-ar"></tbody></table></div>`;
 
@@ -245,6 +247,7 @@ function buildARRow(r, i, role, isAdmin, canEdit, refreshFn) {
   const rejNote = (status==='rejected' && r.rejection_note) ? `<div style="font-size:10.5px;color:#791F1F;margin-top:3px">السبب: ${r.rejection_note}</div>` : '';
   const hallNote = logisticsNoteHTML(r);
   return `<tr>
+  <td><input type="checkbox" class="ar-select-cb" value="${r.id}"></td>
   <td>${i+1}</td><td><strong>${r.title||'-'}</strong>${r.ref_code?`<div style="font-size:10.5px;color:var(--muted)">${r.ref_code}</div>`:''}</td><td>${r.type||'-'}</td>
   <td style="font-size:11px;color:var(--g)">${r.organizer||'-'}</td>
   <td>${r.student_name||'-'}</td><td>${r.activity_date||'-'}</td>
@@ -277,7 +280,7 @@ async function filterAR() {
   document.getElementById('tbl-ar').innerHTML=filtered.map((r,i)=>{
     r._cats=resolveReqCategories(r, saList);
     return buildARRow(r, i, role, isAdmin, canEdit, 'filterAR');
-  }).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات</td></tr>`;
+  }).join('')||`<tr class="erow"><td colspan="10">لا توجد طلبات</td></tr>`;
   const cnt=document.getElementById('c-activity_requests'); if(cnt) cnt.textContent=filtered.length;
 }
 
@@ -294,8 +297,10 @@ async function loadARExternal() {
   <div class="fb">
     <input type="text" id="arfx-q" placeholder="بحث..." oninput="filterARExternal()">
     <select id="arfx-st" onchange="filterARExternal()"><option value="">جميع الحالات</option><option value="pending">🟡 قيد مراجعة المنسّق</option><option value="awaiting_manager">🟠 قيد مراجعة المدير</option><option value="awaiting_dean">🔵 قيد اعتماد العميد</option><option value="approved">✅ معتمد</option><option value="rejected">❌ مرفوض</option></select>
+    <button class="btn btn-b" onclick="printSelected('tbl-ar-ext')">🖨️ طباعة المحدَّد</button>
   </div>
   <div class="tw"><table><thead><tr>
+    <th><input type="checkbox" onchange="toggleSelectAll('tbl-ar-ext', this.checked)"></th>
     <th>#</th><th>عنوان الفعالية</th><th>النوع</th><th>الجهة المنظمة</th><th>مقدم الطلب</th><th>تاريخ النشاط</th><th>الحالة</th><th>التصنيفات المعتمدة</th><th></th>
   </tr></thead><tbody id="tbl-ar-ext"></tbody></table></div>`;
   filterARExternal();
@@ -314,7 +319,7 @@ async function filterARExternal() {
   document.getElementById('tbl-ar-ext').innerHTML=filtered.map((r,i)=>{
     r._cats=resolveReqCategories(r, saList);
     return buildARRow(r, i, role, isAdmin, canEdit, 'filterARExternal');
-  }).join('')||`<tr class="erow"><td colspan="9">لا توجد طلبات خارجية</td></tr>`;
+  }).join('')||`<tr class="erow"><td colspan="10">لا توجد طلبات خارجية</td></tr>`;
   const cnt=document.getElementById('c-activity_requests_external'); if(cnt) cnt.textContent=filtered.length;
 }
 

@@ -520,8 +520,8 @@ async function loadParticipants() {
       <button class="btn btn-g" id="pf-savebtn" onclick="savePart()"><i class="ti ti-device-floppy"></i>حفظ فقط</button>
     </div>
   </div>
-  <div class="fb"><input type="text" id="ptf-q" placeholder="بحث..." oninput="filterPart()"></div>
-  <div class="tw"><table><thead><tr><th>#</th><th>اسم النشاط</th><th>التاريخ</th><th>الجهة</th><th>عدد المشاركين</th><th></th></tr></thead>
+  <div class="fb"><input type="text" id="ptf-q" placeholder="بحث..." oninput="filterPart()"><button class="btn btn-b" onclick="printSelected('tbl-part')">🖨️ طباعة المحدَّد</button></div>
+  <div class="tw"><table><thead><tr><th><input type="checkbox" onchange="toggleSelectAll('tbl-part', this.checked)"></th><th>#</th><th>اسم النشاط</th><th>التاريخ</th><th>الجهة</th><th>عدد المشاركين</th><th></th></tr></thead>
   <tbody id="tbl-part"></tbody></table></div>`;
   addPartRow(); filterPart();
 }
@@ -538,6 +538,17 @@ function showPForm() {
 }
 
 // ═ تبديل حقل «المستوى» إلى «الرقم الوطني» (أو العكس) لنشاط مُعيّن — يؤثر فقط على نموذج التسجيل الذاتي والكشف المطبوع لهذا النشاط ═
+// ══ طباعة جماعية لعدد من كشوفات أسماء المشاركين المحدَّدة، كل كشف في صفحة منفصلة ══
+async function printSelectedParts(ids) {
+  const pages = [];
+  for (const id of ids) {
+    const r = await api('/api/participants/'+id); if(!r||r.error) continue;
+    pages.push(prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02') + buildPartBodyHTML(r));
+  }
+  if(!pages.length){ alert('تعذر تحميل بيانات العناصر المحدَّدة'); return; }
+  openPrint(pages.map((h,i)=> i>0 ? `<div style="page-break-before:always">${h}</div>` : h).join(''));
+}
+
 async function toggleLevelField(id, newValue) {
   const label = newValue==='national_id' ? 'الرقم الوطني' : 'المستوى';
   if(!confirm(`تبديل هذا الحقل إلى «${label}» لهذا النشاط تحديداً؟ (سيظهر بهذا الشكل في رابط التسجيل الذاتي والكشف المطبوع)`)) return;
@@ -751,6 +762,7 @@ async function filterPart() {
     const total=(r.students||[]).length;
     const attended=(r.students||[]).filter(s=>s.attended).length;
     return `<tr>
+    <td><input type="checkbox" class="part-select-cb" value="${r.id}"></td>
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
     <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div></td>
     <td><div class="rb">
@@ -762,7 +774,7 @@ async function filterPart() {
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
-  </tr>`;}).join('')||`<tr class="erow"><td colspan="6">لا توجد نماذج</td></tr>`;
+  </tr>`;}).join('')||`<tr class="erow"><td colspan="7">لا توجد نماذج</td></tr>`;
   const cnt=document.getElementById('c-participants'); if(cnt) cnt.textContent=rows?.length||0;
 }
 

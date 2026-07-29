@@ -322,6 +322,19 @@ function goToIncomplete() {
   go('incomplete', nav);
 }
 
+// ═ تحديد/إلغاء تحديد كل الصفوف ضمن جدول مُعيّن (للطباعة الجماعية) ═
+function toggleSelectAll(tbodyId, checked) {
+  document.querySelectorAll('#'+tbodyId+' input[type=checkbox]').forEach(cb=>cb.checked=checked);
+}
+
+// ═ موزِّع الطباعة الجماعية: يوجّه لدالة الطباعة المناسبة حسب الجدول ═
+async function printSelected(tbodyId) {
+  const ids = Array.from(document.querySelectorAll('#'+tbodyId+' input[type=checkbox]:checked')).map(cb=>cb.value);
+  if(!ids.length){ alert('يرجى تحديد عنصر واحد على الأقل للطباعة'); return; }
+  if(tbodyId==='tbl-ar' || tbodyId==='tbl-ar-ext') await printSelectedAR(ids);
+  else if(tbodyId==='tbl-part') await printSelectedParts(ids);
+}
+
 function goToFacilitiesQueue() {
   const nav = document.querySelector(`.ni[onclick*="go('activity_requests'"]`);
   go('activity_requests', nav);

@@ -146,6 +146,19 @@ async function buildAndPrintQRSet({title, date, organizer, partId, evalId}) {
   openPrint(html);
 }
 
+// ══ طباعة جماعية لعدد من طلبات إقامة النشاط المحدَّدة، كل طلب في صفحة منفصلة ══
+async function printSelectedAR(ids) {
+  const saList = await getCombinedActivitiesList();
+  const pages = [];
+  for (const id of ids) {
+    const r = await api('/api/activity_requests/'+id); if(!r||r.error) continue;
+    const cats = resolveReqCategories(r, saList);
+    pages.push(prtHeader('نموذج طلب إقامة نشاط','DSA-02-01-05') + buildARBodyHTML(r, cats));
+  }
+  if(!pages.length){ alert('تعذر تحميل بيانات العناصر المحدَّدة'); return; }
+  openPrint(pages.map((h,i)=> i>0 ? `<div style="page-break-before:always">${h}</div>` : h).join(''));
+}
+
 async function printIncompleteQR(table, id, requestId) {
   const [rec, part, ev] = await Promise.all([
     api('/api/'+table+'/'+id),
