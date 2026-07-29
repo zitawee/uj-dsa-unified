@@ -287,7 +287,7 @@ app.get('/api/public/participants-info/:id', async (req, res) => {
       max_capacity: doc.max_capacity || null,
       registered_count: Array.isArray(doc.students) ? doc.students.length : 0,
       level_field_type: doc.level_field_type || 'level',
-      reg_expiry: doc.reg_expiry || null,
+      reg_expiry: doc.reg_expiry || doc.date || null,
     });
   } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
 });
@@ -307,7 +307,8 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
     if (!doc) return res.status(404).json({ error: 'رابط التسجيل غير صالح' });
 
     const todayStr = new Date().toISOString().slice(0,10);
-    if (doc.reg_expiry && doc.reg_expiry < todayStr)
+    const effectiveExpiry = doc.reg_expiry || doc.date || null;
+    if (effectiveExpiry && effectiveExpiry < todayStr)
       return res.status(400).json({ error: 'عذراً، انتهت صلاحية رابط التسجيل لهذا النشاط' });
 
     const students = Array.isArray(doc.students) ? doc.students : [];
