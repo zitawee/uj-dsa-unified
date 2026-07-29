@@ -160,7 +160,7 @@ const PRINT_STYLES = `
     .psub{background:#E8F5E9;color:#1B6B3A;padding:3px 8px;font-size:9.5pt;font-weight:700;margin:6px 0 4px;border-right:4px solid #1B6B3A}
     .fr{display:flex;border-bottom:1px solid #ccc;padding:3px 0;font-size:8.5pt;align-items:center;min-height:21px}
     .fl{font-weight:700;color:#1B6B3A;min-width:120px;flex-shrink:0;font-size:8pt}
-    .fv{flex:1;border-bottom:1px dotted #aaa;padding:0 4px;min-height:14px}
+    .fv{flex:1;border-bottom:1px dotted #aaa;padding:0 4px;min-height:14px;color:#000;font-weight:500}
     .fg2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
     .fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:4px}
     .sg2{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
