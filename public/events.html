@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="فعاليات الطلبة">
+<link rel="manifest" href="/events-manifest.json">
 <meta name="theme-color" content="#1B6B3A">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -62,6 +63,21 @@
   .modal .reglink{display:block;text-align:center;margin-top:16px;background:var(--g);color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;font-size:14px}
   .modal .sharebtn{display:block;width:100%;text-align:center;margin-top:10px;background:#fff;color:var(--g);border:1px solid var(--g);padding:11px;border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit}
   .modal .noreg{margin-top:16px;text-align:center;font-size:12px;color:var(--muted);background:#F9FAFB;border-radius:10px;padding:12px}
+
+  .install-banner{
+    position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);
+    box-shadow:0 -4px 16px rgba(0,0,0,.08);padding:14px 16px;z-index:1500;display:none;
+    align-items:center;gap:12px;flex-wrap:wrap
+  }
+  .install-banner img{width:40px;height:40px;border-radius:9px;flex-shrink:0}
+  .install-banner .txt{flex:1;min-width:180px;font-size:12.5px;color:#222;line-height:1.5}
+  .install-banner .txt b{color:var(--g)}
+  .install-banner .btns{display:flex;gap:8px;flex-shrink:0}
+  .install-banner button{
+    border:none;border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit
+  }
+  .install-banner .yes{background:var(--g);color:#fff}
+  .install-banner .no{background:#F1F2F1;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -77,6 +93,15 @@
     <div class="tab" id="tab-all" onclick="setTab('all')">الكل</div>
   </div>
   <div id="list"><div class="center">جارٍ التحميل...</div></div>
+</div>
+
+<div class="install-banner" id="installBanner">
+  <img src="/icon-192.png" alt="">
+  <div class="txt" id="installBannerTxt"><b>هل ترغب بتثبيت برنامج فعاليات عمادة شؤون الطلبة على هاتفك؟</b></div>
+  <div class="btns" id="installBannerBtns">
+    <button class="yes" onclick="doInstall()">نعم، تثبيت</button>
+    <button class="no" onclick="dismissInstallBanner()">لاحقاً</button>
+  </div>
 </div>
 
 <script>
@@ -172,6 +197,54 @@ async function shareEvent(id, title){
   }catch(e){
     prompt('انسخي هذا الرابط لمشاركته:', url);
   }
+}
+
+// ═ تثبيت التطبيق (PWA) على الهاتف ═
+let deferredInstallPrompt = null;
+const DISMISS_KEY = 'events_install_dismissed_until';
+
+function isDismissed(){
+  const until = localStorage.getItem(DISMISS_KEY);
+  return until && Date.now() < Number(until);
+}
+function dismissInstallBanner(days=7){
+  document.getElementById('installBanner').style.display='none';
+  localStorage.setItem(DISMISS_KEY, Date.now() + days*24*60*60*1000);
+}
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+// أندرويد/Chrome: يعرض المتصفح نفسه فرصة التثبيت، نعترضها لعرض رسالتنا المخصَّصة أولاً
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(!isDismissed() && !isStandalone()){
+    document.getElementById('installBanner').style.display='flex';
+  }
+});
+
+async function doInstall(){
+  document.getElementById('installBanner').style.display='none';
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+  }
+}
+
+// آيفون/Safari: لا تدعم نافذة تثبيت تلقائية إطلاقاً — نعرض إرشاداً بدلاً من ذلك
+if(isIOS() && !isStandalone() && !isDismissed()){
+  document.getElementById('installBannerTxt').innerHTML = '<b>للتثبيت على هاتفك:</b> اضغطي على زر المشاركة 📤 ثم اختاري "Add to Home Screen"';
+  document.getElementById('installBannerBtns').innerHTML = '<button class="no" onclick="dismissInstallBanner()">فهمت</button>';
+  document.getElementById('installBanner').style.display='flex';
+}
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/events-sw.js').catch(()=>{});
 }
 
 init();
