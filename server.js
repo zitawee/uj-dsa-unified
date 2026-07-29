@@ -159,7 +159,10 @@ app.get('/events.html', async (req, res) => {
       if (doc) {
         const title = `${doc.title || 'فعالية'} — عمادة شؤون الطلبة`;
         const descParts = [];
-        if (doc.date) descParts.push(`بتاريخ ${doc.date}`);
+        // علامة LRM (U+200E) تُجبر الأرقام/التاريخ على الظهور بترتيبها الصحيح داخل نص عربي (RTL)،
+        // لأن دمج تاريخ مثل 2026-08-14 مباشرة بعد نص عربي يجعل بعض التطبيقات (كواتساب) تعرضه معكوساً
+        const lrm = '\u200E';
+        if (doc.date) descParts.push(`بتاريخ ${lrm}${doc.date}${lrm}`);
         if (doc.organizer) descParts.push(`الجهة المنظِّمة: ${doc.organizer}`);
         if (doc.location) descParts.push(`المكان: ${doc.location}`);
         const desc = (descParts.join(' — ') || 'فعالية طلابية في الجامعة الأردنية').slice(0, 200);
