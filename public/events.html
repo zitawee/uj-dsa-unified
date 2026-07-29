@@ -123,7 +123,7 @@ function openDetails(idx){
   modal.id='ev-modal'; modal.className='modal-bg';
   modal.onclick=(ev)=>{ if(ev.target===modal) modal.remove(); };
   const regHTML = e.participant_id
-    ? `<a class="reglink" href="/register.html?id=${e.participant_id}" target="_blank">🔗 التسجيل في هذه الفعالية</a>`
+    ? `<a class="reglink" href="/register.html?id=${e.participant_id}">🔗 التسجيل في هذه الفعالية</a>`
     : `<div class="noreg">التسجيل غير متاح لهذه الفعالية بعد.</div>`;
   modal.innerHTML = `
   <div class="modal">

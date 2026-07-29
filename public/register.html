@@ -18,7 +18,8 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html{-webkit-text-size-adjust:100%}
   body{margin:0;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
-  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px}
+  header .back-lnk{color:#fff;text-decoration:none;font-size:13px;font-weight:600;display:flex;align-items:center;gap:3px;opacity:.9;flex-shrink:0}
   .wrap{max-width:640px;margin:0 auto;padding:16px 14px 48px}
   .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:14px}
   h1{font-size:16px;margin:0 0 4px;color:var(--g)}
@@ -53,7 +54,7 @@
 </style>
 </head>
 <body>
-<header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<header><a href="/events.html" class="back-lnk">→ الفعاليات</a><span>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</span></header>
 <div class="wrap">
 
   <div id="loadingArea" class="card center">جارٍ التحقق من الرابط...</div>
