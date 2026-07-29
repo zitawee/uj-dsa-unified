@@ -349,6 +349,7 @@ async function saveAR() {
     organizer:  data.organizer,
     contact:    data.phone,
     description:data.description,
+    goals:      data.goals,
     notes:      '',
     source:     `مرحَّل من طلب نشاط — ${data.title}`,
     request_id: r.id,

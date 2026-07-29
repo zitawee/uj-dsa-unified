@@ -351,6 +351,7 @@ async function loadForm(table) {
   <div class="ph">
     <div><div class="pt">${cfg.title}</div>${cfg.code?`<div class="pc">${cfg.code}</div>`:''}</div>
     <div style="display:flex;gap:6px">
+      ${table==='announcements'?`<a class="btn" href="/events.html" target="_blank" style="text-decoration:none"><i class="ti ti-link"></i>رابط عام للفعاليات</a>`:''}
       ${canEdit?`<button class="btn btn-g" onclick="showFF('${table}')"><i class="ti ti-plus"></i>إضافة جديد</button>`:''}
       <button class="btn" onclick="exportCSV('${table}')"><i class="ti ti-download"></i>CSV</button>
     </div>
