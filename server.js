@@ -221,6 +221,22 @@ app.post('/api/public/activity-requests', async (req, res) => {
 
 // ══ رابط عام لتسجيل الطلبة المشاركين في نشاط (بدون تسجيل دخول) ══
 // يعرض فقط بيانات النشاط الأساسية (بدون قائمة الطلبة) للتحقق من صحة الرابط
+// ══ قائمة عامة بالإعلانات/الفعاليات (سابقة وقادمة) — بحقول آمنة فقط، بلا بيانات شخصية ══
+app.get('/api/public/events', async (req, res) => {
+  try {
+    const docs = await models['announcements'].find({}).sort({ date: -1 }).lean();
+    const reqIds = docs.map(d => d.request_id).filter(Boolean);
+    const parts = reqIds.length ? await models['participants'].find({ request_id: { $in: reqIds } }).lean() : [];
+    const partByReq = {};
+    parts.forEach(p => { partByReq[p.request_id] = String(p._id); });
+    res.json(docs.map(d => ({
+      id: String(d._id), title: d.title || '', type: d.type || '', date: d.date || '', time: d.time || '',
+      location: d.location || '', organizer: d.organizer || '', description: d.description || '', goals: d.goals || '',
+      participant_id: d.request_id ? (partByReq[d.request_id] || null) : null
+    })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/public/participants-info/:id', async (req, res) => {
   try {
     const doc = await models['participants'].findById(req.params.id).lean();
