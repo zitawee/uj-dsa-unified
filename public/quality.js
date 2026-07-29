@@ -634,7 +634,7 @@ async function editPart(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
-  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null });
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
   f.scrollIntoView({behavior:'smooth'});
 }
@@ -720,10 +720,12 @@ function renderRegLink(id, info) {
   const capLine = cap
     ? `<div style="font-size:11.5px;color:${cnt>=cap?'#8A1F1F':'var(--muted)'};margin-top:6px">المسجَّلون عبر الرابط حالياً: <b>${cnt}</b> من الحد الأقصى <b>${cap}</b>${cnt>=cap?' — اكتمل العدد ولن يقبل الرابط تسجيلات جديدة حتى تُرفَع القيمة':''}</div>`
     : `<div style="font-size:11.5px;color:var(--muted);margin-top:6px">المسجَّلون عبر الرابط حالياً: <b>${cnt}</b> (بدون حدّ أقصى)</div>`;
-  const expiry = info?.expiry || null;
+  const explicitExpiry = info?.expiry || null;
+  const activityDate = info?.activityDate || null;
+  const expiry = explicitExpiry || activityDate || null;
   const isExpired = expiry && expiry < new Date().toISOString().slice(0,10);
   const expLine = expiry
-    ? `<div style="font-size:11.5px;color:${isExpired?'#8A1F1F':'var(--muted)'};margin-top:3px">${isExpired?'⛔ انتهت صلاحية الرابط بتاريخ':'صالح حتى تاريخ'} <b>${expiry}</b></div>`
+    ? `<div style="font-size:11.5px;color:${isExpired?'#8A1F1F':'var(--muted)'};margin-top:3px">${isExpired?'⛔ انتهت صلاحية الرابط بتاريخ':'صالح حتى تاريخ'} <b>${expiry}</b>${!explicitExpiry?' (افتراضي — تاريخ انعقاد النشاط، لعدم تحديد تاريخ يدوياً)':''}</div>`
     : `<div style="font-size:11.5px;color:var(--muted);margin-top:3px">الرابط مفعَّل بدون تاريخ انتهاء</div>`;
   box.innerHTML = `
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">شاركي/شارك هذا الرابط مع الطلبة ليسجّلوا حضورهم بأنفسهم مباشرة ضمن قائمة المشاركين أدناه (بدون تسجيل دخول):</div>
@@ -750,7 +752,7 @@ async function refreshPartStudents(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
-  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null });
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
   alert(`✅ تم تحديث القائمة — ${r.students?r.students.length:0} طالب مسجَّل حالياً`);
 }
 
@@ -766,7 +768,7 @@ async function savePart() {
     // أول حفظ لسجل جديد: يبقى النموذج مفتوحاً لإظهار رابط تسجيل الطلبة مباشرة
     f.dataset.editId = savedId;
     const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
-    renderRegLink(savedId, { count: data.students.length, cap: data.max_capacity, expiry: data.reg_expiry });
+    renderRegLink(savedId, { count: data.students.length, cap: data.max_capacity, expiry: data.reg_expiry, activityDate: data.date });
   } else {
     document.getElementById('part-form').style.display='none';
     delete f.dataset.editId;
