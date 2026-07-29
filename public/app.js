@@ -332,7 +332,7 @@ async function printSelected(tbodyId) {
   const ids = Array.from(document.querySelectorAll('#'+tbodyId+' input[type=checkbox]:checked')).map(cb=>cb.value);
   if(!ids.length){ alert('يرجى تحديد عنصر واحد على الأقل للطباعة'); return; }
   if(tbodyId==='tbl-ar' || tbodyId==='tbl-ar-ext') await printSelectedAR(ids);
-  else if(tbodyId==='tbl-part') await printSelectedParts(ids);
+  else if(tbodyId==='tbl-part') printSelectedPartsChoice(ids);
 }
 
 function goToFacilitiesQueue() {

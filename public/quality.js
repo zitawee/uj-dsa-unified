@@ -489,6 +489,7 @@ async function loadParticipants() {
         <div class="fg"><label>الجهة المسؤولة</label><select id="pf-org"><option value="">اختر...</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select></div>
         <div class="fg"><label>رقم النشاط للتقييم</label><input id="pf-eval" type="text"></div>
         <div class="fg"><label>الحد الأقصى لعدد المسجَّلين عبر رابط التسجيل (اختياري)</label><input id="pf-maxcap" type="number" min="1" placeholder="بدون حدّ إن تُرك فارغاً"></div>
+        <div class="fg"><label>صلاحية رابط التسجيل حتى تاريخ (اختياري)</label><input id="pf-regexp" type="date"></div>
       </div>
     </div>
     <div class="card" id="pf-reglink-card">
@@ -538,14 +539,34 @@ function showPForm() {
 }
 
 // ═ تبديل حقل «المستوى» إلى «الرقم الوطني» (أو العكس) لنشاط مُعيّن — يؤثر فقط على نموذج التسجيل الذاتي والكشف المطبوع لهذا النشاط ═
+// ═ نافذة اختيار نوع الكشف قبل الطباعة الجماعية: كل المسجَّلين أم الحاضرين فقط (يُطبَّق على كل العناصر المحدَّدة) ═
+function printSelectedPartsChoice(ids) {
+  const existing=document.getElementById('bulk-print-choice-modal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='bulk-print-choice-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-size:14px;font-weight:700;color:var(--g);margin-bottom:14px">🖨️ طباعة (${ids.length}) — اختر البيانات</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-b" onclick="document.getElementById('bulk-print-choice-modal').remove();printSelectedParts(${JSON.stringify(ids)},'all')">👥 كل المسجَّلين</button>
+      <button class="btn btn-g" onclick="document.getElementById('bulk-print-choice-modal').remove();printSelectedParts(${JSON.stringify(ids)},'attended')">✅ الحاضرين فقط</button>
+    </div>
+    <div style="text-align:left;margin-top:14px"><button class="btn" onclick="document.getElementById('bulk-print-choice-modal').remove()">إلغاء</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
 // ══ طباعة جماعية لعدد من كشوفات أسماء المشاركين المحدَّدة، كل كشف في صفحة منفصلة ══
-async function printSelectedParts(ids) {
+async function printSelectedParts(ids, mode='all') {
   const pages = [];
   for (const id of ids) {
     const r = await api('/api/participants/'+id); if(!r||r.error) continue;
-    pages.push(prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02') + buildPartBodyHTML(r));
+    const rec = mode==='attended' ? { ...r, students: (r.students||[]).filter(s=>s.attended) } : r;
+    if(mode==='attended' && !rec.students.length) continue;
+    pages.push(prtHeader('نموذج أسماء الطلبة المشاركين في النشاط','DSA-02-01-02') + buildPartBodyHTML(rec));
   }
-  if(!pages.length){ alert('تعذر تحميل بيانات العناصر المحدَّدة'); return; }
+  if(!pages.length){ alert(mode==='attended'?'لا يوجد أي طالب حاضر ضمن العناصر المحدَّدة.':'تعذر تحميل بيانات العناصر المحدَّدة'); return; }
   openPrint(pages.map((h,i)=> i>0 ? `<div style="page-break-before:always">${h}</div>` : h).join(''));
 }
 
@@ -605,6 +626,7 @@ async function editPart(id) {
   document.getElementById('pf-org').value=r.organizer||'';
   document.getElementById('pf-eval').value=r.eval_num||'';
   document.getElementById('pf-maxcap').value=r.max_capacity||'';
+  document.getElementById('pf-regexp').value=r.reg_expiry||'';
   document.getElementById('pf-sups').value=r.supervisors||'';
   document.getElementById('pf-staff').value=r.staff||'';
   const c=document.getElementById('part-rows'); c.innerHTML='';
@@ -612,7 +634,7 @@ async function editPart(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
-  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null });
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null });
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
   f.scrollIntoView({behavior:'smooth'});
 }
@@ -698,6 +720,11 @@ function renderRegLink(id, info) {
   const capLine = cap
     ? `<div style="font-size:11.5px;color:${cnt>=cap?'#8A1F1F':'var(--muted)'};margin-top:6px">المسجَّلون عبر الرابط حالياً: <b>${cnt}</b> من الحد الأقصى <b>${cap}</b>${cnt>=cap?' — اكتمل العدد ولن يقبل الرابط تسجيلات جديدة حتى تُرفَع القيمة':''}</div>`
     : `<div style="font-size:11.5px;color:var(--muted);margin-top:6px">المسجَّلون عبر الرابط حالياً: <b>${cnt}</b> (بدون حدّ أقصى)</div>`;
+  const expiry = info?.expiry || null;
+  const isExpired = expiry && expiry < new Date().toISOString().slice(0,10);
+  const expLine = expiry
+    ? `<div style="font-size:11.5px;color:${isExpired?'#8A1F1F':'var(--muted)'};margin-top:3px">${isExpired?'⛔ انتهت صلاحية الرابط بتاريخ':'صالح حتى تاريخ'} <b>${expiry}</b></div>`
+    : `<div style="font-size:11.5px;color:var(--muted);margin-top:3px">الرابط مفعَّل بدون تاريخ انتهاء</div>`;
   box.innerHTML = `
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">شاركي/شارك هذا الرابط مع الطلبة ليسجّلوا حضورهم بأنفسهم مباشرة ضمن قائمة المشاركين أدناه (بدون تسجيل دخول):</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -705,7 +732,8 @@ function renderRegLink(id, info) {
       <button class="btn btn-sm btn-g" onclick="copyRegLink('${link}')">📋 نسخ الرابط</button>
       <button class="btn btn-sm" onclick="refreshPartStudents('${id}')">🔄 تحديث قائمة المسجَّلين</button>
     </div>
-    ${capLine}`;
+    ${capLine}
+    ${expLine}`;
 }
 
 function copyRegLink(link) {
@@ -722,12 +750,12 @@ async function refreshPartStudents(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   updatePartCnt();
-  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null });
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null });
   alert(`✅ تم تحديث القائمة — ${r.students?r.students.length:0} طالب مسجَّل حالياً`);
 }
 
 async function savePart() {
-  const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),max_capacity:g('pf-maxcap')?Number(g('pf-maxcap')):null,students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
+  const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),max_capacity:g('pf-maxcap')?Number(g('pf-maxcap')):null,reg_expiry:g('pf-regexp')||null,students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
   if(!data.activity){showMsg('msg-participants','يرجى إدخال اسم النشاط',true);return null;}
   const f=document.getElementById('part-form'); const editId=f.dataset.editId;
   const r = editId ? await api('/api/participants/'+editId,'PUT',data) : await api('/api/participants','POST',data);
@@ -738,7 +766,7 @@ async function savePart() {
     // أول حفظ لسجل جديد: يبقى النموذج مفتوحاً لإظهار رابط تسجيل الطلبة مباشرة
     f.dataset.editId = savedId;
     const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
-    renderRegLink(savedId, { count: data.students.length, cap: data.max_capacity });
+    renderRegLink(savedId, { count: data.students.length, cap: data.max_capacity, expiry: data.reg_expiry });
   } else {
     document.getElementById('part-form').style.display='none';
     delete f.dataset.editId;
