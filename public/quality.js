@@ -645,7 +645,7 @@ function partRowHTML(s={}, levelFieldType='level') {
   const levelField = levelFieldType==='national_id'
     ? `<div class="fg"><label>الرقم الوطني</label><input type="text" class="pr-year" value="${s.year||''}"></div>`
     : `<div class="fg"><label>المستوى</label><select class="pr-year"><option value="">...</option>${yrSel}</select></div>`;
-  return `<div class="g3 part-row" style="margin-bottom:7px;border-bottom:1px solid var(--border);padding-bottom:7px">
+  return `<div class="g3 part-row" data-attended="${s.attended?'1':''}" data-attend-time="${s.attend_time||''}" style="margin-bottom:7px;border-bottom:1px solid var(--border);padding-bottom:7px">
     <div class="fg"><label>الاسم الكامل</label><input type="text" class="pr-name" value="${s.name||''}"></div>
     <div class="fg"><label>الرقم الجامعي</label><input type="text" class="pr-id" value="${s.id||''}"></div>
     <div class="fg"><label>الجنس</label><select class="pr-gender"><option value="">...</option><option${s.gender==='ذكر'?' selected':''}>ذكر</option><option${s.gender==='أنثى'?' selected':''}>أنثى</option></select></div>
@@ -671,12 +671,18 @@ function updatePartCnt() {
 }
 
 function getPartStudents() {
-  return [...document.querySelectorAll('.part-row')].map(r=>({
-    name:r.querySelector('.pr-name')?.value||'',id:r.querySelector('.pr-id')?.value||'',
-    gender:r.querySelector('.pr-gender')?.value||'',nationality:r.querySelector('.pr-nat')?.value||'',
-    college:r.querySelector('.pr-col')?.value||'',major:r.querySelector('.pr-major')?.value||'',
-    year:r.querySelector('.pr-year')?.value||'',phone:r.querySelector('.pr-phone')?.value||'',
-  })).filter(s=>s.name||s.id);
+  return [...document.querySelectorAll('.part-row')].map(r=>{
+    const s={
+      name:r.querySelector('.pr-name')?.value||'',id:r.querySelector('.pr-id')?.value||'',
+      gender:r.querySelector('.pr-gender')?.value||'',nationality:r.querySelector('.pr-nat')?.value||'',
+      college:r.querySelector('.pr-col')?.value||'',major:r.querySelector('.pr-major')?.value||'',
+      year:r.querySelector('.pr-year')?.value||'',phone:r.querySelector('.pr-phone')?.value||'',
+    };
+    // الحفاظ على حالة الحضور المُسجَّلة مسبقاً (عبر QR الحضور) — كانت تُفقَد سابقاً عند أي حفظ لهذا النموذج
+    if(r.dataset.attended==='1') s.attended=true;
+    if(r.dataset.attendTime) s.attend_time=r.dataset.attendTime;
+    return s;
+  }).filter(s=>s.name||s.id);
 }
 
 const COLMAP={name:['الاسم','اسم الطالب','الاسم الكامل','name','full_name'],id:['الرقم الجامعي','الرقم','student_id','id'],gender:['الجنس','gender'],nationality:['الجنسية','nationality'],college:['الكلية','college'],major:['التخصص','major'],year:['المستوى','المستوى الدراسي','year','level'],phone:['رقم الهاتف','الهاتف','phone']};
