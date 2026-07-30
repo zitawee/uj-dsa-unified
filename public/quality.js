@@ -570,6 +570,48 @@ async function printSelectedParts(ids, mode='all') {
   openPrint(pages.map((h,i)=> i>0 ? `<div style="page-break-before:always">${h}</div>` : h).join(''));
 }
 
+// ═ عرض السجل التاريخي لسجل مُعيّن (نسخ سابقة قبل كل تعديل/حذف) مع إمكانية الاسترجاع ═
+async function openHistoryModal(table, recordId) {
+  const rows = await api('/api/record-history/'+table+'/'+recordId);
+  const existing=document.getElementById('history-modal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='history-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px';
+  const listHTML = (!rows||!rows.length)
+    ? `<div style="text-align:center;color:var(--muted);font-size:12.5px;padding:20px 0">لا توجد نسخ سابقة محفوظة لهذا السجل بعد.</div>`
+    : rows.map(h=>{
+        const dt = new Date(h.changed_at).toLocaleString('ar-JO',{dateStyle:'medium',timeStyle:'short'});
+        const actionLabel = h.action==='delete' ? '🗑️ قبل الحذف' : '✏️ قبل تعديل';
+        const cnt = (h.snapshot.students||[]).length;
+        const attCnt = (h.snapshot.students||[]).filter(s=>s.attended).length;
+        return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12.5px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+            <div><strong>${actionLabel}</strong> — ${dt}<div style="color:var(--muted);font-size:11px">بواسطة: ${h.changed_by||'-'} — عدد المسجَّلين حينها: ${cnt} (حاضر: ${attCnt})</div></div>
+            <button class="btn btn-sm btn-g" onclick="restoreHistory('${h.id}','${table}','${recordId}')">↩️ استرجاع هذه النسخة</button>
+          </div>
+        </div>`;
+      }).join('');
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:12px;padding:22px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px">
+      <div style="font-size:15px;font-weight:700;color:var(--g)">🕐 السجل التاريخي</div>
+      <button onclick="document.getElementById('history-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">يُحفَظ تلقائياً قبل كل تعديل أو حذف، ليتيح التراجع عند حدوث خطأ.</div>
+    ${listHTML}
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function restoreHistory(historyId, table, recordId) {
+  if(!confirm('استرجاع هذه النسخة سيستبدل بيانات السجل الحالية بها. هل تريدين المتابعة؟ (يُحفَظ الوضع الحالي أيضاً في السجل قبل الاسترجاع، فيمكن التراجع لاحقاً إن لزم)')) return;
+  const r = await api('/api/record-history/'+historyId+'/restore','POST',{});
+  if(r.error){ alert(r.error); return; }
+  document.getElementById('history-modal').remove();
+  alert('✅ '+r.message);
+  if(table==='participants' && typeof filterPart==='function') filterPart();
+}
+
 async function toggleLevelField(id, newValue) {
   const label = newValue==='national_id' ? 'الرقم الوطني' : 'المستوى';
   if(!confirm(`تبديل هذا الحقل إلى «${label}» لهذا النشاط تحديداً؟ (سيظهر بهذا الشكل في رابط التسجيل الذاتي والكشف المطبوع)`)) return;
@@ -808,6 +850,7 @@ async function filterPart() {
       <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ الحاضرين</button>
       <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcelChoice('${r.id}')">📊 Excel</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
+      <button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="openHistoryModal('participants','${r.id}')">🕐 السجل التاريخي</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
   </tr>`;}).join('')||`<tr class="erow"><td colspan="7">لا توجد نماذج</td></tr>`;
