@@ -22,6 +22,16 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// ══ سجل تاريخي (Audit Log): يحفظ نسخة من أي سجل قبل كل تعديل أو حذف، لإتاحة الاسترجاع لاحقاً ══
+const recordHistorySchema = new mongoose.Schema({
+  table: String, record_id: String, snapshot: mongoose.Schema.Types.Mixed,
+  action: String, // 'update' أو 'delete'
+  changed_by: String, changed_at: { type: Date, default: Date.now }
+});
+const RecordHistory = mongoose.model('RecordHistory', recordHistorySchema);
+// الجداول التي يُفعَّل لها السجل التاريخي حالياً (يمكن توسيعها لاحقاً)
+const HISTORY_TABLES = ['participants'];
+
 // ══ توليد رقم مرجعي فريد لطلبات إقامة النشاط (لتتبّع الطالب لطلبه) ══
 function genRefCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -537,10 +547,13 @@ TABLES.forEach(table => {
   const putRoles = AR_QUALITY.includes(table) ? ['admin','editor','coordinator','manager'] : ['admin','editor'];
   app.put(`/api/${table}/:id`, auth(putRoles), async (req, res) => {
     try {
+      const existing = await Model.findById(req.params.id);
       if (AR_QUALITY.includes(table) && ['coordinator','manager'].includes(req.user.role) && req.user.department) {
-        const existing = await Model.findById(req.params.id);
         if (existing && existing.organizer && existing.organizer !== req.user.department)
           return res.status(403).json({ error: 'هذا السجل لا يتبع الجهة المرتبطة بحسابك' });
+      }
+      if (HISTORY_TABLES.includes(table) && existing) {
+        await RecordHistory.create({ table, record_id: req.params.id, snapshot: existing.toObject(), action: 'update', changed_by: req.user.username });
       }
       await Model.findByIdAndUpdate(req.params.id,
         { ...req.body, updated_by: req.user.username, updatedAt: new Date() },
@@ -552,6 +565,12 @@ TABLES.forEach(table => {
 
   app.delete(`/api/${table}/:id`, auth(['admin']), async (req, res) => {
     try {
+      if (HISTORY_TABLES.includes(table)) {
+        const existingForHistory = await Model.findById(req.params.id);
+        if (existingForHistory) {
+          await RecordHistory.create({ table, record_id: req.params.id, snapshot: existingForHistory.toObject(), action: 'delete', changed_by: req.user.username });
+        }
+      }
       const deleted = await Model.findByIdAndDelete(req.params.id);
       // ══ حذف تسلسلي (Cascade Delete): عند حذف طلب نشاط أو سجل جودة نشاط،
       // تُحذف تلقائياً سجلات «أسماء المشاركين» و«استبانة تقييم الفعالية» و«الإعلان المُرحَّل» و«حجز القاعة» المرتبطة
@@ -576,7 +595,42 @@ TABLES.forEach(table => {
   });
 });
 
-// ══ العميد يُحيل طلب الخدمات اللوجستية (حجز أماكن) لمدير/مديرَي الدوائر المعنية بضغطة واحدة ══
+// ══ السجل التاريخي: عرض النسخ السابقة لسجل مُعيّن (قبل كل تعديل/حذف) ══
+app.get('/api/record-history/:table/:recordId', auth(), async (req, res) => {
+  try {
+    const { table, recordId } = req.params;
+    if (!HISTORY_TABLES.includes(table)) return res.json([]);
+    const rows = await RecordHistory.find({ table, record_id: recordId }).sort({ changed_at: -1 }).limit(30).lean();
+    res.json(rows.map(r => ({ id: String(r._id), action: r.action, changed_by: r.changed_by, changed_at: r.changed_at, snapshot: r.snapshot })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ استرجاع نسخة سابقة من السجل التاريخي ══
+app.post('/api/record-history/:historyId/restore', auth(), async (req, res) => {
+  try {
+    const hist = await RecordHistory.findById(req.params.historyId).lean();
+    if (!hist) return res.status(404).json({ error: 'النسخة غير موجودة' });
+    if (!HISTORY_TABLES.includes(hist.table)) return res.status(400).json({ error: 'هذا الجدول لا يدعم الاسترجاع' });
+    if (req.user.role==='manager' || req.user.role==='coordinator') {
+      // نفس قيد الجهة المطبَّق على التعديل العادي
+      if (req.user.department && hist.snapshot.organizer && hist.snapshot.organizer !== req.user.department)
+        return res.status(403).json({ error: 'هذا السجل لا يتبع الجهة المرتبطة بحسابك' });
+    } else if (!['admin','editor'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'غير مصرَّح لك بهذا الإجراء' });
+    }
+    const Model = models[hist.table];
+    const { _id, __v, createdAt, updatedAt, ...data } = hist.snapshot;
+    const existing = await Model.findById(hist.record_id);
+    if (existing) {
+      // حفظ نسخة من الحالة الحالية أيضاً قبل الاسترجاع، حتى يمكن التراجع عن الاسترجاع نفسه إن لزم
+      await RecordHistory.create({ table: hist.table, record_id: hist.record_id, snapshot: existing.toObject(), action: 'update', changed_by: req.user.username });
+      await Model.findByIdAndUpdate(hist.record_id, { ...data, updated_by: req.user.username, updatedAt: new Date() });
+    } else {
+      await Model.create({ ...data, _id: hist.record_id, updated_by: req.user.username });
+    }
+    res.json({ message: 'تم استرجاع النسخة بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/activity_requests/:id/send-logistics', auth(['dean','admin']), async (req, res) => {
   try {
     const Model = models['activity_requests'];
