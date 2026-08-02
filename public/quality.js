@@ -517,7 +517,7 @@ async function loadParticipants() {
         <div class="fg"><label>الموظفون</label><textarea id="pf-staff" placeholder="الاسم الأول&#10;الاسم الثاني"></textarea></div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:70px;position:fixed;bottom:16px;left:16px;background:#fff;padding:10px 14px;border-radius:10px;border:1px solid var(--border);box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:200">
       <button class="btn" onclick="document.getElementById('part-form').style.display='none'">إلغاء</button>
       <button class="btn btn-b" onclick="saveAndPrintPart()"><i class="ti ti-printer"></i>حفظ وطباعة</button>
       <button class="btn btn-g" id="pf-savebtn" onclick="savePart()"><i class="ti ti-device-floppy"></i>حفظ فقط</button>
