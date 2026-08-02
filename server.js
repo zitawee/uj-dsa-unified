@@ -376,7 +376,31 @@ app.post('/api/public/participants/:id/attend', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// أسئلة استبانة تقييم الفعالية الاثني عشر (يجب أن تطابق حرفياً قائمة EVAL_QUESTIONS في public/eval.html)
+// ══ تسجيل/إلغاء حضور طالب معيّن مباشرة من شاشة تعديل المشاركين (استخدام داخلي للموظفين) ══
+app.post('/api/participants/:id/mark-attendance', auth(['admin','editor','coordinator','manager']), async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'السجل غير موجود' });
+    if (['coordinator','manager'].includes(req.user.role) && req.user.department && doc.organizer && doc.organizer !== req.user.department)
+      return res.status(403).json({ error: 'هذا السجل لا يتبع الجهة المرتبطة بحسابك' });
+
+    const uniId = (req.body.uni_id || '').trim();
+    const attended = !!req.body.attended;
+    if (!uniId) return res.status(400).json({ error: 'الرقم الجامعي مفقود' });
+
+    const students = Array.isArray(doc.students) ? doc.students : [];
+    const idx = students.findIndex(s => (s.id || '').trim() === uniId);
+    if (idx === -1) return res.status(404).json({ error: 'لم يُعثَر على هذا الطالب ضمن كشف المشاركين' });
+
+    students[idx].attended = attended;
+    students[idx].attend_time = attended ? new Date().toISOString() : '';
+    doc.students = students;
+    doc.markModified('students');
+    await doc.save();
+
+    res.json({ ok: true, attended, attend_time: students[idx].attend_time, message: attended ? 'تم تسجيل الحضور' : 'تم إلغاء تسجيل الحضور' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 const EVAL_QUESTIONS = [
   'طريقة الإعلان عن الفعالية مناسبة',
   'تم دعوتي للحضور قبل مدة مناسبة',
