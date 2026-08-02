@@ -506,6 +506,8 @@ async function loadParticipants() {
         </div>
       </div>
       <div style="font-size:11px;color:var(--muted);background:#F9FAFB;padding:6px 10px;border-radius:6px;border:1px solid #eee;margin-bottom:8px">💡 أعمدة الاستيراد: الاسم / الرقم الجامعي / الجنس / الجنسية / الكلية / التخصص / المستوى / رقم الهاتف</div>
+      <input type="text" id="pf-rowsearch" placeholder="🔍 بحث سريع بالاسم أو الرقم الجامعي ضمن هذا الكشف..." oninput="filterPartRows(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:10px">
+      <div id="pf-rowsearch-note" style="display:none;font-size:11px;color:var(--muted);margin-bottom:6px"></div>
       <div id="part-rows"></div>
     </div>
     <div class="card">
@@ -663,6 +665,8 @@ async function editPart(id) {
   const f=document.getElementById('part-form'); f.style.display='block';
   f.dataset.editId=id;
   f.dataset.levelFieldType=r.level_field_type||'level';
+  const rowSearch=document.getElementById('pf-rowsearch'); if(rowSearch) rowSearch.value='';
+  const rowSearchNote=document.getElementById('pf-rowsearch-note'); if(rowSearchNote) rowSearchNote.style.display='none';
   document.getElementById('pf-act').value=r.activity||'';
   document.getElementById('pf-date').value=r.date||'';
   document.getElementById('pf-org').value=r.organizer||'';
@@ -698,6 +702,23 @@ function partRowHTML(s={}, levelFieldType='level') {
     <div class="fg"><label>رقم الهاتف</label><input type="text" class="pr-phone" value="${s.phone||''}"></div>
     <div class="fg" style="align-self:flex-end"><button class="btn btn-r" onclick="this.closest('.part-row').remove();updatePartCnt()">حذف</button></div>
   </div>`;
+}
+
+// ═ بحث سريع ضمن كشف طلبة نشاط واحد (يُظهر/يُخفي الصفوف المطابقة فقط، دون تعديل البيانات) ═
+function filterPartRows(q) {
+  const term = (q||'').trim().toLowerCase();
+  const rows = document.querySelectorAll('#part-rows .part-row');
+  let shown = 0;
+  rows.forEach(r=>{
+    const name = r.querySelector('.pr-name')?.value.toLowerCase()||'';
+    const id = r.querySelector('.pr-id')?.value.toLowerCase()||'';
+    const match = !term || name.includes(term) || id.includes(term);
+    r.style.display = match ? '' : 'none';
+    if(match) shown++;
+  });
+  const note = document.getElementById('pf-rowsearch-note');
+  if(term){ note.style.display='block'; note.textContent = `عرض ${shown} من ${rows.length} طالباً مطابقاً`; }
+  else { note.style.display='none'; }
 }
 
 function addPartRow() {
