@@ -700,8 +700,37 @@ function partRowHTML(s={}, levelFieldType='level') {
     <div class="fg"><label>التخصص</label><input type="text" class="pr-major" value="${s.major||''}"></div>
     ${levelField}
     <div class="fg"><label>رقم الهاتف</label><input type="text" class="pr-phone" value="${s.phone||''}"></div>
-    <div class="fg" style="align-self:flex-end"><button class="btn btn-r" onclick="this.closest('.part-row').remove();updatePartCnt()">حذف</button></div>
+    <div class="fg" style="align-self:flex-end;display:flex;gap:6px">
+      <button class="btn btn-r" onclick="this.closest('.part-row').remove();updatePartCnt()">حذف</button>
+      <button class="btn btn-sm ${s.attended?'btn-g':''}" style="${s.attended?'':'color:#1B6B3A;border-color:#1B6B3A'}" onclick="toggleRowAttendance(this)">${s.attended?'✅ حاضر':'✅ تسجيل حضور'}</button>
+    </div>
   </div>`;
+}
+
+// ═ تسجيل/إلغاء حضور طالب مباشرة من نفس شاشة تعديل المشاركين (دون الحاجة لرابط الحضور المستقل) ═
+async function toggleRowAttendance(btn) {
+  const row = btn.closest('.part-row');
+  const uniId = row.querySelector('.pr-id')?.value.trim();
+  const name = row.querySelector('.pr-name')?.value.trim() || 'هذا الطالب';
+  if(!uniId){ alert('يرجى إدخال الرقم الجامعي لهذا الطالب أولاً.'); return; }
+  const recordId = document.getElementById('part-form')?.dataset.editId;
+  if(!recordId){ alert('يرجى حفظ الكشف أولاً قبل تسجيل الحضور (الطالب غير محفوظ بعد).'); return; }
+  const currentlyAttended = row.dataset.attended==='1';
+  const newState = !currentlyAttended;
+  if(newState && !confirm(`تسجيل حضور "${name}"؟`)) return;
+  if(!newState && !confirm(`إلغاء تسجيل حضور "${name}"؟`)) return;
+  btn.disabled = true;
+  const r = await api('/api/participants/'+recordId+'/mark-attendance','POST',{ uni_id: uniId, attended: newState });
+  btn.disabled = false;
+  if(r.error){
+    alert(r.error + (r.error.includes('لم يُعثَر')?' — يرجى حفظ الكشف أولاً إن كان هذا الطالب مضافاً حديثاً.':''));
+    return;
+  }
+  row.dataset.attended = newState ? '1' : '';
+  row.dataset.attendTime = r.attend_time || '';
+  btn.textContent = newState ? '✅ حاضر' : '✅ تسجيل حضور';
+  btn.className = newState ? 'btn btn-sm btn-g' : 'btn btn-sm';
+  btn.style.cssText = newState ? '' : 'color:#1B6B3A;border-color:#1B6B3A';
 }
 
 // ═ بحث سريع ضمن كشف طلبة نشاط واحد (يُظهر/يُخفي الصفوف المطابقة فقط، دون تعديل البيانات) ═
