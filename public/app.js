@@ -28,7 +28,7 @@ function initSsel(container, options){
     const list = wrap.querySelector('.ssel-list');
     function render(q){
       const term = (q||'').trim();
-      const items = term ? options.filter(o=>o.includes(term)) : options;
+      const items = term ? options.filter(o=>o.toLowerCase().includes(term.toLowerCase())) : options;
       list.innerHTML = items.length
         ? items.slice(0,300).map(o=>`<div class="ssel-item" data-v="${o}">${o}</div>`).join('')
         : `<div class="ssel-empty">لا توجد نتائج مطابقة</div>`;

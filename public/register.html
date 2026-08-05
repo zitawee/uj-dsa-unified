@@ -137,7 +137,7 @@ fillSelect('f-year', YEARS);
   const input=document.getElementById('f-nat-s'), hidden=document.getElementById('f-nat'), list=document.getElementById('f-nat-list');
   function render(q){
     const term=(q||'').trim();
-    const items = term ? NATIONALITIES.filter(o=>o.includes(term)) : NATIONALITIES;
+    const items = term ? NATIONALITIES.filter(o=>o.toLowerCase().includes(term.toLowerCase())) : NATIONALITIES;
     list.innerHTML = items.length ? items.map(o=>`<div class="ssel-item" data-v="${o}">${o}</div>`).join('') : `<div class="ssel-empty">لا توجد نتائج مطابقة</div>`;
     list.style.display='block';
   }
