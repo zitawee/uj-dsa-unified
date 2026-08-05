@@ -210,7 +210,7 @@ async function loadStudents() {
         <div class="fg"><label>الرقم الجامعي *</label><input id="fs-id" type="text"></div>
         <div class="fg"><label>الاسم الكامل *</label><input id="fs-name" type="text"></div>
         <div class="fg"><label>الجنس *</label><select id="fs-gender"><option value="">اختر...</option><option>ذكر</option><option>أنثى</option></select></div>
-        <div class="fg"><label>الجنسية</label><input id="fs-nat" type="text" placeholder="أردني..."></div>
+        <div class="fg"><label>الجنسية</label>${sselHTML('fs-nat', '', 'fs-nat')}</div>
         <div class="fg"><label>الكلية *</label><select id="fs-col"><option value="">اختر الكلية...</option>${colOpts()}</select></div>
         <div class="fg"><label>التخصص *</label><input id="fs-major" type="text"></div>
         <div class="fg"><label>سنة القبول *</label><input id="fs-year" type="number" placeholder="2024"></div>
@@ -236,6 +236,7 @@ async function loadStudents() {
     <th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>نوع القبول</th><th>نوع النشاط</th><th>تاريخ الالتحاق</th><th>الهاتف</th>${canEdit?'<th></th>':''}
   </tr></thead><tbody id="tbl-students"></tbody></table></div>`;
   document.getElementById('fs-join').valueAsDate = new Date();
+  initSsel(document.getElementById('stud-form'), NATIONALITIES);
   filterStudents();
 }
 
@@ -257,6 +258,8 @@ function editStudent(r) {
   set('fs-nat',r.nationality); set('fs-col',r.college); set('fs-major',r.major);
   set('fs-year',r.admit_year); set('fs-admit',r.admit_type); set('fs-phone',r.phone);
   set('fs-act',r.activity); set('fs-join',r.join_date);
+  const natSearch = document.getElementById('fs-nat')?.closest('.ssel')?.querySelector('.ssel-input');
+  if(natSearch) natSearch.value = r.nationality||'';
   f.dataset.editId = String(r.id || r._id || '');
   const t=document.getElementById('stud-form-title'); if(t) t.innerHTML='<i class="ti ti-edit"></i>تعديل بيانات الطالب';
   const b=document.getElementById('stud-save-btn'); if(b) b.textContent='✔ حفظ التعديل';

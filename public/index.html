@@ -190,6 +190,19 @@ tr:hover td{background:#FAFAFA}
   }
   .sb.open{transform:translateX(0)}
 }
+/* قائمة منسدلة قابلة للبحث (تُستخدم لحقل الجنسية وما شابه) */
+.ssel{position:relative}
+.ssel-input{cursor:text}
+.ssel-list{
+  position:absolute;top:calc(100% + 3px);right:0;left:0;
+  background:#fff;border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:0 8px 24px rgba(0,0,0,.12);
+  max-height:220px;overflow-y:auto;
+  display:none;z-index:50;
+}
+.ssel-item{padding:7px 10px;font-size:13px;cursor:pointer}
+.ssel-item:hover,.ssel-item.hi{background:#EAF3DE;color:var(--g)}
+.ssel-empty{padding:7px 10px;font-size:12.5px;color:var(--muted)}
 </style>
 </head>
 <body>

@@ -679,6 +679,7 @@ async function editPart(id) {
   (r.students&&r.students.length?r.students:[{}]).forEach(s=>{
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
+  initSsel(c, NATIONALITIES);
   updatePartCnt();
   renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
@@ -695,7 +696,7 @@ function partRowHTML(s={}, levelFieldType='level') {
     <div class="fg"><label>الاسم الكامل</label><input type="text" class="pr-name" value="${s.name||''}"></div>
     <div class="fg"><label>الرقم الجامعي</label><input type="text" class="pr-id" value="${s.id||''}"></div>
     <div class="fg"><label>الجنس</label><select class="pr-gender"><option value="">...</option><option${s.gender==='ذكر'?' selected':''}>ذكر</option><option${s.gender==='أنثى'?' selected':''}>أنثى</option></select></div>
-    <div class="fg"><label>الجنسية</label><input type="text" class="pr-nat" value="${s.nationality||''}" placeholder="أردني..."></div>
+    <div class="fg"><label>الجنسية</label>${sselHTML('pr-nat', s.nationality)}</div>
     <div class="fg"><label>الكلية</label><select class="pr-col"><option value="">اختر...</option>${colSel}</select></div>
     <div class="fg"><label>التخصص</label><input type="text" class="pr-major" value="${s.major||''}"></div>
     ${levelField}
@@ -755,6 +756,7 @@ function addPartRow() {
   const levelFieldType = document.getElementById('part-form')?.dataset.levelFieldType;
   const div=document.createElement('div'); div.innerHTML=partRowHTML({}, levelFieldType);
   c.appendChild(div.firstElementChild); updatePartCnt();
+  initSsel(c, NATIONALITIES);
 }
 
 function updatePartCnt() {
@@ -803,6 +805,7 @@ async function importPart(input) {
     const s={name:get('name'),id:get('id'),gender:get('gender'),nationality:get('nationality'),college:get('college'),major:get('major'),year:get('year'),phone:get('phone')};
     if(s.name||s.id){const div=document.createElement('div');div.innerHTML=partRowHTML(s, document.getElementById('part-form')?.dataset.levelFieldType);c.appendChild(div.firstElementChild);added++;}
   });
+  initSsel(c, NATIONALITIES);
   updatePartCnt(); alert(`✅ تم استيراد ${added} طالب بنجاح`);
 }
 
@@ -849,6 +852,7 @@ async function refreshPartStudents(id) {
   (r.students&&r.students.length?r.students:[{}]).forEach(s=>{
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
+  initSsel(c, NATIONALITIES);
   updatePartCnt();
   renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
   alert(`✅ تم تحديث القائمة — ${r.students?r.students.length:0} طالب مسجَّل حالياً`);

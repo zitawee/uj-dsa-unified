@@ -51,6 +51,17 @@
   .done-box{background:#fff;border:2px solid var(--g);border-radius:12px;padding:26px 18px;text-align:center}
   .info-box{background:#EAF3DE;border:1px solid #cfe3bd;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#27500A;line-height:1.7}
   .center{text-align:center;color:var(--muted);font-size:13px;padding:30px 10px}
+  .ssel{position:relative;margin-bottom:14px}
+  .ssel input{margin-bottom:0}
+  .ssel-list{
+    position:absolute;top:calc(100% + 3px);right:0;left:0;
+    background:#fff;border:1px solid var(--border);border-radius:var(--r);
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+    max-height:220px;overflow-y:auto;display:none;z-index:50;
+  }
+  .ssel-item{padding:10px 12px;font-size:14px;cursor:pointer}
+  .ssel-item:hover,.ssel-item.hi{background:#EAF3DE;color:var(--g)}
+  .ssel-empty{padding:10px 12px;font-size:12.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -78,7 +89,13 @@
           <div><label>الرقم الجامعي *</label><input id="f-id" type="text"></div>
           <div><label>رقم الهاتف</label><input id="f-phone" type="text"></div>
           <div><label>الجنس</label><select id="f-gender"><option value="">اختر...</option><option>ذكر</option><option>أنثى</option></select></div>
-          <div><label>الجنسية</label><input id="f-nat" type="text" placeholder="أردني..."></div>
+          <div><label>الجنسية</label>
+            <div class="ssel">
+              <input type="text" id="f-nat-s" autocomplete="off" placeholder="اكتب للبحث...">
+              <input type="hidden" id="f-nat">
+              <div class="ssel-list" id="f-nat-list"></div>
+            </div>
+          </div>
           <div><label>الكلية</label><select id="f-col"><option value="">اختر...</option></select></div>
           <div><label>التخصص</label><input id="f-major" type="text"></div>
           <div id="f-year-wrap"><label>المستوى</label><select id="f-year"><option value="">اختر...</option></select></div>
@@ -108,10 +125,33 @@
 <script>
 const COLS = ['كلية الآداب','كلية الأعمال','كلية الشريعة','كلية العلوم التربوية','كلية الحقوق','كلية علوم الرياضة','كلية الفنون والتصميم','كلية الأمير الحسين بن عبد الله الثاني للعلوم السياسية والدراسات الدولية','كلية اللغات الأجنبية','كلية الآثار والسياحة','كلية العلوم','كلية الزراعة','كلية الهندسة','كلية الملك عبد الله الثاني لتكنولوجيا المعلومات','كلية الطب','كلية التمريض','كلية طب الأسنان','كلية الصيدلة','كلية علوم التأهيل','معهد الصحة العامة','كلية الدراسات العليا'];
 const YEARS = ['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
+const NATIONALITIES_REST = ['أفغاني','ألباني','جزائري','أندوري','أنغولي','أنتيغوي وبربودي','أرجنتيني','أرمني','أسترالي','نمساوي','أذربيجاني','باهامي','بحريني','بنغلاديشي','باربادوسي','بيلاروسي','بلجيكي','بليزي','بنيني','بوتاني','بوليفي','بوسني وهرسكي','بوتسواني','برازيلي','بروناوي','بلغاري','بوركينابي','بوروندي','كمبودي','كاميروني','كندي','رأس أخضري','أفريقي وسطي','تشادي','تشيلي','صيني','كولومبي','قمري','كونغولي (برازافيل)','كونغولي (الديمقراطية)','كوستاريكي','إيفواري','كرواتي','كوبي','قبرصي','تشيكي','دنماركي','جيبوتي','دومينيكي (كومنولث دومينيكا)','دومينيكاني (جمهورية الدومينيكان)','إكوادوري','مصري','سلفادوري','غيني استوائي','إريتري','إستوني','إسواتيني','إثيوبي','فيجي','فنلندي','فرنسي','غابوني','غامبي','جورجي','ألماني','غاني','يوناني','غرينادي','غواتيمالي','غيني','غيني بيساوي','غياني','هايتي','هندوراسي','هنغاري','آيسلندي','هندي','إندونيسي','إيراني','عراقي','إيرلندي','إسرائيلي','إيطالي','جامايكي','ياباني','كازاخستاني','كيني','كيريباتي','كويتي','قيرغيزستاني','لاوسي','لاتفي','لبناني','ليسوتوي','ليبيري','ليبي','ليختنشتايني','ليتواني','لوكسمبورغي','مدغشقري','مالاوي','ماليزي','مالديفي','مالي','مالطي','مارشالي','موريتاني','موريشيوسي','مكسيكي','ميكرونيزي','مولدوفي','موناكي','منغولي','مونتينيغري','مغربي','موزمبيقي','ميانماري','ناميبي','ناوروي','نيبالي','هولندي','نيوزيلندي','نيكاراغوي','نيجري','نيجيري','كوري شمالي','مقدوني','نرويجي','عُماني','باكستاني','بالاوي','فلسطيني','بنمي','بابوا غيني الجديدة','باراغواي','بيروفي','فلبيني','بولندي','برتغالي','قطري','روماني','روسي','رواندي','سانت كيتس ونيفيسي','سانت لوشي','سانت فينسنتي','ساموي','سان مارينو','ساوتومي وبرنسيبي','سعودي','سنغالي','صربي','سيشيلي','سيراليوني','سنغافوري','سلوفاكي','سلوفيني','جزر سليمان','صومالي','جنوب أفريقي','كوري جنوبي','جنوب سوداني','إسباني','سريلانكي','سوداني','سورينامي','سويدي','سويسري','سوري','تايواني','طاجيكستاني','تنزاني','تايلاندي','تيموري شرقي','توغولي','تونغي','ترينيدادي وتوباغي','تونسي','تركي','تركمانستاني','توفالي','أوغندي','أوكراني','إماراتي','بريطاني','أمريكي','أوروغواياني','أوزبكستاني','فانواتي','فاتيكاني','فنزويلي','فيتنامي','يمني','زامبي','زيمبابوي'].sort((a,b)=>a.localeCompare(b,'ar'));
+const NATIONALITIES = ['أردني', ...NATIONALITIES_REST];
 
 function fillSelect(id, arr){ const el=document.getElementById(id); arr.forEach(v=>{ const o=document.createElement('option'); o.textContent=v; el.appendChild(o); }); }
 fillSelect('f-col', COLS);
 fillSelect('f-year', YEARS);
+
+// ═ حقل بحث/فلترة للجنسية ═
+(function(){
+  const input=document.getElementById('f-nat-s'), hidden=document.getElementById('f-nat'), list=document.getElementById('f-nat-list');
+  function render(q){
+    const term=(q||'').trim();
+    const items = term ? NATIONALITIES.filter(o=>o.includes(term)) : NATIONALITIES;
+    list.innerHTML = items.length ? items.map(o=>`<div class="ssel-item" data-v="${o}">${o}</div>`).join('') : `<div class="ssel-empty">لا توجد نتائج مطابقة</div>`;
+    list.style.display='block';
+  }
+  input.addEventListener('focus', ()=>render(''));
+  input.addEventListener('input', ()=>{ hidden.value=''; render(input.value); });
+  list.addEventListener('mousedown', e=>{
+    const item=e.target.closest('.ssel-item'); if(!item) return;
+    e.preventDefault();
+    input.value=item.dataset.v; hidden.value=item.dataset.v; list.style.display='none';
+  });
+  input.addEventListener('blur', ()=>{
+    setTimeout(()=>{ list.style.display='none'; if(!hidden.value) input.value=''; }, 150);
+  });
+})();
 
 const params = new URLSearchParams(location.search);
 const PID = params.get('id');
