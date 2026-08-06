@@ -244,6 +244,7 @@ function buildSidebar() {
   <div class="sbt">الرئيسية</div>
   <div class="ni active" onclick="go('dash',this)"><i class="ti ti-layout-dashboard"></i>لوحة التحكم<span class="cnt" id="c-all">0</span></div>
   <div class="ni" onclick="go('incomplete',this)"><i class="ti ti-alert-circle" style="color:#633806"></i>طلبات غير مكتملة<span class="cnt inc" id="c-inc">0</span></div>
+  ${ME?.role==='admin' ? `<div class="ni" onclick="go('talent_excellence',this)"><i class="ti ti-music" style="color:#8A2A22"></i>التفوق الفني<span class="cnt" id="c-talent_excellence">0</span></div>` : ''}
 
   <!-- نظام الأنشطة -->
   <div class="folder-hdr sec-acts" onclick="toggleFolder('f-acts')"><i class="ti ti-chevron-down folder-arrow" id="arr-f-acts"></i><i class="ti ti-users"></i>نظام الأنشطة</div>
@@ -305,7 +306,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
+  const IDS = ['dash','incomplete','talent_excellence','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
 }
 
@@ -350,6 +351,7 @@ function showApp() {
   const rb=document.getElementById('hr'); rb.textContent=RLABELS[ME.role]; rb.className='rtag '+RCLS[ME.role];
   buildSidebar(); buildPanels();
   if (ME.role!=='admin') { document.getElementById('nav-users').style.display='none'; document.getElementById('nav-archive').style.display='none'; }
+  if (ME.role==='admin' && typeof teLoadBadgeCount==='function') teLoadBadgeCount();
   loadDash();
 }
 
@@ -428,7 +430,7 @@ function go(name, el) {
   if (el) el.classList.add('active');
   if (window.innerWidth <= 768) closeSidebar();
   const loaders = {
-    dash:loadDash, incomplete:loadIncomplete, students:loadStudents, achievements:loadAchievements,
+    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
