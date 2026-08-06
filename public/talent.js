@@ -78,6 +78,18 @@ async function teLoadBadgeCount() {
   } catch (e) {}
 }
 
+function teCopyLink() {
+  const link = window.location.origin + '/talent.html';
+  const btn = document.getElementById('te-link-btn');
+  const restore = () => { if (btn) btn.innerHTML = '<i class="ti ti-link"></i> رابط التقديم'; };
+  const showCopied = () => { if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> تم نسخ الرابط'; setTimeout(restore, 2000); } };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(link).then(showCopied).catch(() => prompt('انسخي الرابط يدوياً:', link));
+  } else {
+    prompt('انسخي الرابط يدوياً:', link);
+  }
+}
+
 function teEsc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -112,6 +124,7 @@ async function loadTalent() {
       <button class="btn btn-sm" onclick="teSaveSettings()"><i class="ti ti-device-floppy"></i> حفظ تاريخ الإغلاق</button>
       <div style="font-size:11.5px;color:var(--muted)">${settings?.close_date ? `الرابط مفتوح حتى ${teDate(settings.close_date)}` : 'الرابط مفتوح حالياً بلا تاريخ إغلاق محدَّد'}</div>
       <div style="flex:1"></div>
+      <button class="btn btn-sm" id="te-link-btn" onclick="teCopyLink()"><i class="ti ti-link"></i> رابط التقديم</button>
       <button class="btn btn-sm" onclick="teExportExcel()"><i class="ti ti-file-spreadsheet"></i> تصدير Excel</button>
       <button class="btn btn-sm" onclick="printSelectedTalent()"><i class="ti ti-printer"></i> طباعة المحدد</button>
       <button class="btn btn-sm" onclick="teOpenCustomList()"><i class="ti ti-list-details"></i> قائمة مخصصة</button>
@@ -119,7 +132,7 @@ async function loadTalent() {
   </div>
 
   <div class="card">
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="fb">
       <input type="text" id="te-q" placeholder="بحث بالاسم أو الهاتف أو المدرسة..." style="flex:1;min-width:180px" oninput="teRender()">
       <select id="te-f-status" onchange="teRender()"><option value="">كل الحالات</option>${Object.entries(TE_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select>
       <select id="te-f-gov" onchange="teRender()"><option value="">كل المحافظات</option>${[...new Set(rows.map(r=>r.governorate).filter(Boolean))].map(g=>`<option>${g}</option>`).join('')}</select>
