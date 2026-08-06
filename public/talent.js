@@ -26,6 +26,48 @@ const TE_STATUS = {
 };
 let TE_ROWS = [];
 let TE_EDIT_PHOTO = null; // صورة بديلة (base64) إن اختار الإداري تغييرها أثناء التعديل
+let TE_CUSTOM_ROWS = null, TE_CUSTOM_COLS = null; // نتيجة آخر "قائمة مخصصة" تم إنشاؤها (للطباعة/التصدير)
+
+// كل الحقول المتاحة لبناء قائمة مخصصة منها
+const TE_FIELDS = [
+  { key:'ref_code',      label:'رقم الطلب' },
+  { key:'full_name',     label:'الاسم' },
+  { key:'phone',         label:'الهاتف' },
+  { key:'phone_alt',     label:'هاتف بديل' },
+  { key:'school',        label:'المدرسة' },
+  { key:'governorate',   label:'المحافظة' },
+  { key:'district',      label:'اللواء' },
+  { key:'activity_types',label:'نوع النشاط' },
+  { key:'instruments',   label:'الآلة الموسيقية' },
+  { key:'cert_track',    label:'فرع الشهادة' },
+  { key:'cert_subfield', label:'الحقل' },
+  { key:'cert_year',     label:'سنة الشهادة' },
+  { key:'gpa',           label:'المعدل' },
+  { key:'address',       label:'العنوان' },
+  { key:'major1',        label:'التخصص الأول' },
+  { key:'major2',        label:'التخصص الثاني' },
+  { key:'major3',        label:'التخصص الثالث' },
+  { key:'status',        label:'الحالة' },
+  { key:'certs_received',label:'استلام الشهادات' },
+  { key:'createdAt',     label:'تاريخ التقديم' },
+];
+const TE_DEFAULT_COLS = ['ref_code','full_name','cert_track','cert_subfield','cert_year','gpa','major1','major2','major3'];
+
+function teFieldValue(r, key) {
+  switch (key) {
+    case 'activity_types': return (r.activity_types||[]).join('، ');
+    case 'instruments':    return (r.instruments||[]).join('، ');
+    case 'cert_track':     return TE_TRACKS[r.cert_track] || r.cert_track || '';
+    case 'gpa':            return r.gpa ? r.gpa + '%' : '';
+    case 'major1':         return (r.majors||[])[0] || '';
+    case 'major2':         return (r.majors||[])[1] || '';
+    case 'major3':         return (r.majors||[])[2] || '';
+    case 'status':         return TE_STATUS[r.status]?.label || TE_STATUS.pending.label;
+    case 'certs_received': return r.certs_received ? 'نعم' : 'لا';
+    case 'createdAt':      return teDate(r.createdAt);
+    default:                return r[key] || '';
+  }
+}
 
 // يُستدعى مرة واحدة بعد الدخول (admin فقط) لتعبئة عدّاد الشريط الجانبي دون تحميل اللوحة كاملة
 async function teLoadBadgeCount() {
@@ -72,6 +114,7 @@ async function loadTalent() {
       <div style="flex:1"></div>
       <button class="btn btn-sm" onclick="teExportExcel()"><i class="ti ti-file-spreadsheet"></i> تصدير Excel</button>
       <button class="btn btn-sm" onclick="printSelectedTalent()"><i class="ti ti-printer"></i> طباعة المحدد</button>
+      <button class="btn btn-sm" onclick="teOpenCustomList()"><i class="ti ti-list-details"></i> قائمة مخصصة</button>
     </div>
   </div>
 
@@ -311,6 +354,87 @@ async function teDelete(id) {
   const r = await api('/api/talent_excellence/'+id, 'DELETE');
   if (r.error) { alert(r.error); return; }
   loadTalent();
+}
+
+// ── قائمة مخصصة (تصفية حسب نوع النشاط/الحالة/الفرع + اختيار الحقول المطلوبة) ──
+function teOpenCustomList() {
+  document.getElementById('te-modal-body').innerHTML = `
+    <h3>إنشاء قائمة مخصصة</h3>
+    <div class="fg"><label>تصفية حسب نوع النشاط (اتركه فارغاً لعرض جميع الطلبة)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+        ${TE_ACTIVITY_TYPES.map(t=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="te-cl-act" value="${t}"> ${t}</label>`).join('')}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
+      <div class="fg"><label>فرع الشهادة (اختياري)</label><select id="te-cl-track"><option value="">الكل</option>${Object.entries(TE_TRACKS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
+      <div class="fg"><label>الحالة (اختياري)</label><select id="te-cl-status"><option value="">الكل</option>${Object.entries(TE_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
+    </div>
+    <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">الحقول المطلوب إدراجها في الجدول</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+      ${TE_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="te-cl-col" value="${f.key}"${TE_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
+    </div>
+    <button class="btn" style="width:100%;margin-top:10px;background:var(--g);color:#fff" onclick="teGenerateCustomList()"><i class="ti ti-table"></i> إنشاء القائمة</button>
+    <div id="te-cl-result" style="margin-top:14px"></div>`;
+  document.getElementById('te-modal').classList.add('open');
+}
+
+function teGenerateCustomList() {
+  const acts = Array.from(document.querySelectorAll('.te-cl-act:checked')).map(el => el.value);
+  const track = document.getElementById('te-cl-track').value;
+  const status = document.getElementById('te-cl-status').value;
+  const colKeys = Array.from(document.querySelectorAll('.te-cl-col:checked')).map(el => el.value);
+
+  if (!colKeys.length) { alert('يرجى اختيار حقل واحد على الأقل'); return; }
+
+  const rows = TE_ROWS.filter(r => {
+    if (acts.length && !acts.some(a => (r.activity_types||[]).includes(a))) return false;
+    if (track && r.cert_track !== track) return false;
+    if (status && (r.status||'pending') !== status) return false;
+    return true;
+  });
+  const cols = TE_FIELDS.filter(f => colKeys.includes(f.key));
+  TE_CUSTOM_ROWS = rows; TE_CUSTOM_COLS = cols;
+
+  const box = document.getElementById('te-cl-result');
+  if (!rows.length) { box.innerHTML = `<div class="center">لا توجد نتائج مطابقة لهذه التصفية</div>`; return; }
+  box.innerHTML = `
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:6px">${rows.length} طالب مطابق</div>
+    <div class="tw" style="max-height:260px"><table>
+      <thead><tr><th>#</th>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td>${cols.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" style="flex:1" onclick="tePrintCustomList()"><i class="ti ti-printer"></i> طباعة هذه القائمة</button>
+      <button class="btn" style="flex:1" onclick="teExportCustomListExcel()"><i class="ti ti-file-spreadsheet"></i> تصدير Excel</button>
+    </div>`;
+}
+
+function tePrintCustomList() {
+  if (!TE_CUSTOM_ROWS) return;
+  const html = `
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">${teDate(new Date())}</div>
+    </div>
+    <div class="ptitle">قائمة الطلبة المتقدمين — التفوق الفني</div>
+    <table class="ptbl"><thead><tr><th>#</th>${TE_CUSTOM_COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead><tbody>
+      ${TE_CUSTOM_ROWS.map((r,i)=>`<tr><td>${i+1}</td>${TE_CUSTOM_COLS.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}</tr>`).join('')}
+    </tbody></table>`;
+  openPrint(html);
+}
+
+function teExportCustomListExcel() {
+  if (!TE_CUSTOM_ROWS || !TE_CUSTOM_ROWS.length) return;
+  const sheetRows = TE_CUSTOM_ROWS.map((r,i) => {
+    const o = { '#': i+1 };
+    TE_CUSTOM_COLS.forEach(c => { o[c.label] = teFieldValue(r, c.key); });
+    return o;
+  });
+  const ws = XLSX.utils.json_to_sheet(sheetRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'قائمة مخصصة');
+  XLSX.writeFile(wb, `قائمة_مخصصة_التفوق_الفني_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 // ── طباعة (فردية وجماعية) ──
