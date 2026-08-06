@@ -189,22 +189,41 @@ async function teDelete(id) {
 }
 
 // ── طباعة (فردية وجماعية) ──
+// ستايل خاص بطباعة هذا البند فقط (لا يمسّ PRINT_STYLES العام المُستخدم في باقي شاشات النظام)
+const TE_PRINT_EXTRA_STYLE = `<style>
+  body{font-size:12pt}
+  .fl{font-size:10.5pt;min-width:150px}
+  .fv{font-size:11pt}
+  .ptitle{font-size:16pt}
+  .psub{font-size:11pt}
+  .ptbl{font-size:10.5pt}
+  .ptbl th{font-size:10.5pt}
+  .dbox{font-size:10.5pt}
+  .te-activity-title{text-align:center;font-size:16pt;font-weight:800;color:#1B6B3A;margin:2px 0 12px;padding-bottom:7px;border-bottom:2px solid #1B6B3A}
+</style>`;
+
 function tePrintRecordHTML(r) {
+  const activityTitle = (r.activity_types||[]).join(' — ') + ((r.instruments||[]).length ? ' (' + r.instruments.join('، ') + ')' : '');
+  const majorsRows = [0,1,2].map(i => {
+    const label = ['الأول','الثاني','الثالث'][i];
+    return `<tr><td>${label}</td><td>${teEsc((r.majors||[])[i])}</td></tr>`;
+  }).join('');
   return `
+    ${TE_PRINT_EXTRA_STYLE}
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">الرقم المرجعي: ${teEsc(r.ref_code)}<br>${teDate(r.createdAt)}</div>
     </div>
     <div class="ptitle">طلب الالتحاق للدراسة على أساس التفوق الفني</div>
-    ${r.photo ? `<div style="text-align:left;margin-bottom:6px"><img src="${r.photo}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ccc"></div>` : ''}
+    <div class="te-activity-title">${teEsc(activityTitle)}</div>
+    ${r.photo ? `<div style="text-align:left;margin-bottom:6px"><img src="${r.photo}" style="width:90px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #ccc"></div>` : ''}
     <div class="fg2">
       <div class="fr"><div class="fl">اسم الطالب</div><div class="fv">${teEsc(r.full_name)}</div></div>
       <div class="fr"><div class="fl">المدرسة</div><div class="fv">${teEsc(r.school)}</div></div>
       <div class="fr"><div class="fl">المحافظة</div><div class="fv">${teEsc(r.governorate)}</div></div>
       <div class="fr"><div class="fl">اللواء</div><div class="fv">${teEsc(r.district)}</div></div>
     </div>
-    <div class="fr"><div class="fl">نوع النشاط</div><div class="fv">${(r.activity_types||[]).map(teEsc).join('، ')}${(r.instruments||[]).length?' — الآلات: '+r.instruments.map(teEsc).join('، '):''}</div></div>
     <div class="fg2">
       <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${teEsc(TE_TRACKS[r.cert_track]||r.cert_track)}${r.cert_subfield?' — '+teEsc(r.cert_subfield):''}</div></div>
       <div class="fr"><div class="fl">سنة الشهادة</div><div class="fv">${teEsc(r.cert_year)}</div></div>
@@ -212,7 +231,10 @@ function tePrintRecordHTML(r) {
       <div class="fr"><div class="fl">الهاتف</div><div class="fv">${teEsc(r.phone)}</div></div>
     </div>
     <div class="fr"><div class="fl">العنوان</div><div class="fv">${teEsc(r.address)}</div></div>
-    <div class="fr"><div class="fl">التخصصات المرغوبة</div><div class="fv">${(r.majors||[]).map(teEsc).join(' ← ')}</div></div>
+    <div class="psub">التخصصات المرغوبة (حسب الأولوية)</div>
+    <table class="ptbl"><thead><tr><th>الأولوية</th><th>التخصص</th></tr></thead><tbody>
+      ${majorsRows}
+    </tbody></table>
     <div class="psub">شهادات التفوق الفني المرفقة (تُستلم يوم الاختبار)</div>
     <table class="ptbl"><thead><tr><th>#</th><th>نوع الشهادة</th><th>المصدر</th></tr></thead><tbody>
       ${[0,1,2].map(i => { const c=(r.certificates||[])[i]||{}; return `<tr><td>${i+1}</td><td>${teEsc(c.type)}</td><td>${teEsc(c.source)}</td></tr>`; }).join('')}
