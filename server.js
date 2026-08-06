@@ -134,6 +134,17 @@ TABLES.forEach(t => {
   models[t] = mongoose.model(t, new mongoose.Schema({}, { strict:false, timestamps:true }));
 });
 
+// ══ بند مؤقت: التفوق الفني — نموذج مستقل تماماً (ليس ضمن TABLES/CRUD العام)
+// لسهولة إزالته لاحقاً بالكامل بمجرد حذف هذا القسم + سطر الشريط الجانبي + صفحة talent.html
+// الوصول لبياناته مقصور على admin فقط (وفق الطلب) ══
+const TalentApp = mongoose.model('talent_excellence', new mongoose.Schema({}, { strict:false, timestamps:true }));
+const TalentSettings = mongoose.model('talent_excellence_settings', new mongoose.Schema({}, { strict:false }));
+function genTalentRef() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = ''; for (let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return 'TE-' + s;
+}
+
 // ══ اتصال MongoDB ══
 mongoose.connect(MONGODB_URI)
   .then(async () => {
@@ -262,6 +273,62 @@ app.post('/api/public/activity-requests', async (req, res) => {
     data.submitted_ip = ip;
 
     const doc = await models['activity_requests'].create(data);
+    res.json({ id: doc._id, ref_code: doc.ref_code, message: 'تم استلام طلبك بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ بند مؤقت: التفوق الفني — تقديم عام بدون تسجيل دخول ══
+// يتحقق من: فتح الرابط (حسب تاريخ إغلاق يحدده admin)، الكابتشا، الحقول الإلزامية، عدم تكرار رقم الهاتف
+app.get('/api/public/talent-excellence/status', async (req, res) => {
+  try {
+    const s = await TalentSettings.findOne({ key: 'talent_excellence' }).lean();
+    const closeDate = s?.close_date || null;
+    const todayStr = new Date().toISOString().slice(0,10);
+    const open = !closeDate || closeDate >= todayStr;
+    res.json({ open, close_date: closeDate });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/talent-excellence', async (req, res) => {
+  try {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+
+    const { captcha_token, captcha_answer } = req.body;
+    const cap = publicCaptchas[captcha_token];
+    if (!cap || Date.now() > cap.expires || Number(captcha_answer) !== cap.answer)
+      return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[captcha_token];
+
+    const s = await TalentSettings.findOne({ key: 'talent_excellence' }).lean();
+    const closeDate = s?.close_date || null;
+    const todayStr = new Date().toISOString().slice(0,10);
+    if (closeDate && closeDate < todayStr)
+      return res.status(400).json({ error: 'عذراً، انتهت مدة استقبال طلبات التفوق الفني' });
+
+    const data = { ...req.body };
+    delete data.captcha_token; delete data.captcha_answer;
+
+    const fullName = (data.full_name || '').trim();
+    const phone = (data.phone || '').trim();
+    if (!fullName || !phone) return res.status(400).json({ error: 'يرجى إدخال الاسم الكامل ورقم الهاتف' });
+    if (!/^07\d{8}$/.test(phone)) return res.status(400).json({ error: 'صيغة رقم الهاتف غير صحيحة (يجب أن يبدأ بـ 07 ويتكون من 10 خانات)' });
+    if (data.phone_alt && !/^07\d{8}$/.test(String(data.phone_alt).trim()))
+      return res.status(400).json({ error: 'صيغة رقم الهاتف البديل غير صحيحة' });
+    if (!Array.isArray(data.activity_types) || !data.activity_types.length)
+      return res.status(400).json({ error: 'يرجى اختيار نوع نشاط واحد على الأقل' });
+    if (!data.photo || !String(data.photo).startsWith('data:image/'))
+      return res.status(400).json({ error: 'يرجى إرفاق الصورة الشخصية (إلزامية)' });
+    if (!data.agree) return res.status(400).json({ error: 'يرجى الموافقة على إقرار صحة البيانات' });
+
+    const dup = await TalentApp.findOne({ $or: [{ phone }, ...(data.phone_alt ? [{ phone: data.phone_alt }] : [])] }).lean();
+    if (dup) return res.status(400).json({ error: 'يوجد طلب مسبق بنفس رقم الهاتف — لا يُسمح بالتقديم أكثر من مرة' });
+
+    data.ref_code = genTalentRef();
+    data.status = 'pending';
+    data.certs_received = false;
+    data.submitted_ip = ip;
+
+    const doc = await TalentApp.create(data);
     res.json({ id: doc._id, ref_code: doc.ref_code, message: 'تم استلام طلبك بنجاح' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -515,6 +582,63 @@ app.post('/api/users/:id/change-password', auth(['admin']), async (req, res) => 
     user.password = bcrypt.hashSync(newPassword, 10);
     await user.save();
     res.json({ message: 'تم تغيير كلمة السر بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ بند مؤقت: التفوق الفني — إدارة داخلية (admin فقط) ══
+app.get('/api/talent_excellence', auth(['admin']), async (req, res) => {
+  try {
+    let query = {};
+    const { q, status, activity, governorate } = req.query;
+    if (status) query.status = status;
+    if (governorate) query.governorate = governorate;
+    if (activity) query.activity_types = activity;
+    let docs = await TalentApp.find(query).sort({ createdAt: -1 }).lean();
+    if (q) {
+      const ql = q.toLowerCase();
+      docs = docs.filter(d => JSON.stringify(d).toLowerCase().includes(ql));
+    }
+    res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/talent_excellence/settings', auth(['admin']), async (req, res) => {
+  try {
+    const s = await TalentSettings.findOne({ key: 'talent_excellence' }).lean();
+    res.json({ close_date: s?.close_date || null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/talent_excellence/settings', auth(['admin']), async (req, res) => {
+  try {
+    await TalentSettings.findOneAndUpdate(
+      { key: 'talent_excellence' },
+      { key: 'talent_excellence', close_date: req.body.close_date || null },
+      { upsert: true }
+    );
+    res.json({ message: 'تم الحفظ' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
+  try {
+    const doc = await TalentApp.findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'غير موجود' });
+    res.json({ ...doc, id: String(doc._id), _id: String(doc._id) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
+  try {
+    await TalentApp.findByIdAndUpdate(req.params.id, { ...req.body, updated_by: req.user.username, updatedAt: new Date() }, { new: true });
+    res.json({ message: 'تم التحديث' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
+  try {
+    await TalentApp.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
