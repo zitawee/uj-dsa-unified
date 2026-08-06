@@ -9,6 +9,15 @@
 const TE_TRACKS = {
   academic: 'المسار الأكاديمي', vocational: 'المسار المهني والتقني', btec: 'برنامج BTEC'
 };
+const TE_TRACK_SUB = {
+  academic:   ['الحقل الصحي','الحقل الهندسي','حقل العلوم والتكنولوجيا','حقل اللغات والعلوم الاجتماعية','حقل القانون والعلوم الشرعية','حقل الأعمال'],
+  vocational: ['الصناعي','الزراعي','الاقتصاد المنزلي','الفندقي والسياحي'],
+  btec:       []
+};
+const TE_ACTIVITY_TYPES = ['الغناء','العزف','الخط العربي','الرسم','التمثيل','الأداء الحركي'];
+const TE_INSTRUMENTS = ['الأورغ','العود','القانون','الكمان','آلات نفخية','آلات إيقاعية'];
+const TE_DISTRICTS = {"العاصمة": ["عمان", "الجامعة", "القويسمة", "ماركا", "الجيزة", "الموقر", "ناعور", "سحاب", "وادي السير"], "البلقاء": ["السلط", "الشونة الجنوبية", "دير علا", "عين الباشا", "ماحص والفحيص"], "الزرقاء": ["الزرقاء", "الرصيفة", "الهاشمية", "بيرين"], "مأدبا": ["مأدبا", "ذيبان"], "إربد": ["إربد", "الرمثا", "بني كنانة", "بني عبيد", "الكورة", "المزار الشمالي", "الطيبة"], "المفرق": ["المفرق", "البادية الشمالية", "البادية الشمالية الغربية", "الرويشد", "الخالدية"], "جرش": ["جرش"], "عجلون": ["عجلون", "كفرنجة"], "الكرك": ["الكرك", "القصر", "القطرانة", "المزار الجنوبي", "الأغوار الجنوبية", "عي", "فقوع"], "الطفيلة": ["الطفيلة", "الحسا", "بصيرا"], "معان": ["معان", "البتراء", "الحسينية", "الشوبك"], "العقبة": ["العقبة", "القويرة"]};
+const TE_MAJORS = {"كلية العلوم": ["الرياضيات", "العلوم الحياتية", "الاحصاء وعلم البيانات", "الفيزياء", "الجيولوجيا البيئية والتطبيقية", "الكيمياء الصناعية", "العلوم الطبية المخبرية", "الكيمياء"], "كلية الشريعة": ["الفقه وأصوله", "أصول الدين", "المصارف الاسلامية"], "كلية الزراعة": ["الإنتتاج الحيواني", "تغذية الإنسان والحميات", "علم وتكنولوجيا الغذاء", "الإقتصاد الزراعي وادارةالأعمال الزراعية", "الوقاية النباتية", "البستنة والمحاصيل", "تصميم وتنسيق المواقع", "الأراضي والمياه والبيئة"], "كلية التمريض": ["التمريض"], "كلية العلوم التربوية": ["التربية الخاصة", "علم المكتبات والمعلومات", "معلم الصف", "تربية الطفولة المبكره", "الإرشاد والصحة النفسية"], "كلية الهندسة": ["هندسة الحاسوب", "الهندسة المدنية", "هندسة العمارة", "الهندسة الميكانيكية", "هندسة الميكاترونكس", "هندسة الطيران", "الهندسة الصناعية", "الهندسة الكهربائية", "الهندسة الكيميائية"], "كلية الحقوق": ["القانون"], "كلية الصيدلة": ["الصيدلة", "دكتور في الصيدلة"], "كلية الأعمال": ["إدارة الأعمال", "المحاسبة", "نظم المعلومات الإدارية", "التسويق", "إقتصاد الأعمال", "التمويل", "الإدارة العامة"], "كلية علوم التأهيل": ["العلاج الوظيفي", "الاطراف الاصطناعية والاجهزة المساعدة", "علوم السمع والنطق", "العلاج الطبيعي"], "كلية الملك عبد الله الثاني لتكنولوجيا المعلومات": ["الأمن السيبراني", "تكنولوجيا معلومات الأعمال", "علم الحاسوب", "الذكاء الإصطناعي", "أنظمة المعلومات الحاسوبية", "علم البيانات"], "كلية اللغات الأجنبية": ["اللغتين الألمانية والإنجليزية", "اللغتين الصينية والإنجليزية", "اللغتين الكورية والإنجليزية", "اللغة الفرنسية وآدابها", "اللغتين الفرنسية والانجليزية", "اللغتين الإيطالية والإنجليزية", "اللغتين التركية والإنجليزية", "اللغة الإنجليزية التطبيقية", "اللغتين الإسبانية والإنجليزية", "اللغتين الروسية والإنجليزية", "اللغة الإنجليزية وآدابها"], "كلية الآداب": ["التاريخ", "علم النفس", "اللغة العربية وآدابها", "علم الإجتماع", "العمل الإجتماعي", "الفلسفة", "الجغرافيا"], "كلية الآثار والسياحة": ["إدارة الفعاليات", "الآثار", "الإدارة السياحية", "إدارة المصادر التراثية وصيانتها", "إدارة الضيافة"], "كلية الأمير الحسين بن عبد الله الثاني للعلوم السياسية والدراسات الدولية": ["العلوم السياسية"]};
 const TE_STATUS = {
   pending:       { label: '🟡 قيد المراجعة',     cls: 'st-p' },
   accepted_exam: { label: '🔵 مقبول للاختبار',   cls: 'st-d' },
@@ -16,6 +25,7 @@ const TE_STATUS = {
   rejected:      { label: '❌ مرفوض',             cls: 'st-r' },
 };
 let TE_ROWS = [];
+let TE_EDIT_PHOTO = null; // صورة بديلة (base64) إن اختار الإداري تغييرها أثناء التعديل
 
 // يُستدعى مرة واحدة بعد الدخول (admin فقط) لتعبئة عدّاد الشريط الجانبي دون تحميل اللوحة كاملة
 async function teLoadBadgeCount() {
@@ -130,53 +140,168 @@ async function teSaveSettings() {
   loadTalent();
 }
 
-function teFieldsHTML(r) {
-  const certsHTML = (r.certificates||[]).filter(c=>c.type||c.source).map(c =>
-    `<div class="fr"><div class="fl">${teEsc(c.type)||'—'}</div><div class="fv">${teEsc(c.source)||'—'}</div></div>`).join('') || `<div style="font-size:12px;color:var(--muted)">لم يُدرج الطالب أي شهادات</div>`;
-  return `
-    ${r.photo ? `<div style="text-align:center;margin-bottom:10px"><img src="${r.photo}" style="width:110px;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--border)"></div>` : ''}
-    <div class="fr"><div class="fl">الرقم المرجعي</div><div class="fv">${teEsc(r.ref_code)}</div></div>
-    <div class="fr"><div class="fl">اسم الطالب</div><div class="fv">${teEsc(r.full_name)}</div></div>
-    <div class="fr"><div class="fl">المدرسة</div><div class="fv">${teEsc(r.school)}</div></div>
-    <div class="fr"><div class="fl">المحافظة / اللواء</div><div class="fv">${teEsc(r.governorate)} / ${teEsc(r.district)}</div></div>
-    <div class="fr"><div class="fl">نوع النشاط</div><div class="fv">${(r.activity_types||[]).map(teEsc).join('، ')}</div></div>
-    ${(r.instruments||[]).length ? `<div class="fr"><div class="fl">الآلة الموسيقية</div><div class="fv">${r.instruments.map(teEsc).join('، ')}</div></div>` : ''}
-    <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${teEsc(TE_TRACKS[r.cert_track]||r.cert_track)}${r.cert_subfield?' — '+teEsc(r.cert_subfield):''}</div></div>
-    <div class="fr"><div class="fl">سنة الشهادة</div><div class="fv">${teEsc(r.cert_year)}</div></div>
-    <div class="fr"><div class="fl">المعدل</div><div class="fv">${teEsc(r.gpa)}%</div></div>
-    <div class="fr"><div class="fl">العنوان</div><div class="fv">${teEsc(r.address)}</div></div>
-    <div class="fr"><div class="fl">الهاتف</div><div class="fv">${teEsc(r.phone)}${r.phone_alt?' / بديل: '+teEsc(r.phone_alt):''}</div></div>
-    <div class="fr"><div class="fl">التخصصات المرغوبة</div><div class="fv">${(r.majors||[]).map(teEsc).join(' ← ')}</div></div>
-    <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">شهادات التفوق الفني المرفقة</div>
-    ${certsHTML}
-    <div class="fr"><div class="fl">تاريخ التقديم</div><div class="fv">${teDate(r.createdAt)}</div></div>`;
+function teMajorOpts(selected) {
+  let html = '<option value="">اختر...</option>';
+  Object.keys(TE_MAJORS).forEach(college => {
+    html += `<optgroup label="${teEsc(college)}">` +
+      TE_MAJORS[college].map(m => `<option${m===selected?' selected':''}>${teEsc(m)}</option>`).join('') +
+      `</optgroup>`;
+  });
+  return html;
 }
 
-function teView(id) {
-  const r = TE_ROWS.find(x => x.id === id); if (!r) return;
-  document.getElementById('te-modal-body').innerHTML = `
-    <h3>تفاصيل الطلب</h3>
-    ${teFieldsHTML(r)}
-    <div class="fg" style="margin-top:12px"><label>الحالة</label>
+function teEditFormHTML(r) {
+  const certs = [0,1,2].map(i => (r.certificates||[])[i] || {});
+  return `
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:8px">الرقم المرجعي: ${teEsc(r.ref_code)} — قُدِّم بتاريخ ${teDate(r.createdAt)}</div>
+    <div style="text-align:center;margin-bottom:10px">
+      <img id="te-e-photo-preview" src="${r.photo||''}" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);${r.photo?'':'display:none'}">
+      <div class="fg" style="margin-top:6px"><input type="file" id="te-e-photo-file" accept="image/*"></div>
+    </div>
+    <div class="fg"><label>اسم الطالب كاملاً</label><input type="text" id="te-e-name" value="${teEsc(r.full_name)}"></div>
+    <div class="fg"><label>المدرسة</label><input type="text" id="te-e-school" value="${teEsc(r.school)}"></div>
+    <div class="fg"><label>المحافظة</label><select id="te-e-gov">${Object.keys(TE_DISTRICTS).map(g=>`<option${g===r.governorate?' selected':''}>${g}</option>`).join('')}</select></div>
+    <div class="fg"><label>اللواء</label><select id="te-e-dist"></select></div>
+
+    <div class="fg"><label>نوع النشاط (يمكن أكثر من نوع)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+        ${TE_ACTIVITY_TYPES.map(t=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="te-e-act" value="${t}"${(r.activity_types||[]).includes(t)?' checked':''}> ${t}</label>`).join('')}
+      </div>
+    </div>
+    <div class="fg" id="te-e-instr-box" style="${(r.activity_types||[]).includes('العزف')?'':'display:none'}">
+      <label>الآلة الموسيقية</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+        ${TE_INSTRUMENTS.map(t=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="te-e-instr" value="${t}"${(r.instruments||[]).includes(t)?' checked':''}> ${t}</label>`).join('')}
+      </div>
+    </div>
+
+    <div class="fg"><label>فرع الشهادة</label>
+      <select id="te-e-track">${Object.entries(TE_TRACKS).map(([k,v])=>`<option value="${k}"${k===r.cert_track?' selected':''}>${v}</option>`).join('')}</select>
+    </div>
+    <div class="fg" id="te-e-sub-box"><label>الحقل</label><select id="te-e-subfield"></select></div>
+    <div class="fg"><label>سنة الشهادة</label><input type="text" id="te-e-year" maxlength="4" value="${teEsc(r.cert_year)}"></div>
+    <div class="fg"><label>المعدل (%)</label><input type="text" id="te-e-gpa" value="${teEsc(r.gpa)}"></div>
+    <div class="fg"><label>العنوان</label><textarea id="te-e-address">${teEsc(r.address)}</textarea></div>
+    <div class="fg"><label>الهاتف</label><input type="text" id="te-e-phone" maxlength="10" value="${teEsc(r.phone)}"></div>
+    <div class="fg"><label>هاتف بديل</label><input type="text" id="te-e-phone-alt" maxlength="10" value="${teEsc(r.phone_alt)}"></div>
+
+    <div class="fg"><label>التخصص الأول</label><select id="te-e-major1">${teMajorOpts((r.majors||[])[0])}</select></div>
+    <div class="fg"><label>التخصص الثاني</label><select id="te-e-major2">${teMajorOpts((r.majors||[])[1])}</select></div>
+    <div class="fg"><label>التخصص الثالث</label><select id="te-e-major3">${teMajorOpts((r.majors||[])[2])}</select></div>
+
+    <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">شهادات التفوق الفني (حتى 3)</div>
+    ${[0,1,2].map(i => `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 8px">
+      <div class="fg"><label>نوع الشهادة ${i+1}</label><input type="text" class="te-e-cert-type" value="${teEsc(certs[i].type)}"></div>
+      <div class="fg"><label>المصدر ${i+1}</label><input type="text" class="te-e-cert-src" value="${teEsc(certs[i].source)}"></div>
+    </div>`).join('')}
+
+    <div class="fg" style="margin-top:8px"><label>الحالة</label>
       <select id="te-status-sel">${Object.entries(TE_STATUS).map(([k,v])=>`<option value="${k}"${r.status===k?' selected':''}>${v.label}</option>`).join('')}</select>
     </div>
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-top:8px">
       <input type="checkbox" id="te-certs-received" ${r.certs_received?'checked':''}> تم استلام الشهادات الأصلية (يوم الاختبار)
-    </label>
+    </label>`;
+}
+
+function teView(id) {
+  const r = TE_ROWS.find(x => x.id === id); if (!r) return;
+  TE_EDIT_PHOTO = null;
+  document.getElementById('te-modal-body').innerHTML = `
+    <h3>تعديل الطلب</h3>
+    ${teEditFormHTML(r)}
+    <div id="te-e-msg" class="msg"></div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="teSaveStatus('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button>
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="teSaveEdit('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ التعديلات</button>
       <button class="btn" onclick="tePrintOne('${r.id}')"><i class="ti ti-printer"></i> طباعة</button>
       <button class="btn" onclick="teCloseModal()">إغلاق</button>
     </div>`;
   document.getElementById('te-modal').classList.add('open');
+
+  // ── ربط اللواء بالمحافظة، والحقل الفرعي بفرع الشهادة، ومعاينة/تغيير الصورة ──
+  const govSel = document.getElementById('te-e-gov');
+  const distSel = document.getElementById('te-e-dist');
+  function fillDist() {
+    const list = TE_DISTRICTS[govSel.value] || [];
+    distSel.innerHTML = list.map(d => `<option${d===r.district?' selected':''}>${d}</option>`).join('');
+  }
+  fillDist();
+  govSel.addEventListener('change', fillDist);
+
+  const trackSel = document.getElementById('te-e-track');
+  const subSel = document.getElementById('te-e-subfield');
+  const subBox = document.getElementById('te-e-sub-box');
+  function fillSub() {
+    const sub = TE_TRACK_SUB[trackSel.value] || [];
+    if (!sub.length) { subBox.style.display = 'none'; subSel.innerHTML = ''; return; }
+    subBox.style.display = 'block';
+    subSel.innerHTML = '<option value="">اختر...</option>' + sub.map(s => `<option${s===r.cert_subfield?' selected':''}>${s}</option>`).join('');
+  }
+  fillSub();
+  trackSel.addEventListener('change', fillSub);
+
+  document.querySelectorAll('.te-e-act').forEach(cb => cb.addEventListener('change', () => {
+    const playing = document.querySelector('.te-e-act[value="العزف"]').checked;
+    document.getElementById('te-e-instr-box').style.display = playing ? 'block' : 'none';
+  }));
+
+  document.getElementById('te-e-photo-file').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const img = new Image(); const reader = new FileReader();
+    reader.onload = ev => { img.onload = () => {
+      const maxDim = 500; let w = img.width, h = img.height;
+      if (w > h && w > maxDim) { h = Math.round(h*maxDim/w); w = maxDim; } else if (h > maxDim) { w = Math.round(w*maxDim/h); h = maxDim; }
+      const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      TE_EDIT_PHOTO = canvas.toDataURL('image/jpeg', 0.75);
+      const prev = document.getElementById('te-e-photo-preview'); prev.src = TE_EDIT_PHOTO; prev.style.display = '';
+    }; img.src = ev.target.result; };
+    reader.readAsDataURL(file);
+  });
 }
 function teCloseModal() { document.getElementById('te-modal')?.classList.remove('open'); }
 
-async function teSaveStatus(id) {
-  const status = document.getElementById('te-status-sel').value;
+function teMsg(txt) {
+  const el = document.getElementById('te-e-msg'); if (!el) return;
+  el.textContent = txt; el.className = 'msg err'; el.style.display = 'block';
+}
+
+async function teSaveEdit(id) {
+  const gv = sel => document.getElementById(sel).value.trim();
+  const full_name = gv('te-e-name'), school = gv('te-e-school'), governorate = gv('te-e-gov'), district = gv('te-e-dist');
+  const activity_types = Array.from(document.querySelectorAll('.te-e-act:checked')).map(el => el.value);
+  const instruments = Array.from(document.querySelectorAll('.te-e-instr:checked')).map(el => el.value);
+  const cert_track = gv('te-e-track'), cert_subfield = gv('te-e-subfield');
+  const cert_year = gv('te-e-year'), gpa = gv('te-e-gpa'), address = gv('te-e-address');
+  const phone = gv('te-e-phone'), phone_alt = gv('te-e-phone-alt');
+  const major1 = gv('te-e-major1'), major2 = gv('te-e-major2'), major3 = gv('te-e-major3');
+  const status = gv('te-status-sel');
   const certs_received = document.getElementById('te-certs-received').checked;
-  const r = await api('/api/talent_excellence/'+id, 'PUT', { status, certs_received });
-  if (r.error) { alert(r.error); return; }
+
+  if (!full_name || !school) return teMsg('يرجى إدخال اسم الطالب والمدرسة');
+  if (!governorate || !district) return teMsg('يرجى اختيار المحافظة واللواء');
+  if (!activity_types.length) return teMsg('يرجى اختيار نوع نشاط واحد على الأقل');
+  if (activity_types.includes('العزف') && !instruments.length) return teMsg('يرجى اختيار آلة موسيقية واحدة على الأقل');
+  if (!/^\d{4}$/.test(cert_year)) return teMsg('سنة الشهادة يجب أن تكون 4 أرقام');
+  if (!gpa) return teMsg('يرجى إدخال المعدل');
+  if (!/^07\d{8}$/.test(phone)) return teMsg('رقم الهاتف يجب أن يبدأ بـ 07 ويتكون من 10 خانات');
+  if (phone_alt && !/^07\d{8}$/.test(phone_alt)) return teMsg('صيغة رقم الهاتف البديل غير صحيحة');
+  if (!major1 || !major2 || !major3) return teMsg('يرجى اختيار التخصصات الثلاثة');
+  if (new Set([major1, major2, major3]).size < 3) return teMsg('لا يمكن تكرار نفس التخصص في أكثر من خيار');
+
+  const certTypes = Array.from(document.querySelectorAll('.te-e-cert-type')).map(el => el.value.trim());
+  const certSrcs = Array.from(document.querySelectorAll('.te-e-cert-src')).map(el => el.value.trim());
+  const certificates = certTypes.map((t,i) => ({ type: t, source: certSrcs[i] })).filter(c => c.type || c.source);
+
+  const payload = {
+    full_name, school, governorate, district, activity_types, instruments,
+    cert_track, cert_subfield, cert_year, gpa, address, phone, phone_alt,
+    majors: [major1, major2, major3], certificates, status, certs_received
+  };
+  if (TE_EDIT_PHOTO) payload.photo = TE_EDIT_PHOTO;
+
+  const r = await api('/api/talent_excellence/'+id, 'PUT', payload);
+  if (r.error) return teMsg(r.error);
   teCloseModal();
   loadTalent();
 }
