@@ -218,7 +218,7 @@ function teEditFormHTML(r) {
   return `
     <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:8px">الرقم المرجعي: ${teEsc(r.ref_code)} — قُدِّم بتاريخ ${teDate(r.createdAt)}</div>
     <div style="text-align:center;margin-bottom:10px">
-      <img id="te-e-photo-preview" src="${r.photo||''}" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);${r.photo?'':'display:none'}">
+      <img id="te-e-photo-preview" src="${r.photo||''}" style="width:96px;height:96px;object-fit:contain;background:#F1F3F0;border-radius:10px;border:1px solid var(--border);${r.photo?'':'display:none'}">
       <div class="fg" style="margin-top:6px"><input type="file" id="te-e-photo-file" accept="image/*"></div>
     </div>
     <div class="fg"><label>اسم الطالب كاملاً</label><input type="text" id="te-e-name" value="${teEsc(r.full_name)}"></div>
@@ -492,7 +492,7 @@ function tePrintRecordHTML(r) {
     </div>
     <div class="ptitle">طلب الالتحاق للدراسة على أساس التفوق الفني</div>
     <div class="te-activity-title">${teEsc(activityTitle)}</div>
-    ${r.photo ? `<div style="text-align:left;margin-bottom:6px"><img src="${r.photo}" style="width:90px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #ccc"></div>` : ''}
+    ${r.photo ? `<div style="text-align:left;margin-bottom:6px"><img src="${r.photo}" style="width:90px;height:90px;object-fit:contain;background:#F1F3F0;border-radius:6px;border:1px solid #ccc"></div>` : ''}
     <div class="fg2">
       <div class="fr"><div class="fl">اسم الطالب</div><div class="fv">${teEsc(r.full_name)}</div></div>
       <div class="fr"><div class="fl">المدرسة</div><div class="fv">${teEsc(r.school)}</div></div>
