@@ -136,7 +136,14 @@ async function loadTalent() {
     </table></div>
   </div>
 
-  <div class="modal-ov" id="te-modal"><div class="modal" style="max-width:640px;max-height:88vh;overflow-y:auto" id="te-modal-body"></div></div>`;
+  <div class="modal-ov" id="te-modal" onclick="if(event.target===this) teCloseModal()"><div class="modal" style="max-width:640px;max-height:88vh;overflow-y:auto" id="te-modal-body"></div></div>`;
+
+  if (!window.__teEscBound) {
+    window.__teEscBound = true;
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') teCloseModal();
+    });
+  }
 
   teRender();
 }
@@ -374,7 +381,8 @@ function teOpenCustomList() {
       ${TE_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="te-cl-col" value="${f.key}"${TE_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
     </div>
     <button class="btn" style="width:100%;margin-top:10px;background:var(--g);color:#fff" onclick="teGenerateCustomList()"><i class="ti ti-table"></i> إنشاء القائمة</button>
-    <div id="te-cl-result" style="margin-top:14px"></div>`;
+    <div id="te-cl-result" style="margin-top:14px"></div>
+    <button class="btn" style="width:100%;margin-top:10px" onclick="teCloseModal()">إغلاق</button>`;
   document.getElementById('te-modal').classList.add('open');
 }
 
