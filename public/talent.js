@@ -505,17 +505,18 @@ function tePrintRecordHTML(r) {
       <div class="fr"><div class="fl">المعدل</div><div class="fv">${teEsc(r.gpa)}%</div></div>
       <div class="fr"><div class="fl">الهاتف</div><div class="fv">${teEsc(r.phone)}</div></div>
     </div>
+    ${r.phone_alt ? `<div class="fr"><div class="fl">هاتف بديل</div><div class="fv">${teEsc(r.phone_alt)}</div></div>` : ''}
     <div class="fr"><div class="fl">العنوان</div><div class="fv">${teEsc(r.address)}</div></div>
     <div class="psub">التخصصات المرغوبة (حسب الأولوية)</div>
     <table class="ptbl"><thead><tr><th>الأولوية</th><th>التخصص</th></tr></thead><tbody>
       ${majorsRows}
     </tbody></table>
-    <div class="psub">شهادات التفوق الفني المرفقة (تُستلم يوم الاختبار)</div>
+    <div class="psub">شهادات التفوق الفني المرفقة</div>
     <table class="ptbl"><thead><tr><th>#</th><th>نوع الشهادة</th><th>المصدر</th></tr></thead><tbody>
       ${[0,1,2].map(i => { const c=(r.certificates||[])[i]||{}; return `<tr><td>${i+1}</td><td>${teEsc(c.type)}</td><td>${teEsc(c.source)}</td></tr>`; }).join('')}
     </tbody></table>
     <div class="dbox">أتعهد بأن كافة البيانات الواردة في هذا الطلب صحيحة ودقيقة، وأتحمل وحدي المسؤولية الكاملة عن أي أخطاء أو معلومات غير صحيحة قد ترد فيه.</div>
-    <div class="fr" style="margin-top:6px"><div class="fl">حالة الطلب</div><div class="fv">${TE_STATUS[r.status]?.label || TE_STATUS.pending.label}</div></div>`;
+    <div style="margin-top:36px;font-size:11pt">توقيع مقدم الطلب</div>`;
 }
 
 function tePrintOne(id) {
