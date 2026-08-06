@@ -386,6 +386,8 @@ function teOpenCustomList() {
   document.getElementById('te-modal').classList.add('open');
 }
 
+let TE_CUSTOM_FILTER_TITLE = '';
+
 function teGenerateCustomList() {
   const acts = Array.from(document.querySelectorAll('.te-cl-act:checked')).map(el => el.value);
   const track = document.getElementById('te-cl-track').value;
@@ -402,6 +404,7 @@ function teGenerateCustomList() {
   });
   const cols = TE_FIELDS.filter(f => colKeys.includes(f.key));
   TE_CUSTOM_ROWS = rows; TE_CUSTOM_COLS = cols;
+  TE_CUSTOM_FILTER_TITLE = acts.join('، ');
 
   const box = document.getElementById('te-cl-result');
   if (!rows.length) { box.innerHTML = `<div class="center">لا توجد نتائج مطابقة لهذه التصفية</div>`; return; }
@@ -420,12 +423,14 @@ function teGenerateCustomList() {
 function tePrintCustomList() {
   if (!TE_CUSTOM_ROWS) return;
   const html = `
+    <style>.te-cl-title{text-align:center;font-size:15pt;font-weight:800;color:#1B6B3A;margin:2px 0 12px;padding-bottom:7px;border-bottom:2px solid #1B6B3A}</style>
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${teDate(new Date())}</div>
     </div>
     <div class="ptitle">قائمة الطلبة المتقدمين — التفوق الفني</div>
+    ${TE_CUSTOM_FILTER_TITLE ? `<div class="te-cl-title">نوع النشاط: ${teEsc(TE_CUSTOM_FILTER_TITLE)}</div>` : ''}
     <table class="ptbl"><thead><tr><th>#</th>${TE_CUSTOM_COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead><tbody>
       ${TE_CUSTOM_ROWS.map((r,i)=>`<tr><td>${i+1}</td>${TE_CUSTOM_COLS.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}</tr>`).join('')}
     </tbody></table>`;
