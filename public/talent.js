@@ -152,7 +152,7 @@ async function loadTalent() {
   <div class="card">
     <div class="tw"><table>
       <thead><tr>
-        <th style="width:26px"><input type="checkbox" onchange="toggleSelectAll('tbl-talent-body', this.checked)"></th>
+        <th style="width:40px">مقبول</th>
         <th>#</th><th>الاسم</th><th>الهاتف</th><th>المحافظة / اللواء</th><th>نوع النشاط</th><th>فرع الشهادة</th><th>المعدل</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="tbl-talent-body"></tbody>
@@ -196,7 +196,7 @@ function teRender() {
   if (!rows.length) { tb.innerHTML = `<tr><td colspan="11" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
-      <td><input type="checkbox" value="${r.id}"></td>
+      <td style="text-align:center"><input type="checkbox" value="${r.id}" ${r.status==='passed'?'checked':''} onchange="teToggleAccept('${r.id}', this)" title="وضع إشارة القبول (تُحفظ تلقائياً)"></td>
       <td>${i+1}</td>
       <td>${teEsc(r.full_name)}</td>
       <td>${teEsc(r.phone)}</td>
@@ -205,7 +205,7 @@ function teRender() {
       <td>${teEsc(TE_TRACKS[r.cert_track]||r.cert_track||'')}</td>
       <td>${teEsc(r.gpa)}%</td>
       <td style="font-weight:700">${r.final_score!=null ? r.final_score.toFixed(1) : '—'}</td>
-      <td>${teBadge(r.status)}</td>
+      <td class="te-status-cell">${teBadge(r.status)}</td>
       <td>${teDate(r.createdAt)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="teView('${r.id}')"><i class="ti ti-eye"></i></button>
@@ -213,6 +213,20 @@ function teRender() {
         <button class="btn btn-sm" style="color:#c0392b" onclick="teDelete('${r.id}')"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`).join('');
+}
+
+// وضع/إزالة إشارة "مقبول" مباشرة من الجدول — تُحفظ فوراً في قاعدة البيانات
+// (تُستخدم status='passed' كعلامة القبول النهائي؛ إلغاء التحديد يعيدها إلى "قيد المراجعة")
+async function teToggleAccept(id, cb) {
+  const newStatus = cb.checked ? 'passed' : 'pending';
+  cb.disabled = true;
+  const res = await api('/api/talent_excellence/'+id, 'PUT', { status: newStatus });
+  cb.disabled = false;
+  if (res && res.error) { alert(res.error); cb.checked = !cb.checked; return; }
+  const r = TE_ROWS.find(x => x.id === id);
+  if (r) r.status = newStatus;
+  const statusCell = cb.closest('tr')?.querySelector('.te-status-cell');
+  if (statusCell) statusCell.innerHTML = teBadge(newStatus);
 }
 
 async function teSaveSettings() {
