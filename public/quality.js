@@ -680,6 +680,7 @@ async function editPart(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   initSsel(c, NATIONALITIES);
+  wirePartCollegeMajor(c);
   updatePartCnt();
   renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
@@ -698,7 +699,7 @@ function partRowHTML(s={}, levelFieldType='level') {
     <div class="fg"><label>الجنس</label><select class="pr-gender"><option value="">...</option><option${s.gender==='ذكر'?' selected':''}>ذكر</option><option${s.gender==='أنثى'?' selected':''}>أنثى</option></select></div>
     <div class="fg"><label>الجنسية</label>${sselHTML('pr-nat', s.nationality)}</div>
     <div class="fg"><label>الكلية</label><select class="pr-col"><option value="">اختر...</option>${colSel}</select></div>
-    <div class="fg"><label>التخصص</label><input type="text" class="pr-major" value="${s.major||''}"></div>
+    <div class="fg"><label>التخصص</label><select class="pr-major" data-initial="${s.major||''}"><option value="">اختر الكلية أولاً...</option></select></div>
     ${levelField}
     <div class="fg"><label>رقم الهاتف</label><input type="text" class="pr-phone" value="${s.phone||''}"></div>
     <div class="fg" style="align-self:flex-end;display:flex;gap:6px">
@@ -706,6 +707,25 @@ function partRowHTML(s={}, levelFieldType='level') {
       <button class="btn btn-sm ${s.attended?'btn-g':''}" style="${s.attended?'':'color:#1B6B3A;border-color:#1B6B3A'}" onclick="toggleRowAttendance(this)">${s.attended?'✅ حاضر':'✅ تسجيل حضور'}</button>
     </div>
   </div>`;
+}
+
+// ═ ربط التخصص بالكلية المختارة (يعرض فقط تخصصات تلك الكلية، كما في نموذج التفوق الفني) ═
+function wirePartCollegeMajor(container) {
+  (container||document).querySelectorAll('.part-row').forEach(row => {
+    const colSel = row.querySelector('.pr-col');
+    const majSel = row.querySelector('.pr-major');
+    if (!colSel || !majSel || colSel.dataset.majorWired) return;
+    colSel.dataset.majorWired = '1';
+    const initialMajor = majSel.dataset.initial || '';
+    function fillMajors(preselect) {
+      const majors = MAJORS_BY_COLLEGE[colSel.value] || [];
+      majSel.innerHTML = majors.length
+        ? '<option value="">اختر...</option>' + majors.map(m => `<option${m===preselect?' selected':''}>${m}</option>`).join('')
+        : '<option value="">' + (colSel.value ? 'لا توجد تخصصات مسجَّلة لهذه الكلية' : 'اختر الكلية أولاً...') + '</option>';
+    }
+    fillMajors(initialMajor);
+    colSel.addEventListener('change', () => fillMajors(''));
+  });
 }
 
 // ═ تسجيل/إلغاء حضور طالب مباشرة من نفس شاشة تعديل المشاركين (دون الحاجة لرابط الحضور المستقل) ═
@@ -757,6 +777,7 @@ function addPartRow() {
   const div=document.createElement('div'); div.innerHTML=partRowHTML({}, levelFieldType);
   c.appendChild(div.firstElementChild); updatePartCnt();
   initSsel(c, NATIONALITIES);
+  wirePartCollegeMajor(c);
 }
 
 function updatePartCnt() {
@@ -806,6 +827,7 @@ async function importPart(input) {
     if(s.name||s.id){const div=document.createElement('div');div.innerHTML=partRowHTML(s, document.getElementById('part-form')?.dataset.levelFieldType);c.appendChild(div.firstElementChild);added++;}
   });
   initSsel(c, NATIONALITIES);
+  wirePartCollegeMajor(c);
   updatePartCnt(); alert(`✅ تم استيراد ${added} طالب بنجاح`);
 }
 
@@ -853,6 +875,7 @@ async function refreshPartStudents(id) {
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
   });
   initSsel(c, NATIONALITIES);
+  wirePartCollegeMajor(c);
   updatePartCnt();
   renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
   alert(`✅ تم تحديث القائمة — ${r.students?r.students.length:0} طالب مسجَّل حالياً`);
