@@ -605,7 +605,7 @@ app.get('/api/talent_excellence', auth(['admin']), async (req, res) => {
 app.get('/api/talent_excellence/settings', auth(['admin']), async (req, res) => {
   try {
     const s = await TalentSettings.findOne({ key: 'talent_excellence' }).lean();
-    res.json({ close_date: s?.close_date || null });
+    res.json({ close_date: s?.close_date || null, committee_members: s?.committee_members || [] });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -613,7 +613,7 @@ app.put('/api/talent_excellence/settings', auth(['admin']), async (req, res) => 
   try {
     await TalentSettings.findOneAndUpdate(
       { key: 'talent_excellence' },
-      { key: 'talent_excellence', close_date: req.body.close_date || null },
+      { key: 'talent_excellence', close_date: req.body.close_date || null, committee_members: Array.isArray(req.body.committee_members) ? req.body.committee_members : [] },
       { upsert: true }
     );
     res.json({ message: 'تم الحفظ' });
