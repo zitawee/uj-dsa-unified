@@ -715,7 +715,9 @@ function tcRenderTable() {
     const filled = scores.filter(v => v != null && v !== '');
     const cscore = filled.length ? filled.reduce((a,b)=>a+(+b||0),0) / 2 : null;
     return `<tr data-id="${r.id}" data-hs="${hs}">
-      <td>${i+1}</td><td>${teEsc(r.full_name)}</td><td>${(r.activity_types||[]).map(teEsc).join('، ')}</td>
+      <td>${i+1}</td>
+      <td>${teEsc(r.full_name)} <button class="btn btn-sm" style="padding:2px 6px" onclick="tcViewApplicant('${r.id}')" title="عرض بيانات الطالب"><i class="ti ti-eye"></i></button></td>
+      <td>${(r.activity_types||[]).map(teEsc).join('، ')}</td>
       ${members.map((m,mi) => `<td><input type="number" min="0" max="${per}" step="0.5" class="tc-score" style="width:64px" value="${scores[mi]!=null?scores[mi]:''}" oninput="tcRecalc(this)"></td>`).join('')}
       <td class="tc-cscore">${cscore!=null ? cscore.toFixed(1) : '—'}</td>
       <td>${hs.toFixed(1)}</td>
@@ -732,6 +734,38 @@ function tcRecalc(input) {
   const cscore = filled.length ? filled.reduce((a,b)=>a+b, 0) / 2 : null;
   tr.querySelector('.tc-cscore').textContent = cscore!=null ? cscore.toFixed(1) : '—';
   tr.querySelector('.tc-final').textContent = cscore!=null ? (cscore+hs).toFixed(1) : '—';
+}
+
+// عرض سريع (للقراءة فقط) لبيانات الطالب من شاشة علامات اللجنة، دون مغادرتها
+// (تُبنى بعناصر مستقلة تماماً عن نافذة التعديل في شاشة الطلبات، تفادياً لتكرار أرقام تعريف العناصر id)
+function teReadOnlyHTML(r) {
+  return `
+    ${r.photo ? `<div style="text-align:center;margin-bottom:10px"><img src="${r.photo}" style="width:110px;height:110px;object-fit:contain;background:#F1F3F0;border-radius:10px;border:1px solid var(--border)"></div>` : ''}
+    <div class="fr"><div class="fl">الرقم المرجعي</div><div class="fv">${teEsc(r.ref_code)}</div></div>
+    <div class="fr"><div class="fl">اسم الطالب</div><div class="fv">${teEsc(r.full_name)}</div></div>
+    <div class="fr"><div class="fl">المدرسة</div><div class="fv">${teEsc(r.school)}</div></div>
+    <div class="fr"><div class="fl">المحافظة / اللواء</div><div class="fv">${teEsc(r.governorate)} / ${teEsc(r.district)}</div></div>
+    <div class="fr"><div class="fl">نوع النشاط</div><div class="fv">${(r.activity_types||[]).map(teEsc).join('، ')}${(r.instruments||[]).length?' — '+r.instruments.map(teEsc).join('، '):''}</div></div>
+    <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${teEsc(TE_TRACKS[r.cert_track]||r.cert_track)}${r.cert_subfield?' — '+teEsc(r.cert_subfield):''}</div></div>
+    <div class="fr"><div class="fl">سنة الشهادة</div><div class="fv">${teEsc(r.cert_year)}</div></div>
+    <div class="fr"><div class="fl">المعدل</div><div class="fv">${teEsc(r.gpa)}%</div></div>
+    <div class="fr"><div class="fl">العنوان</div><div class="fv">${teEsc(r.address)}</div></div>
+    <div class="fr"><div class="fl">الهاتف</div><div class="fv">${teEsc(r.phone)}${r.phone_alt?' / بديل: '+teEsc(r.phone_alt):''}</div></div>
+    <div class="fr"><div class="fl">التخصصات المرغوبة</div><div class="fv">${(r.majors||[]).map(teEsc).join(' ← ')}</div></div>
+    <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">شهادات التفوق الفني المرفقة</div>
+    ${(r.certificates||[]).filter(c=>c.type||c.source).map(c=>`<div class="fr"><div class="fl">${teEsc(c.type)||'—'}</div><div class="fv">${teEsc(c.source)||'—'}</div></div>`).join('') || `<div style="font-size:12px;color:var(--muted)">لم يُدرج الطالب أي شهادات</div>`}
+    <div class="fr" style="margin-top:6px"><div class="fl">تاريخ التقديم</div><div class="fv">${teDate(r.createdAt)}</div></div>`;
+}
+
+function tcViewApplicant(id) {
+  const r = TE_ROWS.find(x => x.id === id); if (!r) return;
+  document.getElementById('tc-modal-body').innerHTML = `
+    <h3>بيانات الطالب</h3>
+    ${teReadOnlyHTML(r)}
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" style="flex:1" onclick="tcCloseModal()">إغلاق</button>
+    </div>`;
+  document.getElementById('tc-modal').classList.add('open');
 }
 
 async function tcSaveAll() {
