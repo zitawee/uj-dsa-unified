@@ -483,6 +483,7 @@ function teGenerateCustomList() {
 function tePrintCustomList() {
   if (!TE_CUSTOM_ROWS) return;
   const html = `
+    ${TE_TABLE_ALIGN_STYLE}
     <style>.te-cl-title{text-align:center;font-size:15pt;font-weight:800;color:#1B6B3A;margin:2px 0 12px;padding-bottom:7px;border-bottom:2px solid #1B6B3A}</style>
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
@@ -492,8 +493,9 @@ function tePrintCustomList() {
     <div class="ptitle">قائمة الطلبة المتقدمين — التفوق الفني</div>
     ${TE_CUSTOM_FILTER_TITLE ? `<div class="te-cl-title">نوع النشاط: ${teEsc(TE_CUSTOM_FILTER_TITLE)}</div>` : ''}
     <table class="ptbl"><thead><tr><th>#</th>${TE_CUSTOM_COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead><tbody>
-      ${TE_CUSTOM_ROWS.map((r,i)=>`<tr><td>${i+1}</td>${TE_CUSTOM_COLS.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}</tr>`).join('')}
-    </tbody></table>`;
+      ${TE_CUSTOM_ROWS.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td>${TE_CUSTOM_COLS.map(c=>`<td${c.key==='full_name'?' style="text-align:right"':' style="text-align:center"'}>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}</tr>`).join('')}
+    </tbody></table>
+    ${teSignatureBlockHTML()}`;
   openPrint(html);
 }
 
@@ -801,6 +803,16 @@ async function tcSaveAll() {
 
 // خط مخصّص لكشوف لجنة التحكيم فقط (لا يمسّ خط باقي شاشات النظام)
 const TC_PRINT_FONT = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap"><style>body,table,th,td,div{font-family:'Scheherazade New',serif!important;font-weight:700!important}</style>`;
+// توسيط عناوين الأعمدة في كل جداول التفوق الفني المطبوعة (عمود اسم الطالب يبقى يميناً بشكل صريح لكل صف)
+const TE_TABLE_ALIGN_STYLE = `<style>.ptbl th{text-align:center!important}</style>`;
+// مربّع توقيعات أعضاء اللجنة (الاسم الوظيفي أعلى الاسم) — يُستخدم في أكثر من كشف مطبوع
+function teSignatureBlockHTML() {
+  const members = teCommitteeMembers();
+  if (!members.length) return '';
+  return `<div style="margin-top:60px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt;page-break-inside:avoid">
+    ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${teEsc(m.title)||'&nbsp;'}</div><div style="margin-top:60px;font-weight:700">${teEsc(m.name)}</div></div>`).join('')}
+  </div>`;
+}
 
 function tcPrintGradingSheet() {
   const act = document.getElementById('tc-f-act')?.value || '';
@@ -812,7 +824,7 @@ function tcPrintGradingSheet() {
   const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = (100 / members.length).toFixed(1);
   const html = `
-    ${TC_PRINT_FONT}
+    ${TC_PRINT_FONT}${TE_TABLE_ALIGN_STYLE}
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
@@ -825,7 +837,7 @@ function tcPrintGradingSheet() {
       ${members.map(m=>`<th>${teEsc(m.name)}<br>(من ${per})</th>`).join('')}
       <th>المجموع (من 100)</th>
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
+      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
     </tbody></table>`;
   openPrint(html);
   tcCloseModal();
@@ -842,7 +854,7 @@ function tcPrintFinalReport() {
   const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = (100 / members.length).toFixed(1);
   const html = `
-    ${TC_PRINT_FONT}
+    ${TC_PRINT_FONT}${TE_TABLE_ALIGN_STYLE}
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
@@ -853,16 +865,14 @@ function tcPrintFinalReport() {
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${members.map(m=>`<th>${teEsc(m.name)}<br>(من ${per})</th>`).join('')}
-      <th>علامة اللجنة (٥٠)</th><th>علامة الثانوية (٥٠)</th><th>العلامة النهائية</th>
+      <th>علامة اللجنة (50)</th><th>علامة الثانوية (50)</th><th>العلامة النهائية</th>
     </tr></thead><tbody>
       ${rows.map((r,i) => {
         const scores = r.committee_scores || [];
-        return `<tr><td>${i+1}</td><td>${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td>${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}<td>${r.committee_score!=null?r.committee_score.toFixed(1):'—'}</td><td>${r.hs_score!=null?r.hs_score.toFixed(1):'—'}</td><td style="font-weight:700">${r.final_score!=null?r.final_score.toFixed(1):'—'}</td></tr>`;
+        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}<td style="text-align:center">${r.committee_score!=null?r.committee_score.toFixed(1):'—'}</td><td style="text-align:center">${r.hs_score!=null?r.hs_score.toFixed(1):'—'}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?r.final_score.toFixed(1):'—'}</td></tr>`;
       }).join('')}
     </tbody></table>
-    <div style="margin-top:60px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt;page-break-inside:avoid">
-      ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${teEsc(m.title)||'&nbsp;'}</div><div style="margin-top:60px;font-weight:700">${teEsc(m.name)}</div></div>`).join('')}
-    </div>`;
+    ${teSignatureBlockHTML()}`;
   openPrint(html);
   tcCloseModal();
 }
