@@ -643,7 +643,7 @@ async function loadTalentCommittee() {
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div class="fg" style="min-width:180px"><label>تصفية حسب نوع النشاط</label><select id="tc-f-act" onchange="tcRenderTable()"><option value="">كل الأنشطة</option>${TE_ACTIVITY_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
-      <button class="btn btn-sm" onclick="tcPrintGradingSheet()"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
+      <button class="btn btn-sm" onclick="tcOpenPrintFields()"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
       <div style="flex:1"></div>
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="tcSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
     </div>
@@ -661,9 +661,35 @@ async function loadTalentCommittee() {
       </tr></thead>
       <tbody id="tc-tbody"></tbody>
     </table></div>`}
-  </div>`;
+  </div>
+
+  <div class="modal-ov" id="tc-modal" onclick="if(event.target===this) tcCloseModal()"><div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto" id="tc-modal-body"></div></div>`;
+
+  if (!window.__tcEscBound) {
+    window.__tcEscBound = true;
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') tcCloseModal(); });
+  }
 
   if (n) tcRenderTable();
+}
+function tcCloseModal() { document.getElementById('tc-modal')?.classList.remove('open'); }
+
+const TC_SHEET_FIELDS = TE_FIELDS.filter(f => !['committee_score','hs_score','final_score','status','certs_received'].includes(f.key));
+
+function tcOpenPrintFields() {
+  const members = TE_SETTINGS.committee_members || [];
+  if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
+  document.getElementById('tc-modal-body').innerHTML = `
+    <h3>بيانات إضافية تُعرض للجنة في الكشف</h3>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع، قبل أعمدة العلامات الفارغة.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+      ${TC_SHEET_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="tc-sheet-col" value="${f.key}"> ${f.label}</label>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="tcPrintGradingSheet()"><i class="ti ti-printer"></i> طباعة الكشف</button>
+      <button class="btn" onclick="tcCloseModal()">إغلاق</button>
+    </div>`;
+  document.getElementById('tc-modal').classList.add('open');
 }
 
 async function tcSaveCommittee() {
@@ -733,6 +759,8 @@ function tcPrintGradingSheet() {
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
   const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
   if (!rows.length) { alert('لا يوجد متقدمون مطابقون لهذه التصفية'); return; }
+  const extraKeys = Array.from(document.querySelectorAll('.tc-sheet-col:checked')).map(el => el.value);
+  const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = (100 / members.length).toFixed(1);
   const html = `
     <div class="ph2">
@@ -743,10 +771,12 @@ function tcPrintGradingSheet() {
     <div class="ptitle">كشف تقييم لجنة المقابلة${act?' — '+teEsc(act):''}</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
+      ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${members.map(m=>`<th>${teEsc(m)}<br>(من ${per})</th>`).join('')}
       <th>المجموع (من 100)</th>
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${teEsc(r.full_name)}</td>${members.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
+      ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
     </tbody></table>`;
   openPrint(html);
+  tcCloseModal();
 }
