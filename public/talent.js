@@ -409,6 +409,10 @@ function teOpenCustomList() {
       <div class="fg"><label>فرع الشهادة (اختياري)</label><select id="te-cl-track"><option value="">الكل</option>${Object.entries(TE_TRACKS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
       <div class="fg"><label>الحالة (اختياري)</label><select id="te-cl-status"><option value="">الكل</option>${Object.entries(TE_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
+      <div class="fg"><label>الترتيب حسب العلامة النهائية</label><select id="te-cl-sort"><option value="">بدون ترتيب (كما هو مُدخَل)</option><option value="desc">الأعلى علامة أولاً</option><option value="asc">الأدنى علامة أولاً</option></select></div>
+      <div class="fg"><label>الاكتفاء بأعلى عدد (اختياري)</label><input type="number" id="te-cl-top" min="1" placeholder="مثال: 10 — اتركه فارغاً لعرض الكل"></div>
+    </div>
     <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">الحقول المطلوب إدراجها في الجدول</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${TE_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="te-cl-col" value="${f.key}"${TE_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
@@ -425,16 +429,25 @@ function teGenerateCustomList() {
   const acts = Array.from(document.querySelectorAll('.te-cl-act:checked')).map(el => el.value);
   const track = document.getElementById('te-cl-track').value;
   const status = document.getElementById('te-cl-status').value;
+  const sortDir = document.getElementById('te-cl-sort').value;
+  const topN = parseInt(document.getElementById('te-cl-top').value) || 0;
   const colKeys = Array.from(document.querySelectorAll('.te-cl-col:checked')).map(el => el.value);
 
   if (!colKeys.length) { alert('يرجى اختيار حقل واحد على الأقل'); return; }
 
-  const rows = TE_ROWS.filter(r => {
+  let rows = TE_ROWS.filter(r => {
     if (acts.length && !acts.some(a => (r.activity_types||[]).includes(a))) return false;
     if (track && r.cert_track !== track) return false;
     if (status && (r.status||'pending') !== status) return false;
     return true;
   });
+  if (sortDir) {
+    rows = rows.slice().sort((a,b) => sortDir === 'desc'
+      ? (b.final_score ?? -1) - (a.final_score ?? -1)
+      : (a.final_score ?? 999) - (b.final_score ?? 999));
+  }
+  if (topN > 0) rows = rows.slice(0, topN);
+
   const cols = TE_FIELDS.filter(f => colKeys.includes(f.key));
   TE_CUSTOM_ROWS = rows; TE_CUSTOM_COLS = cols;
   TE_CUSTOM_FILTER_TITLE = acts.join('، ');
