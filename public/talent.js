@@ -624,7 +624,7 @@ async function loadTalentCommittee() {
   if (!Array.isArray(rows)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
   TE_ROWS = rows;
   TE_SETTINGS = settings || {};
-  const members = TE_SETTINGS.committee_members || [];
+  const members = teCommitteeMembers();
   const n = members.length;
   const per = n ? 100 / n : 0;
 
@@ -633,9 +633,13 @@ async function loadTalentCommittee() {
 
   <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">أعضاء اللجنة (من عضوين إلى 5 أعضاء)</div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُحسب علامة كل عضو تلقائياً من (100 ÷ عدد الأعضاء المدخلين هنا)، بحيث يكون مجموع علامات اللجنة دائماً من 100 مهما كان العدد الفعلي.</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-      ${[0,1,2,3,4].map(i => `<div class="fg"><label>العضو ${i+1}${i>3?' (اختياري)':''}</label><input type="text" id="tc-m-${i}" value="${teEsc(members[i]||'')}" placeholder="اسم العضو..."></div>`).join('')}
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُحسب علامة كل عضو تلقائياً من (100 ÷ عدد الأعضاء المدخلين هنا)، بحيث يكون مجموع علامات اللجنة دائماً من 100 مهما كان العدد الفعلي. الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+      ${[0,1,2,3,4].map(i => `
+      <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
+        <div class="fg"><label>العضو ${i+1}${i>3?' (اختياري)':''} — الاسم</label><input type="text" id="tc-m-${i}" value="${teEsc(members[i]?.name||'')}" placeholder="اسم العضو..."></div>
+        <div class="fg" style="margin-top:6px"><label>الاسم الوظيفي</label><input type="text" id="tc-t-${i}" value="${teEsc(members[i]?.title||'')}" placeholder="مثال: عميد شؤون الطلبة..."></div>
+      </div>`).join('')}
     </div>
     <button class="btn btn-sm" style="margin-top:10px" onclick="tcSaveCommittee()"><i class="ti ti-device-floppy"></i> حفظ أسماء اللجنة</button>
   </div>
@@ -643,7 +647,8 @@ async function loadTalentCommittee() {
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div class="fg" style="min-width:180px"><label>تصفية حسب نوع النشاط</label><select id="tc-f-act" onchange="tcRenderTable()"><option value="">كل الأنشطة</option>${TE_ACTIVITY_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
-      <button class="btn btn-sm" onclick="tcOpenPrintFields()"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
+      <button class="btn btn-sm" onclick="tcOpenPrintFields('blank')"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
+      <button class="btn btn-sm" onclick="tcOpenPrintFields('final')"><i class="ti ti-printer"></i> طباعة كشف العلامات النهائي</button>
       <div style="flex:1"></div>
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="tcSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
     </div>
@@ -654,7 +659,7 @@ async function loadTalentCommittee() {
     <div class="tw"><table>
       <thead><tr>
         <th>#</th><th>الاسم</th><th>نوع النشاط</th>
-        ${members.map(m=>`<th>${teEsc(m)}<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من ${per.toFixed(1)})</span></th>`).join('')}
+        ${members.map(m=>`<th>${teEsc(m.name)}<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من ${per.toFixed(1)})</span></th>`).join('')}
         <th>علامة اللجنة<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 50)</span></th>
         <th>علامة الثانوية<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 50)</span></th>
         <th>العلامة النهائية</th>
@@ -674,26 +679,33 @@ async function loadTalentCommittee() {
 }
 function tcCloseModal() { document.getElementById('tc-modal')?.classList.remove('open'); }
 
+// يعيد أعضاء اللجنة بصيغة موحّدة {name, title} — مع التوافق مع الصيغة القديمة (أسماء نصّية فقط بلا مسمّى وظيفي)
+function teCommitteeMembers() {
+  return (TE_SETTINGS.committee_members || []).map(m => typeof m === 'string' ? { name: m, title: '' } : m);
+}
+
 const TC_SHEET_FIELDS = TE_FIELDS.filter(f => !['committee_score','hs_score','final_score','status','certs_received'].includes(f.key));
 
-function tcOpenPrintFields() {
-  const members = TE_SETTINGS.committee_members || [];
+function tcOpenPrintFields(mode) {
+  const members = teCommitteeMembers();
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
   document.getElementById('tc-modal-body').innerHTML = `
-    <h3>بيانات إضافية تُعرض للجنة في الكشف</h3>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع، قبل أعمدة العلامات الفارغة.</div>
+    <h3>${mode==='final' ? 'بيانات إضافية تُعرض في كشف العلامات النهائي' : 'بيانات إضافية تُعرض للجنة في الكشف'}</h3>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${TC_SHEET_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="tc-sheet-col" value="${f.key}"> ${f.label}</label>`).join('')}
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="tcPrintGradingSheet()"><i class="ti ti-printer"></i> طباعة الكشف</button>
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="${mode==='final'?'tcPrintFinalReport()':'tcPrintGradingSheet()'}"><i class="ti ti-printer"></i> طباعة الكشف</button>
       <button class="btn" onclick="tcCloseModal()">إغلاق</button>
     </div>`;
   document.getElementById('tc-modal').classList.add('open');
 }
 
 async function tcSaveCommittee() {
-  const members = [0,1,2,3,4].map(i => document.getElementById('tc-m-'+i).value.trim()).filter(Boolean);
+  const members = [0,1,2,3,4]
+    .map(i => ({ name: document.getElementById('tc-m-'+i).value.trim(), title: document.getElementById('tc-t-'+i).value.trim() }))
+    .filter(m => m.name);
   if (members.length < 2) { alert('يرجى إدخال اسمين على الأقل لأعضاء اللجنة'); return; }
   TE_SETTINGS.committee_members = members;
   const r = await api('/api/talent_excellence/settings', 'PUT', TE_SETTINGS);
@@ -703,7 +715,7 @@ async function tcSaveCommittee() {
 
 function tcRenderTable() {
   const act = document.getElementById('tc-f-act')?.value || '';
-  const members = TE_SETTINGS.committee_members || [];
+  const members = teCommitteeMembers();
   const tbody = document.getElementById('tc-tbody');
   if (!tbody) return;
   const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
@@ -789,7 +801,7 @@ async function tcSaveAll() {
 
 function tcPrintGradingSheet() {
   const act = document.getElementById('tc-f-act')?.value || '';
-  const members = TE_SETTINGS.committee_members || [];
+  const members = teCommitteeMembers();
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
   const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
   if (!rows.length) { alert('لا يوجد متقدمون مطابقون لهذه التصفية'); return; }
@@ -806,11 +818,46 @@ function tcPrintGradingSheet() {
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
-      ${members.map(m=>`<th>${teEsc(m)}<br>(من ${per})</th>`).join('')}
+      ${members.map(m=>`<th>${teEsc(m.name)}<br>(من ${per})</th>`).join('')}
       <th>المجموع (من 100)</th>
     </tr></thead><tbody>
       ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
     </tbody></table>`;
+  openPrint(html);
+  tcCloseModal();
+}
+
+// كشف العلامات النهائي — يشمل العلامات الفعلية المُدخَلة + مربّع توقيعات أعضاء اللجنة (الاسم الوظيفي فوق الاسم)
+function tcPrintFinalReport() {
+  const act = document.getElementById('tc-f-act')?.value || '';
+  const members = teCommitteeMembers();
+  if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
+  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
+  if (!rows.length) { alert('لا يوجد متقدمون مطابقون لهذه التصفية'); return; }
+  const extraKeys = Array.from(document.querySelectorAll('.tc-sheet-col:checked')).map(el => el.value);
+  const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
+  const per = (100 / members.length).toFixed(1);
+  const html = `
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">${teDate(new Date())}</div>
+    </div>
+    <div class="ptitle">كشف علامات لجنة المقابلة${act?' — '+teEsc(act):''}</div>
+    <table class="ptbl"><thead><tr>
+      <th>#</th><th>اسم الطالب</th>
+      ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
+      ${members.map(m=>`<th>${teEsc(m.name)}<br>(من ${per})</th>`).join('')}
+      <th>علامة اللجنة (٥٠)</th><th>علامة الثانوية (٥٠)</th><th>العلامة النهائية</th>
+    </tr></thead><tbody>
+      ${rows.map((r,i) => {
+        const scores = r.committee_scores || [];
+        return `<tr><td>${i+1}</td><td>${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td>${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}<td>${r.committee_score!=null?r.committee_score.toFixed(1):'—'}</td><td>${r.hs_score!=null?r.hs_score.toFixed(1):'—'}</td><td style="font-weight:700">${r.final_score!=null?r.final_score.toFixed(1):'—'}</td></tr>`;
+      }).join('')}
+    </tbody></table>
+    <div style="margin-top:44px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt">
+      ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${teEsc(m.title)||'&nbsp;'}</div><div style="margin-top:26px;font-weight:700">${teEsc(m.name)}</div></div>`).join('')}
+    </div>`;
   openPrint(html);
   tcCloseModal();
 }
