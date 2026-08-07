@@ -247,15 +247,15 @@ function buildSidebar() {
   <div class="ni active" onclick="go('dash',this)"><i class="ti ti-layout-dashboard"></i>لوحة التحكم<span class="cnt" id="c-all">0</span></div>
   <div class="ni" onclick="go('incomplete',this)"><i class="ti ti-alert-circle" style="color:#633806"></i>طلبات غير مكتملة<span class="cnt inc" id="c-inc">0</span></div>
   ${ME?.role==='admin' ? `
-  <div class="folder-hdr sec-talent" onclick="toggleFolder('f-talent')"><i class="ti ti-chevron-down folder-arrow" id="arr-f-talent"></i><i class="ti ti-music" style="color:#8A2A22"></i>التفوق الفني</div>
-  <div class="folder-body sec-talent" id="f-talent">
+  <div class="folder-hdr sec-talent" onclick="toggleFolder('f-talent')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-talent"></i><i class="ti ti-music" style="color:#8A2A22"></i>التفوق الفني</div>
+  <div class="folder-body sec-talent" id="f-talent" style="display:none">
     <div class="ni" onclick="go('talent_excellence',this)"><i class="ti ti-list-details"></i>طلبات التفوق الفني<span class="cnt" id="c-talent_excellence">0</span></div>
     <div class="ni" onclick="go('talent_committee',this)"><i class="ti ti-users-group"></i>علامات لجنة التحكيم</div>
   </div>` : ''}
 
   <!-- نظام الأنشطة -->
-  <div class="folder-hdr sec-acts" onclick="toggleFolder('f-acts')"><i class="ti ti-chevron-down folder-arrow" id="arr-f-acts"></i><i class="ti ti-users"></i>نظام الأنشطة</div>
-  <div class="folder-body sec-acts" id="f-acts">
+  <div class="folder-hdr sec-acts" onclick="toggleFolder('f-acts')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-acts"></i><i class="ti ti-users"></i>نظام الأنشطة</div>
+  <div class="folder-body sec-acts" id="f-acts" style="display:none">
     <div class="ni" onclick="go('students',this)"><i class="ti ti-users"></i>الطلبة المسجلون<span class="cnt" id="c-students">0</span></div>
     <div class="ni" onclick="go('achievements',this)"><i class="ti ti-trophy"></i>الإنجازات والتكريم<span class="cnt" id="c-achievements">0</span></div>
   </div>
