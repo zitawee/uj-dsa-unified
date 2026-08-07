@@ -799,6 +799,9 @@ async function tcSaveAll() {
   loadTalentCommittee();
 }
 
+// خط مخصّص لكشوف لجنة التحكيم فقط (لا يمسّ خط باقي شاشات النظام)
+const TC_PRINT_FONT = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap"><style>body,table,th,td,div{font-family:'Scheherazade New',serif!important;font-weight:700!important}</style>`;
+
 function tcPrintGradingSheet() {
   const act = document.getElementById('tc-f-act')?.value || '';
   const members = teCommitteeMembers();
@@ -809,6 +812,7 @@ function tcPrintGradingSheet() {
   const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = (100 / members.length).toFixed(1);
   const html = `
+    ${TC_PRINT_FONT}
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
@@ -838,6 +842,7 @@ function tcPrintFinalReport() {
   const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = (100 / members.length).toFixed(1);
   const html = `
+    ${TC_PRINT_FONT}
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
@@ -855,8 +860,8 @@ function tcPrintFinalReport() {
         return `<tr><td>${i+1}</td><td>${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td>${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td>${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}<td>${r.committee_score!=null?r.committee_score.toFixed(1):'—'}</td><td>${r.hs_score!=null?r.hs_score.toFixed(1):'—'}</td><td style="font-weight:700">${r.final_score!=null?r.final_score.toFixed(1):'—'}</td></tr>`;
       }).join('')}
     </tbody></table>
-    <div style="margin-top:44px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt">
-      ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${teEsc(m.title)||'&nbsp;'}</div><div style="margin-top:26px;font-weight:700">${teEsc(m.name)}</div></div>`).join('')}
+    <div style="margin-top:60px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt;page-break-inside:avoid">
+      ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${teEsc(m.title)||'&nbsp;'}</div><div style="margin-top:60px;font-weight:700">${teEsc(m.name)}</div></div>`).join('')}
     </div>`;
   openPrint(html);
   tcCloseModal();
