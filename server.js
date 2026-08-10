@@ -7,8 +7,11 @@ const fs       = require('fs');
 const app  = express();
 app.set('trust proxy', true);
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI ||
-  'mongodb+srv://mohammedzitawee_db_user:RsRDI3zU3Oy56vKP@cluster0.bbkuj12.mongodb.net/dsa_unified?appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('❌ متغيّر البيئة MONGODB_URI غير مضبوط. يجب ضبطه من إعدادات Railway (Variables) قبل التشغيل.');
+  process.exit(1);
+}
 
 // ══ MongoDB Schema ══
 const recordSchema = new mongoose.Schema({}, { strict: false, timestamps: true });
@@ -502,7 +505,7 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
       name, id: uniId,
       gender: req.body.gender || '', nationality: req.body.nationality || '',
       college: req.body.college || '', major: req.body.major || '',
-      year: req.body.year || '', phone: req.body.phone || '',
+      year: req.body.year || '', phone: req.body.phone || '', email: req.body.email || '',
     });
     doc.students = students;
     doc.markModified('students');
@@ -565,6 +568,57 @@ app.post('/api/participants/:id/mark-attendance', auth(['admin','editor','coordi
     res.json({ ok: true, attended, attend_time: students[idx].attend_time, message: attended ? 'تم تسجيل الحضور' : 'تم إلغاء تسجيل الحضور' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ══ إرسال بريد إلكتروني جماعي لمشاركي/حاضري نشاط عبر Brevo (بند مستقل قابل للإزالة بسهولة:
+// يكفي حذف هذا القسم + متغيّر BREVO_API_KEY من Railway + زر "📧 إرسال بريد" من quality.js) ══
+async function sendBrevoEmail(toEmail, toName, subject, htmlContent) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error('لم يتم ضبط مفتاح خدمة البريد (BREVO_API_KEY) بعد من إعدادات Railway');
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      sender: { name: 'عمادة شؤون الطلبة — الجامعة الأردنية', email: process.env.BREVO_SENDER_EMAIL || 'no-reply@ju.edu.jo' },
+      to: [{ email: toEmail, name: toName || undefined }],
+      subject,
+      htmlContent,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(()=> '');
+    throw new Error('فشل إرسال البريد لـ ' + toEmail + ': ' + res.status + ' ' + body.slice(0,200));
+  }
+}
+
+app.post('/api/participants/:id/send-email', auth(['admin','editor','coordinator','manager']), async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'السجل غير موجود' });
+    if (['coordinator','manager'].includes(req.user.role) && req.user.department && doc.organizer && doc.organizer !== req.user.department)
+      return res.status(403).json({ error: 'هذا السجل لا يتبع الجهة المرتبطة بحسابك' });
+
+    const { subject, message, target } = req.body;
+    if (!subject || !message) return res.status(400).json({ error: 'يرجى إدخال عنوان ونص الرسالة' });
+
+    let students = Array.isArray(doc.students) ? doc.students : [];
+    if (target === 'attended') students = students.filter(s => s.attended);
+    students = students.filter(s => (s.email || '').trim());
+    if (!students.length) return res.status(400).json({ error: 'لا يوجد أي طالب ضمن هذه المجموعة لديه بريد إلكتروني مُسجَّل' });
+
+    const htmlContent = `<div dir="rtl" style="font-family:Tajawal,Arial,sans-serif;font-size:15px;line-height:1.8;color:#222">${String(message).replace(/\n/g,'<br>')}</div>`;
+    const results = await Promise.allSettled(students.map(s => sendBrevoEmail(s.email.trim(), s.name, subject, htmlContent)));
+    const sent = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.length - sent;
+
+    doc.email_sent = true;
+    doc.email_sent_at = new Date();
+    doc.email_sent_count = sent;
+    await doc.save();
+
+    res.json({ ok: true, sent, failed, total: students.length, message: `تم إرسال ${sent} رسالة بنجاح${failed?` (فشل ${failed})`:''}` });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 const EVAL_QUESTIONS = [
   'طريقة الإعلان عن الفعالية مناسبة',
   'تم دعوتي للحضور قبل مدة مناسبة',
