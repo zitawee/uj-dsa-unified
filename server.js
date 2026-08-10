@@ -145,6 +145,24 @@ function genTalentRef() {
   return 'TE-' + s;
 }
 
+// ══ نظام حجز الغرف الفندقية — وحدة مستقلة قابلة لإعادة الاستخدام لأي نشاط
+// (رحلات، معسكرات...)، الوصول لإدارتها مقصور على admin فقط.
+// دورة حجز واحدة = نشاط واحد (مرتبط بسجل من جدول "أسماء المشاركين")،
+// وتحتها عدة فنادق، كل فندق له رابط تسجيل عام مستقل وغرف خاصة به ══
+const BookingCycle = mongoose.model('room_booking_cycles', new mongoose.Schema({}, { strict:false, timestamps:true }));
+function genBookingId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = ''; for (let i=0;i<8;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+async function findBookingHotel(hotelId) {
+  const cycle = await BookingCycle.findOne({ 'hotels.id': hotelId });
+  if (!cycle) return null;
+  const hotel = (cycle.hotels || []).find(h => h.id === hotelId);
+  if (!hotel) return null;
+  return { cycle, hotel };
+}
+
 // ══ اتصال MongoDB ══
 mongoose.connect(MONGODB_URI)
   .then(async () => {
@@ -330,6 +348,79 @@ app.post('/api/public/talent-excellence', async (req, res) => {
 
     const doc = await TalentApp.create(data);
     res.json({ id: doc._id, ref_code: doc.ref_code, message: 'تم استلام طلبك بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ نظام حجز الغرف الفندقية — تسجيل عام بدون تسجيل دخول (بحسب الرقم الجامعي) ══
+app.get('/api/public/room-booking/:hotelId/status', async (req, res) => {
+  try {
+    const found = await findBookingHotel(req.params.hotelId);
+    if (!found) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const { cycle, hotel } = found;
+    const todayStr = new Date().toISOString().slice(0,10);
+    const open = !hotel.close_date || hotel.close_date >= todayStr;
+    res.json({ open, close_date: hotel.close_date || null, hotel_name: hotel.name, activity_name: cycle.activity_name });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/room-booking/:hotelId/verify', async (req, res) => {
+  try {
+    const found = await findBookingHotel(req.params.hotelId);
+    if (!found) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const uniId = (req.body.uni_id || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    const participantsDoc = await models['participants'].findById(found.cycle.activity_id).lean();
+    const student = (participantsDoc?.students || []).find(s => (s.id || '').trim() === uniId);
+    if (!student) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    if (!student.gender) return res.status(400).json({ error: 'بيانات الجنس غير مكتملة في سجلك ضمن قائمة المشاركين، يرجى مراجعة الإدارة' });
+    res.json({ name: student.name, gender: student.gender, nationality: student.nationality || '', phone: student.phone || '' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/public/room-booking/:hotelId/rooms', async (req, res) => {
+  try {
+    const found = await findBookingHotel(req.params.hotelId);
+    if (!found) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const { cycle, hotel } = found;
+    const uniId = (req.query.uni_id || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    const participantsDoc = await models['participants'].findById(cycle.activity_id).lean();
+    const student = (participantsDoc?.students || []).find(s => (s.id || '').trim() === uniId);
+    if (!student) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    const rooms = (hotel.rooms || []).filter(r => r.gender === student.gender).map(r => ({
+      id: r.id, capacity: r.capacity, occupants: r.occupants || [],
+      mine: (r.occupants || []).some(o => o.uni_id === uniId),
+    }));
+    res.json({ rooms, my_gender: student.gender, my_name: student.name });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/room-booking/:hotelId/join', async (req, res) => {
+  try {
+    const found = await findBookingHotel(req.params.hotelId);
+    if (!found) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const { cycle, hotel } = found;
+    const todayStr = new Date().toISOString().slice(0,10);
+    if (hotel.close_date && hotel.close_date < todayStr) return res.status(403).json({ error: 'عذراً، انتهت مهلة التسجيل لهذا الفندق' });
+    const uniId = (req.body.uni_id || '').trim();
+    const roomId = req.body.room_id;
+    if (!uniId || !roomId) return res.status(400).json({ error: 'بيانات ناقصة' });
+    const participantsDoc = await models['participants'].findById(cycle.activity_id).lean();
+    const student = (participantsDoc?.students || []).find(s => (s.id || '').trim() === uniId);
+    if (!student) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    const targetRoom = (hotel.rooms || []).find(r => r.id === roomId);
+    if (!targetRoom) return res.status(404).json({ error: 'الغرفة غير موجودة' });
+    if (targetRoom.gender !== student.gender) return res.status(403).json({ error: 'هذه الغرفة غير مخصَّصة لجنسك' });
+    const alreadyInTarget = (targetRoom.occupants || []).some(o => o.uni_id === uniId);
+    if (!alreadyInTarget && (targetRoom.occupants || []).length >= targetRoom.capacity)
+      return res.status(400).json({ error: 'هذه الغرفة ممتلئة بالكامل' });
+    // إزالته من أي غرفة أخرى ضمن نفس الفندق أولاً (لدعم تبديل الغرفة)
+    hotel.rooms.forEach(r => { r.occupants = (r.occupants || []).filter(o => o.uni_id !== uniId); });
+    targetRoom.occupants = targetRoom.occupants || [];
+    targetRoom.occupants.push({ uni_id: uniId, name: student.name, nationality: student.nationality || '', phone: student.phone || '', joined_at: new Date() });
+    cycle.markModified('hotels');
+    await cycle.save();
+    res.json({ message: 'تم الانضمام للغرفة بنجاح' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -638,6 +729,46 @@ app.put('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
 app.delete('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
   try {
     await TalentApp.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ نظام حجز الغرف الفندقية — إدارة داخلية (admin فقط) ══
+app.get('/api/room_booking/cycles', auth(['admin']), async (req, res) => {
+  try {
+    const docs = await BookingCycle.find().sort({ createdAt: -1 }).lean();
+    res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/room_booking/cycles', auth(['admin']), async (req, res) => {
+  try {
+    if (!req.body.activity_id || !req.body.activity_name) return res.status(400).json({ error: 'يرجى اختيار النشاط' });
+    const doc = await BookingCycle.create({ activity_id: req.body.activity_id, activity_name: req.body.activity_name, hotels: [], created_by: req.user.username });
+    res.json({ id: doc._id, message: 'تم إنشاء دورة الحجز' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/room_booking/cycles/:id', auth(['admin']), async (req, res) => {
+  try {
+    const doc = await BookingCycle.findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'غير موجود' });
+    res.json({ ...doc, id: String(doc._id), _id: String(doc._id) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// تحديث كامل قائمة الفنادق (يشمل إضافة/تعديل فندق أو إعدادات غرفه) — استبدال كامل لمصفوفة hotels
+app.put('/api/room_booking/cycles/:id', auth(['admin']), async (req, res) => {
+  try {
+    if (!Array.isArray(req.body.hotels)) return res.status(400).json({ error: 'بيانات غير صحيحة' });
+    await BookingCycle.findByIdAndUpdate(req.params.id, { hotels: req.body.hotels, updated_by: req.user.username, updatedAt: new Date() });
+    res.json({ message: 'تم الحفظ' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/room_booking/cycles/:id', auth(['admin']), async (req, res) => {
+  try {
+    await BookingCycle.findByIdAndDelete(req.params.id);
     res.json({ message: 'تم الحذف' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
