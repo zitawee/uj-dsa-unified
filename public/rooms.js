@@ -275,8 +275,18 @@ function rbViewHotel(hotelId) {
     if (!rooms.length) return `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">لا توجد غرف ${title}</div>`;
     return `<div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">${title}</div>` + rooms.map((r,i) => `
       <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:6px">
-        <div style="font-size:12.5px;font-weight:700">غرفة ${i+1} — ${RB_CAP_LABEL[r.capacity]} (${(r.occupants||[]).length}/${r.capacity})</div>
-        ${(r.occupants||[]).map(o=>`<div style="font-size:11.5px;padding:3px 0;border-top:1px dashed var(--border)">${rbEsc(o.name)} — ${rbEsc(o.uni_id)} — ${rbEsc(o.nationality)||'—'} — ${rbEsc(o.phone)||'—'}</div>`).join('') || `<div style="font-size:11px;color:var(--muted)">لا يوجد أحد بعد</div>`}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:12.5px;font-weight:700">غرفة ${i+1} — ${RB_CAP_LABEL[r.capacity]} (${(r.occupants||[]).length}/${r.capacity})</div>
+          ${(r.occupants||[]).length < r.capacity ? `<button class="btn btn-sm" onclick="rbAddOccupantPrompt('${hotelId}','${r.id}')"><i class="ti ti-user-plus"></i> إضافة</button>` : ''}
+        </div>
+        ${(r.occupants||[]).map(o=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11.5px;padding:4px 0;border-top:1px dashed var(--border)">
+            <div>${rbEsc(o.name)} — ${rbEsc(o.uni_id)} — ${rbEsc(o.nationality)||'—'} — ${rbEsc(o.phone)||'—'}</div>
+            <div style="white-space:nowrap;flex-shrink:0">
+              <button class="btn btn-sm" onclick="rbMoveOccupantPrompt('${hotelId}','${r.id}','${o.uni_id}')"><i class="ti ti-arrows-exchange"></i> نقل</button>
+              <button class="btn btn-sm" style="color:#c0392b" onclick="rbRemoveOccupant('${hotelId}','${r.id}','${o.uni_id}')"><i class="ti ti-x"></i> حذف</button>
+            </div>
+          </div>`).join('') || `<div style="font-size:11px;color:var(--muted);margin-top:2px">لا يوجد أحد بعد</div>`}
       </div>`).join('');
   }
   document.getElementById('rb-modal-body').innerHTML = `
@@ -289,6 +299,88 @@ function rbViewHotel(hotelId) {
       <button class="btn" onclick="rbCloseModal()">إغلاق</button>
     </div>`;
   document.getElementById('rb-modal').classList.add('open');
+}
+
+async function rbRemoveOccupant(hotelId, roomId, uniId) {
+  if (!confirm('إزالة هذا الطالب من الغرفة؟')) return;
+  const h = (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId);
+  const r = (h.rooms||[]).find(x=>x.id===roomId);
+  r.occupants = (r.occupants||[]).filter(o => o.uni_id !== uniId);
+  const ok = await rbSaveCycleHotels();
+  if (ok) { rbRenderCycle(); rbViewHotel(hotelId); }
+}
+
+function rbMoveOccupantPrompt(hotelId, fromRoomId, uniId) {
+  const h = (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId);
+  const fromRoom = (h.rooms||[]).find(x=>x.id===fromRoomId);
+  const occ = (fromRoom.occupants||[]).find(o=>o.uni_id===uniId);
+  const targets = (h.rooms||[]).filter(r => r.gender===fromRoom.gender && r.id!==fromRoomId);
+  document.getElementById('rb-modal-body').innerHTML = `
+    <h3>نقل ${rbEsc(occ?.name||uniId)}</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">اختر الغرفة الجديدة (من نفس الجنس):</div>
+    ${targets.length ? targets.map((r,i) => {
+      const full = (r.occupants||[]).length >= r.capacity;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:6px">
+        <div style="font-size:12.5px">غرفة ${rbRoomIndex(h,r)} — ${RB_CAP_LABEL[r.capacity]} (${(r.occupants||[]).length}/${r.capacity})</div>
+        <button class="btn btn-sm" ${full?'disabled':''} onclick="rbMoveOccupant('${hotelId}','${fromRoomId}','${r.id}','${uniId}')">${full?'ممتلئة':'نقل هنا'}</button>
+      </div>`;
+    }).join('') : `<div class="center">لا توجد غرف أخرى من نفس الجنس في هذا الفندق</div>`}
+    <button class="btn" style="width:100%;margin-top:8px" onclick="rbViewHotel('${hotelId}')">رجوع</button>`;
+}
+
+function rbRoomIndex(hotel, room) {
+  const sameGender = (hotel.rooms||[]).filter(r => r.gender === room.gender);
+  return sameGender.indexOf(room) + 1;
+}
+
+async function rbMoveOccupant(hotelId, fromRoomId, toRoomId, uniId) {
+  const h = (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId);
+  const fromRoom = (h.rooms||[]).find(x=>x.id===fromRoomId);
+  const toRoom = (h.rooms||[]).find(x=>x.id===toRoomId);
+  if ((toRoom.occupants||[]).length >= toRoom.capacity) { alert('هذه الغرفة ممتلئة'); return; }
+  const occ = (fromRoom.occupants||[]).find(o=>o.uni_id===uniId);
+  fromRoom.occupants = (fromRoom.occupants||[]).filter(o=>o.uni_id!==uniId);
+  toRoom.occupants = toRoom.occupants || [];
+  toRoom.occupants.push(occ);
+  const ok = await rbSaveCycleHotels();
+  if (ok) { rbRenderCycle(); rbViewHotel(hotelId); }
+}
+
+async function rbAddOccupantPrompt(hotelId, roomId) {
+  const h = (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId);
+  const r = (h.rooms||[]).find(x=>x.id===roomId);
+  document.getElementById('rb-modal-body').innerHTML = `
+    <h3>إضافة طالب إلى الغرفة</h3>
+    <div class="fg"><label>الرقم الجامعي</label><input type="text" id="rb-add-uid" placeholder="أدخل الرقم الجامعي..."></div>
+    <div id="rb-add-msg" class="msg"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="rbAddOccupant('${hotelId}','${roomId}')"><i class="ti ti-plus"></i> إضافة</button>
+      <button class="btn" onclick="rbViewHotel('${hotelId}')">رجوع</button>
+    </div>`;
+}
+
+async function rbAddOccupant(hotelId, roomId) {
+  const uid = document.getElementById('rb-add-uid').value.trim();
+  const msgEl = document.getElementById('rb-add-msg');
+  const showErr = t => { msgEl.textContent = t; msgEl.className = 'msg err'; msgEl.style.display = 'block'; };
+  if (!uid) { showErr('يرجى إدخال الرقم الجامعي'); return; }
+  const h = (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId);
+  const r = (h.rooms||[]).find(x=>x.id===roomId);
+  if ((r.occupants||[]).length >= r.capacity) { showErr('الغرفة ممتلئة بالفعل'); return; }
+  if ((r.occupants||[]).some(o=>o.uni_id===uid)) { showErr('هذا الطالب موجود بالفعل في هذه الغرفة'); return; }
+  const participantsDoc = await api('/api/participants/'+RB_CYCLE.activity_id);
+  if (participantsDoc.error) { showErr('تعذّر تحميل قائمة المشاركين'); return; }
+  let list = participantsDoc.students || [];
+  if (RB_CYCLE.verify_source === 'attended') list = list.filter(s => s.attended);
+  const student = list.find(s => (s.id||'').trim() === uid);
+  if (!student) { showErr(RB_CYCLE.verify_source === 'attended' ? 'الرقم الجامعي غير مسجَّل ضمن الحاضرين لهذا النشاط' : 'الرقم الجامعي غير مسجَّل ضمن المشاركين في هذا النشاط'); return; }
+  if (student.gender !== r.gender) { showErr('جنس هذا الطالب لا يطابق نوع هذه الغرفة'); return; }
+  // إزالته من أي غرفة أخرى ضمن نفس الفندق أولاً إن كان مسجَّلاً بها
+  (h.rooms||[]).forEach(rm => { rm.occupants = (rm.occupants||[]).filter(o=>o.uni_id!==uid); });
+  r.occupants = r.occupants || [];
+  r.occupants.push({ uni_id: uid, name: student.name, nationality: student.nationality||'', phone: student.phone||'', joined_at: new Date() });
+  const ok = await rbSaveCycleHotels();
+  if (ok) { rbRenderCycle(); rbViewHotel(hotelId); }
 }
 
 function rbPrintHotel(hotelId) {
