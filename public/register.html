@@ -88,6 +88,7 @@
           <div class="full"><label>الاسم الكامل *</label><input id="f-name" type="text"></div>
           <div><label>الرقم الجامعي *</label><input id="f-id" type="text"></div>
           <div><label>رقم الهاتف</label><input id="f-phone" type="text"></div>
+          <div class="full"><label>البريد الإلكتروني</label><input id="f-email" type="email"><div style="font-size:11px;color:var(--muted);margin-top:3px">سيتم التواصل معك من خلال البريد الإلكتروني وليس رقم الهاتف</div></div>
           <div><label>الجنس</label><select id="f-gender"><option value="">اختر...</option><option>ذكر</option><option>أنثى</option></select></div>
           <div><label>الجنسية</label>
             <div class="ssel">
@@ -217,7 +218,7 @@ async function submitReg(){
   if(!v('f-captcha')){ showMsg('يرجى الإجابة على سؤال التحقق', true); return; }
 
   const data = {
-    name, uni_id: uniId, phone: v('f-phone'), gender: v('f-gender'),
+    name, uni_id: uniId, phone: v('f-phone'), email: v('f-email'), gender: v('f-gender'),
     nationality: v('f-nat'), college: v('f-col'), major: v('f-major'), year: v('f-year'),
     captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
   };

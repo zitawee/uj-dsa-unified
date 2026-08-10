@@ -505,7 +505,7 @@ async function loadParticipants() {
           <span id="pf-cnt" style="font-size:11px;color:var(--g);font-weight:600;align-self:center"></span>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--muted);background:#F9FAFB;padding:6px 10px;border-radius:6px;border:1px solid #eee;margin-bottom:8px">💡 أعمدة الاستيراد: الاسم / الرقم الجامعي / الجنس / الجنسية / الكلية / التخصص / المستوى / رقم الهاتف</div>
+      <div style="font-size:11px;color:var(--muted);background:#F9FAFB;padding:6px 10px;border-radius:6px;border:1px solid #eee;margin-bottom:8px">💡 أعمدة الاستيراد: الاسم / الرقم الجامعي / الجنس / الجنسية / الكلية / التخصص / المستوى / رقم الهاتف / البريد الإلكتروني</div>
       <input type="text" id="pf-rowsearch" placeholder="🔍 بحث سريع بالاسم أو الرقم الجامعي ضمن هذا الكشف..." oninput="filterPartRows(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:10px">
       <div id="pf-rowsearch-note" style="display:none;font-size:11px;color:var(--muted);margin-bottom:6px"></div>
       <div id="part-rows"></div>
@@ -650,7 +650,7 @@ async function exportPartExcel(id, mode='all') {
   const sheetRows = students.map((s,i)=>({
     '#': i+1, 'اسم الطالب': s.name||'', 'الرقم الجامعي': s.id||'', 'الجنس': s.gender||'',
     'الجنسية': s.nationality||'', 'الكلية': s.college||'', 'التخصص': s.major||'',
-    [levelLabel]: s.year||'', 'رقم الهاتف': s.phone||'', 'الحضور': s.attended?'حاضر':''
+    [levelLabel]: s.year||'', 'رقم الهاتف': s.phone||'', 'البريد الإلكتروني': s.email||'', 'الحضور': s.attended?'حاضر':''
   }));
   const ws = XLSX.utils.json_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();
@@ -702,6 +702,7 @@ function partRowHTML(s={}, levelFieldType='level') {
     <div class="fg"><label>التخصص</label><select class="pr-major" data-initial="${s.major||''}"><option value="">اختر الكلية أولاً...</option></select></div>
     ${levelField}
     <div class="fg"><label>رقم الهاتف</label><input type="text" class="pr-phone" value="${s.phone||''}"></div>
+    <div class="fg"><label>البريد الإلكتروني</label><input type="email" class="pr-email" value="${s.email||''}"></div>
     <div class="fg" style="align-self:flex-end;display:flex;gap:6px">
       <button class="btn btn-r" onclick="this.closest('.part-row').remove();updatePartCnt()">حذف</button>
       <button class="btn btn-sm ${s.attended?'btn-g':''}" style="${s.attended?'':'color:#1B6B3A;border-color:#1B6B3A'}" onclick="toggleRowAttendance(this)">${s.attended?'✅ حاضر':'✅ تسجيل حضور'}</button>
@@ -792,6 +793,7 @@ function getPartStudents() {
       gender:r.querySelector('.pr-gender')?.value||'',nationality:r.querySelector('.pr-nat')?.value||'',
       college:r.querySelector('.pr-col')?.value||'',major:r.querySelector('.pr-major')?.value||'',
       year:r.querySelector('.pr-year')?.value||'',phone:r.querySelector('.pr-phone')?.value||'',
+      email:r.querySelector('.pr-email')?.value||'',
     };
     // الحفاظ على حالة الحضور المُسجَّلة مسبقاً (عبر QR الحضور) — كانت تُفقَد سابقاً عند أي حفظ لهذا النموذج
     if(r.dataset.attended==='1') s.attended=true;
@@ -800,7 +802,7 @@ function getPartStudents() {
   }).filter(s=>s.name||s.id);
 }
 
-const COLMAP={name:['الاسم','اسم الطالب','الاسم الكامل','name','full_name'],id:['الرقم الجامعي','الرقم','student_id','id'],gender:['الجنس','gender'],nationality:['الجنسية','nationality'],college:['الكلية','college'],major:['التخصص','major'],year:['المستوى','المستوى الدراسي','year','level'],phone:['رقم الهاتف','الهاتف','phone']};
+const COLMAP={name:['الاسم','اسم الطالب','الاسم الكامل','name','full_name'],id:['الرقم الجامعي','الرقم','student_id','id'],gender:['الجنس','gender'],nationality:['الجنسية','nationality'],college:['الكلية','college'],major:['التخصص','major'],year:['المستوى','المستوى الدراسي','year','level'],phone:['رقم الهاتف','الهاتف','phone'],email:['البريد الإلكتروني','البريد','email']};
 function findC(headers,field){const cands=COLMAP[field]||[];for(const h of headers){const hl=h.trim().toLowerCase();for(const c of cands){if(hl===c.toLowerCase()||hl.includes(c.toLowerCase()))return h;}}return null;}
 function parseCSV(text){text=text.replace(/^\uFEFF/,'');const lines=text.split(/\r?\n/).filter(l=>l.trim());if(lines.length<2)return null;const headers=lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());const rows=[];for(let i=1;i<lines.length;i++){const vals=[];let cur='',inQ=false;for(const ch of lines[i]+','){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur.trim());cur='';}else cur+=ch;}if(vals.some(v=>v)){const row={};headers.forEach((h,idx)=>row[h]=vals[idx]||'');rows.push(row);}}return{headers,rows};}
 
@@ -823,7 +825,7 @@ async function importPart(input) {
   const c=document.getElementById('part-rows'); let added=0;
   parsed.rows.forEach(row=>{
     const get=f=>{const col=findC(parsed.headers,f);return col?(row[col]||''):'';};
-    const s={name:get('name'),id:get('id'),gender:get('gender'),nationality:get('nationality'),college:get('college'),major:get('major'),year:get('year'),phone:get('phone')};
+    const s={name:get('name'),id:get('id'),gender:get('gender'),nationality:get('nationality'),college:get('college'),major:get('major'),year:get('year'),phone:get('phone'),email:get('email')};
     if(s.name||s.id){const div=document.createElement('div');div.innerHTML=partRowHTML(s, document.getElementById('part-form')?.dataset.levelFieldType);c.appendChild(div.firstElementChild);added++;}
   });
   initSsel(c, NATIONALITIES);
@@ -919,7 +921,7 @@ async function filterPart() {
     return `<tr>
     <td><input type="checkbox" class="part-select-cb" value="${r.id}"></td>
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
-    <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div></td>
+    <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div>${r.email_sent?`<div style="font-size:10px;color:#27500A">✅ تم إرسال بريد (${r.email_sent_count||0})</div>`:''}</td>
     <td><div class="rb">
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       ${canEditPart?`<button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="toggleLevelField('${r.id}','${r.level_field_type==='national_id'?'level':'national_id'}')">${r.level_field_type==='national_id'?'🪪 الحقل: الرقم الوطني':'🎓 الحقل: المستوى'}</button>`:''}
@@ -927,11 +929,52 @@ async function filterPart() {
       <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ الحاضرين</button>
       <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcelChoice('${r.id}')">📊 Excel</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
+      ${canEditPart?`<button class="btn btn-sm" style="color:#8A2A22;border-color:#8A2A22" onclick="openSendEmailModal('${r.id}')">📧 إرسال بريد</button>`:''}
       <button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="openHistoryModal('participants','${r.id}')">🕐 السجل التاريخي</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
   </tr>`;}).join('')||`<tr class="erow"><td colspan="7">لا توجد نماذج</td></tr>`;
   const cnt=document.getElementById('c-participants'); if(cnt) cnt.textContent=rows?.length||0;
+}
+
+// ══ إرسال بريد إلكتروني جماعي للمشاركين/الحاضرين (بند مستقل قابل للإزالة بسهولة) ══
+function openSendEmailModal(id) {
+  const modal = document.getElementById('mod-sendemail');
+  if (!modal) { alert('تعذّر فتح النافذة'); return; }
+  modal.querySelector('.modal').innerHTML = `
+    <h3>📧 إرسال بريد إلكتروني</h3>
+    <div class="fg"><label>المُرسَل إليهم</label>
+      <select id="se-target">
+        <option value="registered">كل المسجَّلين (ممن أدخل بريده الإلكتروني)</option>
+        <option value="attended">الحاضرين فقط (ممن أدخل بريده الإلكتروني)</option>
+      </select>
+    </div>
+    <div class="fg"><label>عنوان الرسالة</label><input type="text" id="se-subject" placeholder="مثال: تذكير بموعد الرحلة"></div>
+    <div class="fg"><label>نص الرسالة</label><textarea id="se-message" style="min-height:120px" placeholder="اكتب نص الرسالة هنا..."></textarea></div>
+    <div id="se-msg" class="msg"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="sendPartEmail('${id}')"><i class="ti ti-send"></i> إرسال</button>
+      <button class="btn" onclick="document.getElementById('mod-sendemail').classList.remove('open')">إلغاء</button>
+    </div>`;
+  modal.classList.add('open');
+  if (!window.__seEscBound) {
+    window.__seEscBound = true;
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('mod-sendemail')?.classList.remove('open'); });
+  }
+}
+
+async function sendPartEmail(id) {
+  const target = document.getElementById('se-target').value;
+  const subject = document.getElementById('se-subject').value.trim();
+  const message = document.getElementById('se-message').value.trim();
+  const msgEl = document.getElementById('se-msg');
+  const show = (t, err) => { msgEl.textContent = t; msgEl.className = 'msg ' + (err?'err':'ok'); msgEl.style.display = 'block'; };
+  if (!subject || !message) { show('يرجى إدخال عنوان ونص الرسالة', true); return; }
+  show('جارٍ الإرسال...');
+  const r = await api('/api/participants/'+id+'/send-email', 'POST', { subject, message, target });
+  if (r.error) { show(r.error, true); return; }
+  show(r.message);
+  setTimeout(() => { document.getElementById('mod-sendemail').classList.remove('open'); filterPart(); }, 1500);
 }
 
 // ══ طباعة الإعلانات ══
