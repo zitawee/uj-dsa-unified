@@ -162,6 +162,12 @@ async function findBookingHotel(hotelId) {
   if (!hotel) return null;
   return { cycle, hotel };
 }
+// يجلب سجل الطالب من قائمة المشاركين، مع مراعاة إعداد الدورة (كل المشاركين، أو الحاضرين فقط)
+function rbFindStudent(participantsDoc, cycle, uniId) {
+  let list = participantsDoc?.students || [];
+  if (cycle.verify_source === 'attended') list = list.filter(s => s.attended);
+  return list.find(s => (s.id || '').trim() === uniId);
+}
 
 // ══ اتصال MongoDB ══
 mongoose.connect(MONGODB_URI)
@@ -370,8 +376,8 @@ app.post('/api/public/room-booking/:hotelId/verify', async (req, res) => {
     const uniId = (req.body.uni_id || '').trim();
     if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
     const participantsDoc = await models['participants'].findById(found.cycle.activity_id).lean();
-    const student = (participantsDoc?.students || []).find(s => (s.id || '').trim() === uniId);
-    if (!student) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    const student = rbFindStudent(participantsDoc, found.cycle, uniId);
+    if (!student) return res.status(404).json({ error: found.cycle.verify_source === 'attended' ? 'رقمك الجامعي غير مسجَّل ضمن الحاضرين فعلياً لهذا النشاط' : 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
     if (!student.gender) return res.status(400).json({ error: 'بيانات الجنس غير مكتملة في سجلك ضمن قائمة المشاركين، يرجى مراجعة الإدارة' });
     res.json({ name: student.name, gender: student.gender, nationality: student.nationality || '', phone: student.phone || '' });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -385,8 +391,8 @@ app.get('/api/public/room-booking/:hotelId/rooms', async (req, res) => {
     const uniId = (req.query.uni_id || '').trim();
     if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
     const participantsDoc = await models['participants'].findById(cycle.activity_id).lean();
-    const student = (participantsDoc?.students || []).find(s => (s.id || '').trim() === uniId);
-    if (!student) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    const student = rbFindStudent(participantsDoc, cycle, uniId);
+    if (!student) return res.status(404).json({ error: cycle.verify_source === 'attended' ? 'رقمك الجامعي غير مسجَّل ضمن الحاضرين فعلياً لهذا النشاط' : 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
     const rooms = (hotel.rooms || []).filter(r => r.gender === student.gender).map(r => ({
       id: r.id, capacity: r.capacity, occupants: r.occupants || [],
       mine: (r.occupants || []).some(o => o.uni_id === uniId),
@@ -406,8 +412,8 @@ app.post('/api/public/room-booking/:hotelId/join', async (req, res) => {
     const roomId = req.body.room_id;
     if (!uniId || !roomId) return res.status(400).json({ error: 'بيانات ناقصة' });
     const participantsDoc = await models['participants'].findById(cycle.activity_id).lean();
-    const student = (participantsDoc?.students || []).find(s => (s.id || '').trim() === uniId);
-    if (!student) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    const student = rbFindStudent(participantsDoc, cycle, uniId);
+    if (!student) return res.status(404).json({ error: cycle.verify_source === 'attended' ? 'رقمك الجامعي غير مسجَّل ضمن الحاضرين فعلياً لهذا النشاط' : 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
     const targetRoom = (hotel.rooms || []).find(r => r.id === roomId);
     if (!targetRoom) return res.status(404).json({ error: 'الغرفة غير موجودة' });
     if (targetRoom.gender !== student.gender) return res.status(403).json({ error: 'هذه الغرفة غير مخصَّصة لجنسك' });
@@ -744,7 +750,8 @@ app.get('/api/room_booking/cycles', auth(['admin']), async (req, res) => {
 app.post('/api/room_booking/cycles', auth(['admin']), async (req, res) => {
   try {
     if (!req.body.activity_id || !req.body.activity_name) return res.status(400).json({ error: 'يرجى اختيار النشاط' });
-    const doc = await BookingCycle.create({ activity_id: req.body.activity_id, activity_name: req.body.activity_name, hotels: [], created_by: req.user.username });
+    const verify_source = req.body.verify_source === 'attended' ? 'attended' : 'all';
+    const doc = await BookingCycle.create({ activity_id: req.body.activity_id, activity_name: req.body.activity_name, verify_source, hotels: [], created_by: req.user.username });
     res.json({ id: doc._id, message: 'تم إنشاء دورة الحجز' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -761,7 +768,9 @@ app.get('/api/room_booking/cycles/:id', auth(['admin']), async (req, res) => {
 app.put('/api/room_booking/cycles/:id', auth(['admin']), async (req, res) => {
   try {
     if (!Array.isArray(req.body.hotels)) return res.status(400).json({ error: 'بيانات غير صحيحة' });
-    await BookingCycle.findByIdAndUpdate(req.params.id, { hotels: req.body.hotels, updated_by: req.user.username, updatedAt: new Date() });
+    const update = { hotels: req.body.hotels, updated_by: req.user.username, updatedAt: new Date() };
+    if (req.body.verify_source === 'attended' || req.body.verify_source === 'all') update.verify_source = req.body.verify_source;
+    await BookingCycle.findByIdAndUpdate(req.params.id, update);
     res.json({ message: 'تم الحفظ' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
