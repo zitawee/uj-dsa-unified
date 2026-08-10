@@ -62,10 +62,16 @@ async function rbOpenNewCycle() {
     <div class="fg"><label>اختر النشاط (من قائمة أسماء المشاركين)</label>
       <select id="rb-new-act">
         <option value="">اختر...</option>
-        ${list.map(p => `<option value="${p.id}">${rbEsc(p.activity)} — ${rbEsc(p.date||'')} (${(p.students||[]).length} مشارك)</option>`).join('')}
+        ${list.map(p => `<option value="${p.id}">${rbEsc(p.activity)} — ${rbEsc(p.date||'')} (${(p.students||[]).length} مشارك، ${(p.students||[]).filter(s=>s.attended).length} حاضر)</option>`).join('')}
       </select>
     </div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">سيتم التحقق لاحقاً من الرقم الجامعي لكل طالب مقابل قائمة مشاركي هذا النشاط تحديداً.</div>
+    <div class="fg"><label>التحقق من الرقم الجامعي يكون مقابل:</label>
+      <div style="display:flex;gap:16px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px"><input type="radio" name="rb-vs" value="all" checked> كل المشاركين المسجَّلين</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px"><input type="radio" name="rb-vs" value="attended"> الحاضرين فقط</label>
+      </div>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">سيتم التحقق لاحقاً من الرقم الجامعي لكل طالب مقابل هذا الاختيار تحديداً.</div>
     <div style="display:flex;gap:8px">
       <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="rbCreateCycle()"><i class="ti ti-plus"></i> إنشاء</button>
       <button class="btn" onclick="rbCloseModal()">إغلاق</button>
@@ -78,7 +84,8 @@ async function rbCreateCycle() {
   const activity_id = sel.value;
   if (!activity_id) { alert('يرجى اختيار النشاط'); return; }
   const activity_name = sel.options[sel.selectedIndex].textContent.split(' — ')[0];
-  const r = await api('/api/room_booking/cycles', 'POST', { activity_id, activity_name });
+  const verify_source = document.querySelector('input[name="rb-vs"]:checked').value;
+  const r = await api('/api/room_booking/cycles', 'POST', { activity_id, activity_name, verify_source });
   if (r.error) { alert(r.error); return; }
   rbCloseModal();
   await loadRoomBooking();
@@ -102,7 +109,7 @@ async function rbOpenCycle(id) {
 function rbBackToList() { RB_CYCLE = null; rbRenderList(); }
 
 async function rbSaveCycleHotels() {
-  const r = await api('/api/room_booking/cycles/'+RB_CYCLE.id, 'PUT', { hotels: RB_CYCLE.hotels });
+  const r = await api('/api/room_booking/cycles/'+RB_CYCLE.id, 'PUT', { hotels: RB_CYCLE.hotels, verify_source: RB_CYCLE.verify_source });
   if (r.error) { alert(r.error); return false; }
   return true;
 }
@@ -111,6 +118,7 @@ function rbRenderCycle() {
   const panel = document.getElementById('panel-room_booking');
   const c = RB_CYCLE;
   const hotels = c.hotels || [];
+  const vs = c.verify_source === 'attended' ? 'attended' : 'all';
   panel.innerHTML = `
   <div class="ph"><div><div class="pt">${rbEsc(c.activity_name)}</div><div class="ps">إدارة الفنادق وتوزيع الغرف لهذا النشاط</div></div></div>
   <div class="card">
@@ -118,9 +126,21 @@ function rbRenderCycle() {
     <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="rbOpenHotelForm()"><i class="ti ti-plus"></i> إضافة فندق</button>
   </div>
   <div class="card">
+    <label style="margin-bottom:6px">التحقق من الرقم الجامعي يكون مقابل:</label>
+    <div style="display:flex;gap:16px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px"><input type="radio" name="rb-vs-edit" value="all" ${vs==='all'?'checked':''} onchange="rbChangeVerifySource('all')"> كل المشاركين المسجَّلين</label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px"><input type="radio" name="rb-vs-edit" value="attended" ${vs==='attended'?'checked':''} onchange="rbChangeVerifySource('attended')"> الحاضرين فقط</label>
+    </div>
+  </div>
+  <div class="card">
     ${hotels.length ? hotels.map(h => rbHotelCardHTML(h)).join('') : `<div class="center">لا توجد فنادق مضافة بعد لهذه الدورة</div>`}
   </div>
   <div class="modal-ov" id="rb-modal" onclick="if(event.target===this) rbCloseModal()"><div class="modal" style="max-width:560px;max-height:88vh;overflow-y:auto" id="rb-modal-body"></div></div>`;
+}
+
+async function rbChangeVerifySource(val) {
+  RB_CYCLE.verify_source = val;
+  await rbSaveCycleHotels();
 }
 
 function rbHotelCardHTML(h) {
