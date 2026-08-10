@@ -973,7 +973,8 @@ async function sendPartEmail(id) {
   show('جارٍ الإرسال...');
   const r = await api('/api/participants/'+id+'/send-email', 'POST', { subject, message, target });
   if (r.error) { show(r.error, true); return; }
-  show(r.message);
+  show(r.message, !r.ok);
+  if (!r.ok) return;
   setTimeout(() => { document.getElementById('mod-sendemail').classList.remove('open'); filterPart(); }, 1500);
 }
 
