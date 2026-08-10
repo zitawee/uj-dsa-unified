@@ -590,7 +590,7 @@ async function sendBrevoEmail(toEmail, toName, subject, htmlContent) {
   }
 }
 
-app.post('/api/participants/:id/send-email', auth(['admin','editor','coordinator','manager']), async (req, res) => {
+app.post('/api/participants/:id/send-email', auth(['admin']), async (req, res) => {
   try {
     const doc = await models['participants'].findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'السجل غير موجود' });
