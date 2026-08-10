@@ -609,13 +609,19 @@ app.post('/api/participants/:id/send-email', auth(['admin','editor','coordinator
     const results = await Promise.allSettled(students.map(s => sendBrevoEmail(s.email.trim(), s.name, subject, htmlContent)));
     const sent = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.length - sent;
+    const firstError = results.find(r => r.status === 'rejected')?.reason?.message || '';
 
-    doc.email_sent = true;
-    doc.email_sent_at = new Date();
-    doc.email_sent_count = sent;
+    doc.email_sent = sent > 0 ? true : doc.email_sent;
+    doc.email_sent_at = sent > 0 ? new Date() : doc.email_sent_at;
+    doc.email_sent_count = sent > 0 ? sent : doc.email_sent_count;
     await doc.save();
 
-    res.json({ ok: true, sent, failed, total: students.length, message: `تم إرسال ${sent} رسالة بنجاح${failed?` (فشل ${failed})`:''}` });
+    res.json({
+      ok: sent > 0, sent, failed, total: students.length,
+      message: sent > 0
+        ? `تم إرسال ${sent} رسالة بنجاح${failed?` (فشل ${failed})`:''}`
+        : `فشل إرسال كل الرسائل (${failed}). السبب: ${firstError || 'غير معروف'}`,
+    });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
