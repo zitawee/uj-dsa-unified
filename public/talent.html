@@ -107,6 +107,10 @@
         <label class="full" style="margin-bottom:8px" id="subfieldLbl">الحقل *</label>
         <select id="f-subfield"><option value="">اختر...</option></select>
       </div>
+      <div class="sub-box" id="arabBranchBox" style="display:none">
+        <label class="full" style="margin-bottom:8px">الفرع الدراسي (إن وجد، مثل علمي/أدبي)</label>
+        <input type="text" id="f-arab-branch" placeholder="اكتب الفرع إن كان له فروع في نظام تلك الدولة...">
+      </div>
       <div class="sub-box" id="equivBox" style="display:none">
         <label class="full" style="margin-bottom:8px">وثيقة معادلة الشهادة (من وزارة التربية والتعليم) *</label>
         <select id="f-equiv"><option value="">اختر...</option><option>متوفرة</option><option>غير متوفرة</option></select>
@@ -198,7 +202,8 @@ const TRACKS = [
   { id:'academic', label:'المسار الأكاديمي', sub:['الحقل الصحي','الحقل الهندسي','حقل العلوم والتكنولوجيا','حقل اللغات والعلوم الاجتماعية','حقل القانون والعلوم الشرعية','حقل الأعمال'] },
   { id:'vocational', label:'المسار المهني والتقني', sub:['الصناعي','الزراعي','الاقتصاد المنزلي','الفندقي والسياحي'] },
   { id:'btec', label:'برنامج التعليم المهني والتقني الدولي (BTEC)', sub:[] },
-  { id:'international', label:'شهادة دولية (أمريكية / بريطانية / بكالوريا دولية)', sub:['أمريكية','بريطانية','بكالوريا دولية'] }
+  { id:'international', label:'شهادة دولية (أمريكية / بريطانية / بكالوريا دولية)', sub:['أمريكية','بريطانية','بكالوريا دولية'] },
+  { id:'arabic', label:'الثانوية العربية (من دولة عربية أخرى)', sub:['الإمارات العربية المتحدة','البحرين','تونس','الجزائر','جزر القمر','جيبوتي','السعودية','السودان','سوريا','الصومال','العراق','سلطنة عُمان','فلسطين','قطر','الكويت','لبنان','ليبيا','مصر','المغرب','موريتانيا','اليمن'] }
 ];
 
 // ── نوع النشاط (اختيار متعدد) ──
@@ -260,13 +265,14 @@ document.querySelectorAll('.track-rb').forEach(rb => rb.addEventListener('change
   const lbl = document.getElementById('subfieldLbl');
   if (t && t.sub.length) {
     box.style.display = 'block';
-    lbl.textContent = t.id === 'international' ? 'نوع الشهادة الدولية *' : 'الحقل *';
+    lbl.textContent = t.id === 'international' ? 'نوع الشهادة الدولية *' : (t.id === 'arabic' ? 'الدولة *' : 'الحقل *');
     sel.innerHTML = '<option value="">اختر...</option>' + t.sub.map(s => `<option>${s}</option>`).join('');
   } else {
     box.style.display = 'none';
     sel.innerHTML = '';
   }
-  document.getElementById('equivBox').style.display = (t && t.id === 'international') ? 'block' : 'none';
+  document.getElementById('equivBox').style.display = (t && (t.id === 'international' || t.id === 'arabic')) ? 'block' : 'none';
+  document.getElementById('arabBranchBox').style.display = (t && t.id === 'arabic') ? 'block' : 'none';
 }));
 
 // ── التخصصات الثلاثة (مجمّعة حسب الكلية، الكلية غير قابلة للاختيار) ──
@@ -360,7 +366,8 @@ async function submitApp() {
   const subfield = v('f-subfield');
   if (track.sub.length && !subfield) { showMsg('يرجى اختيار الحقل الفرعي', true); return; }
   const equivDoc = v('f-equiv');
-  if (track.id === 'international' && !equivDoc) { showMsg('يرجى تحديد حالة وثيقة معادلة الشهادة', true); return; }
+  if ((track.id === 'international' || track.id === 'arabic') && !equivDoc) { showMsg('يرجى تحديد حالة وثيقة معادلة الشهادة', true); return; }
+  const arabBranch = v('f-arab-branch');
   if (!/^\d{4}$/.test(certYear)) { showMsg('سنة الحصول على الشهادة يجب أن تكون 4 أرقام', true); return; }
   if (!gpa) { showMsg('يرجى إدخال معدل الثانوية العامة', true); return; }
   if (!address) { showMsg('يرجى إدخال العنوان', true); return; }
@@ -380,7 +387,7 @@ async function submitApp() {
     full_name: name, school, governorate: gov, district: dist,
     activity_types: activityTypes, instruments,
     cert_track: track.id, cert_subfield: subfield, cert_year: certYear, gpa,
-    equivalency_doc: equivDoc,
+    equivalency_doc: equivDoc, arab_branch: arabBranch,
     address, phone, phone_alt: phoneAlt,
     majors: [major1, major2, major3],
     certificates, photo: PHOTO_DATA, agree,

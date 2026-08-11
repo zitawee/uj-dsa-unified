@@ -7,13 +7,14 @@
 // ══════════════════════════════════════════════════════════════
 
 const TE_TRACKS = {
-  academic: 'المسار الأكاديمي', vocational: 'المسار المهني والتقني', btec: 'برنامج BTEC', international: 'شهادة دولية'
+  academic: 'المسار الأكاديمي', vocational: 'المسار المهني والتقني', btec: 'برنامج BTEC', international: 'شهادة دولية', arabic: 'الثانوية العربية'
 };
 const TE_TRACK_SUB = {
   academic:   ['الحقل الصحي','الحقل الهندسي','حقل العلوم والتكنولوجيا','حقل اللغات والعلوم الاجتماعية','حقل القانون والعلوم الشرعية','حقل الأعمال'],
   vocational: ['الصناعي','الزراعي','الاقتصاد المنزلي','الفندقي والسياحي'],
   btec:       [],
-  international: ['أمريكية','بريطانية','بكالوريا دولية']
+  international: ['أمريكية','بريطانية','بكالوريا دولية'],
+  arabic: ['الإمارات العربية المتحدة','البحرين','تونس','الجزائر','جزر القمر','جيبوتي','السعودية','السودان','سوريا','الصومال','العراق','سلطنة عُمان','فلسطين','قطر','الكويت','لبنان','ليبيا','مصر','المغرب','موريتانيا','اليمن']
 };
 const TE_ACTIVITY_TYPES = ['الغناء','العزف','الخط العربي','الرسم','التمثيل','الأداء الحركي'];
 const TE_INSTRUMENTS = ['الأورغ','العود','القانون','الكمان','آلات نفخية','آلات إيقاعية','جيتار'];
@@ -43,6 +44,7 @@ const TE_FIELDS = [
   { key:'instruments',   label:'الآلة الموسيقية' },
   { key:'cert_track',    label:'فرع الشهادة' },
   { key:'cert_subfield', label:'الحقل' },
+  { key:'arab_branch',   label:'الفرع الدراسي (ثانوية عربية)' },
   { key:'equivalency_doc', label:'وثيقة معادلة الشهادة' },
   { key:'cert_year',     label:'سنة الشهادة' },
   { key:'gpa',           label:'المعدل' },
@@ -278,6 +280,7 @@ function teEditFormHTML(r) {
       <select id="te-e-track">${Object.entries(TE_TRACKS).map(([k,v])=>`<option value="${k}"${k===r.cert_track?' selected':''}>${v}</option>`).join('')}</select>
     </div>
     <div class="fg" id="te-e-sub-box"><label>الحقل</label><select id="te-e-subfield"></select></div>
+    <div class="fg" id="te-e-arabbranch-box" style="display:none"><label>الفرع الدراسي (إن وجد)</label><input type="text" id="te-e-arabbranch" value="${teEsc(r.arab_branch)}"></div>
     <div class="fg" id="te-e-equiv-box" style="display:none"><label>وثيقة معادلة الشهادة</label>
       <select id="te-e-equiv"><option value="">اختر...</option><option${r.equivalency_doc==='متوفرة'?' selected':''}>متوفرة</option><option${r.equivalency_doc==='غير متوفرة'?' selected':''}>غير متوفرة</option></select>
     </div>
@@ -334,6 +337,7 @@ function teView(id) {
   const subSel = document.getElementById('te-e-subfield');
   const subBox = document.getElementById('te-e-sub-box');
   const equivBox = document.getElementById('te-e-equiv-box');
+  const arabBranchBox = document.getElementById('te-e-arabbranch-box');
   function fillSub() {
     const sub = TE_TRACK_SUB[trackSel.value] || [];
     if (!sub.length) { subBox.style.display = 'none'; subSel.innerHTML = ''; }
@@ -341,7 +345,8 @@ function teView(id) {
       subBox.style.display = 'block';
       subSel.innerHTML = '<option value="">اختر...</option>' + sub.map(s => `<option${s===r.cert_subfield?' selected':''}>${s}</option>`).join('');
     }
-    equivBox.style.display = trackSel.value === 'international' ? 'block' : 'none';
+    equivBox.style.display = (trackSel.value === 'international' || trackSel.value === 'arabic') ? 'block' : 'none';
+    arabBranchBox.style.display = trackSel.value === 'arabic' ? 'block' : 'none';
   }
   fillSub();
   trackSel.addEventListener('change', fillSub);
@@ -379,6 +384,7 @@ async function teSaveEdit(id) {
   const instruments = Array.from(document.querySelectorAll('.te-e-instr:checked')).map(el => el.value);
   const cert_track = gv('te-e-track'), cert_subfield = gv('te-e-subfield');
   const equivalency_doc = gv('te-e-equiv');
+  const arab_branch = gv('te-e-arabbranch');
   const cert_year = gv('te-e-year'), gpa = gv('te-e-gpa'), address = gv('te-e-address');
   const phone = gv('te-e-phone'), phone_alt = gv('te-e-phone-alt');
   const major1 = gv('te-e-major1'), major2 = gv('te-e-major2'), major3 = gv('te-e-major3');
@@ -391,6 +397,7 @@ async function teSaveEdit(id) {
   if (activity_types.includes('العزف') && !instruments.length) return teMsg('يرجى اختيار آلة موسيقية واحدة على الأقل');
   if (!/^\d{4}$/.test(cert_year)) return teMsg('سنة الشهادة يجب أن تكون 4 أرقام');
   if (cert_track === 'international' && !equivalency_doc) return teMsg('يرجى تحديد حالة وثيقة معادلة الشهادة');
+  if (cert_track === 'arabic' && !equivalency_doc) return teMsg('يرجى تحديد حالة وثيقة معادلة الشهادة');
   if (!gpa) return teMsg('يرجى إدخال المعدل');
   if (!/^07\d{8}$/.test(phone)) return teMsg('رقم الهاتف يجب أن يبدأ بـ 07 ويتكون من 10 خانات');
   if (phone_alt && !/^07\d{8}$/.test(phone_alt)) return teMsg('صيغة رقم الهاتف البديل غير صحيحة');
@@ -403,7 +410,7 @@ async function teSaveEdit(id) {
 
   const payload = {
     full_name, school, governorate, district, activity_types, instruments,
-    cert_track, cert_subfield, cert_year, gpa, address, phone, phone_alt, equivalency_doc,
+    cert_track, cert_subfield, cert_year, gpa, address, phone, phone_alt, equivalency_doc, arab_branch,
     majors: [major1, major2, major3], certificates, status, certs_received
   };
   if (TE_EDIT_PHOTO) payload.photo = TE_EDIT_PHOTO;
@@ -560,7 +567,7 @@ function tePrintRecordHTML(r) {
       <div class="fr"><div class="fl">اللواء</div><div class="fv">${teEsc(r.district)}</div></div>
     </div>
     <div class="fg2">
-      <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${teEsc(TE_TRACKS[r.cert_track]||r.cert_track)}${r.cert_subfield?' — '+teEsc(r.cert_subfield):''}${r.equivalency_doc?' — وثيقة المعادلة: '+teEsc(r.equivalency_doc):''}</div></div>
+      <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${teEsc(TE_TRACKS[r.cert_track]||r.cert_track)}${r.cert_subfield?' — '+teEsc(r.cert_subfield):''}${r.arab_branch?' — الفرع الدراسي: '+teEsc(r.arab_branch):''}${r.equivalency_doc?' — وثيقة المعادلة: '+teEsc(r.equivalency_doc):''}</div></div>
       <div class="fr"><div class="fl">سنة الشهادة</div><div class="fv">${teEsc(r.cert_year)}</div></div>
       <div class="fr"><div class="fl">المعدل</div><div class="fv">${teEsc(r.gpa)}%</div></div>
       <div class="fr"><div class="fl">الهاتف</div><div class="fv">${teEsc(r.phone)}</div></div>
@@ -771,7 +778,7 @@ function teReadOnlyHTML(r) {
     <div class="fr"><div class="fl">المدرسة</div><div class="fv">${teEsc(r.school)}</div></div>
     <div class="fr"><div class="fl">المحافظة / اللواء</div><div class="fv">${teEsc(r.governorate)} / ${teEsc(r.district)}</div></div>
     <div class="fr"><div class="fl">نوع النشاط</div><div class="fv">${(r.activity_types||[]).map(teEsc).join('، ')}${(r.instruments||[]).length?' — '+r.instruments.map(teEsc).join('، '):''}</div></div>
-    <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${teEsc(TE_TRACKS[r.cert_track]||r.cert_track)}${r.cert_subfield?' — '+teEsc(r.cert_subfield):''}${r.equivalency_doc?' — وثيقة المعادلة: '+teEsc(r.equivalency_doc):''}</div></div>
+    <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${teEsc(TE_TRACKS[r.cert_track]||r.cert_track)}${r.cert_subfield?' — '+teEsc(r.cert_subfield):''}${r.arab_branch?' — الفرع الدراسي: '+teEsc(r.arab_branch):''}${r.equivalency_doc?' — وثيقة المعادلة: '+teEsc(r.equivalency_doc):''}</div></div>
     <div class="fr"><div class="fl">سنة الشهادة</div><div class="fv">${teEsc(r.cert_year)}</div></div>
     <div class="fr"><div class="fl">المعدل</div><div class="fv">${teEsc(r.gpa)}%</div></div>
     <div class="fr"><div class="fl">العنوان</div><div class="fv">${teEsc(r.address)}</div></div>
