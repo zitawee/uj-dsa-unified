@@ -172,6 +172,16 @@ function rbFindStudent(participantsDoc, cycle, uniId) {
   return list.find(s => (s.id || '').trim() === uniId);
 }
 
+// ══ الدورات التدريبية — كتالوج دورات مقدَّمة من جهات خارجية (TAG.Global وغيرها)
+// كل دورة لها حد أقصى للتسجيل (يحدّده admin يدوياً حسب الحصة الرسمية الواردة من
+// الجهة المنظِّمة)، والطالب يُسمح له بالتسجيل في دورة واحدة فقط من كل الكتالوج ══
+const TrainingCourse = mongoose.model('training_courses', new mongoose.Schema({}, { strict:false, timestamps:true }));
+function genCourseId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = ''; for (let i=0;i<8;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
 // ══ اتصال MongoDB ══
 mongoose.connect(MONGODB_URI)
   .then(async () => {
@@ -430,6 +440,55 @@ app.post('/api/public/room-booking/:hotelId/join', async (req, res) => {
     cycle.markModified('hotels');
     await cycle.save();
     res.json({ message: 'تم الانضمام للغرفة بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ الدورات التدريبية — تسجيل عام بدون تسجيل دخول ══
+app.get('/api/public/training-courses', async (req, res) => {
+  try {
+    const docs = await TrainingCourse.find().sort({ createdAt: -1 }).lean();
+    const todayStr = new Date().toISOString().slice(0,10);
+    res.json(docs.map(d => {
+      const regs = d.registrants || [];
+      const open = (!d.close_date || d.close_date >= todayStr) && regs.length < (d.cap || 0);
+      return {
+        id: String(d._id), name: d.name, organizer: d.organizer, hours: d.hours,
+        quota_note: d.quota_note, description: d.description || '',
+        seats_left: Math.max(0, (d.cap||0) - regs.length), cap: d.cap || 0, open,
+      };
+    }));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/training-courses/:id/register', async (req, res) => {
+  try {
+    const doc = await TrainingCourse.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'الدورة غير موجودة' });
+    const todayStr = new Date().toISOString().slice(0,10);
+    if (doc.close_date && doc.close_date < todayStr) return res.status(403).json({ error: 'انتهت مهلة التسجيل لهذه الدورة' });
+    const regs = doc.registrants || [];
+    if (regs.length >= (doc.cap || 0)) return res.status(400).json({ error: 'اكتمل العدد المسموح به لهذه الدورة' });
+
+    const uniId = (req.body.id || '').trim();
+    const name = (req.body.name || '').trim();
+    if (!uniId || !name) return res.status(400).json({ error: 'يرجى إدخال الاسم والرقم الجامعي' });
+    if (regs.some(s => (s.id||'').trim() === uniId)) return res.status(400).json({ error: 'أنت مسجَّل بالفعل في هذه الدورة' });
+
+    // منع التسجيل في أكثر من دورة واحدة عبر كل الكتالوج
+    const others = await TrainingCourse.find({ 'registrants.id': uniId }).lean();
+    if (others.length) return res.status(400).json({ error: 'أنت مسجَّل بالفعل في دورة أخرى — يُسمح بالتسجيل في دورة واحدة فقط' });
+
+    regs.push({
+      name, id: uniId,
+      gender: req.body.gender||'', nationality: req.body.nationality||'',
+      college: req.body.college||'', major: req.body.major||'', year: req.body.year||'',
+      phone: req.body.phone||'', email: req.body.email||'',
+      selected: false, registered_at: new Date(),
+    });
+    doc.registrants = regs;
+    doc.markModified('registrants');
+    await doc.save();
+    res.json({ message: 'تم تسجيلك في الدورة بنجاح' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -838,6 +897,54 @@ app.put('/api/room_booking/cycles/:id', auth(['admin']), async (req, res) => {
 app.delete('/api/room_booking/cycles/:id', auth(['admin']), async (req, res) => {
   try {
     await BookingCycle.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ الدورات التدريبية — إدارة داخلية (admin وeditor) ══
+app.get('/api/training_courses', auth(['admin','editor']), async (req, res) => {
+  try {
+    const docs = await TrainingCourse.find().sort({ createdAt: -1 }).lean();
+    res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/training_courses', auth(['admin','editor']), async (req, res) => {
+  try {
+    if (!req.body.name || !req.body.cap) return res.status(400).json({ error: 'يرجى إدخال اسم الدورة والحد الأقصى للتسجيل' });
+    const doc = await TrainingCourse.create({
+      name: req.body.name, organizer: req.body.organizer||'', hours: req.body.hours||'',
+      quota_note: req.body.quota_note||'', cap: Number(req.body.cap)||0,
+      close_date: req.body.close_date||null, description: req.body.description||'',
+      registrants: [], created_by: req.user.username,
+    });
+    res.json({ id: doc._id, message: 'تم إنشاء الدورة' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/training_courses/:id', auth(['admin','editor']), async (req, res) => {
+  try {
+    const doc = await TrainingCourse.findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'غير موجود' });
+    res.json({ ...doc, id: String(doc._id), _id: String(doc._id) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/training_courses/:id', auth(['admin','editor']), async (req, res) => {
+  try {
+    const update = { updated_by: req.user.username, updatedAt: new Date() };
+    ['name','organizer','hours','quota_note','cap','close_date','description'].forEach(k => {
+      if (req.body[k] !== undefined) update[k] = k==='cap' ? Number(req.body[k]) : req.body[k];
+    });
+    if (Array.isArray(req.body.registrants)) update.registrants = req.body.registrants;
+    await TrainingCourse.findByIdAndUpdate(req.params.id, update);
+    res.json({ message: 'تم الحفظ' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/training_courses/:id', auth(['admin','editor']), async (req, res) => {
+  try {
+    await TrainingCourse.findByIdAndDelete(req.params.id);
     res.json({ message: 'تم الحذف' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
