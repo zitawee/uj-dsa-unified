@@ -361,23 +361,52 @@ async function rbMoveOccupant(hotelId, fromRoomId, toRoomId, uniId) {
   if (ok) { rbRenderCycle(); rbViewHotel(hotelId); }
 }
 
+let RB_ADD_CANDIDATES = [];
+
 async function rbAddOccupantPrompt(hotelId, roomId) {
+  window.__rbAddHotelId = hotelId; window.__rbAddRoomId = roomId;
   const h = (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId);
   const r = (h.rooms||[]).find(x=>x.id===roomId);
   document.getElementById('rb-modal-body').innerHTML = `
     <h3>إضافة طالب إلى الغرفة</h3>
-    <div class="fg"><label>الرقم الجامعي</label><input type="text" id="rb-add-uid" placeholder="أدخل الرقم الجامعي..."></div>
+    <div class="fg"><label>ابحث عن الطالب (بالاسم أو الرقم الجامعي)</label><input type="text" id="rb-add-search" oninput="rbFilterAddList()" placeholder="اكتب للبحث..." autocomplete="off"></div>
+    <div id="rb-add-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px"></div>
     <div id="rb-add-msg" class="msg"></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="rbAddOccupant('${hotelId}','${roomId}')"><i class="ti ti-plus"></i> إضافة</button>
-      <button class="btn" onclick="rbViewHotel('${hotelId}')">رجوع</button>
-    </div>`;
+    <button class="btn" style="width:100%" onclick="rbViewHotel('${hotelId}')">رجوع</button>`;
+  document.getElementById('rb-add-list').innerHTML = `<div style="padding:10px;font-size:12.5px;color:var(--muted)">جارٍ التحميل...</div>`;
+
+  const participantsDoc = await api('/api/participants/'+RB_CYCLE.activity_id);
+  const msgEl = document.getElementById('rb-add-msg');
+  if (participantsDoc.error) { msgEl.textContent='تعذّر تحميل قائمة المشاركين'; msgEl.className='msg err'; msgEl.style.display='block'; return; }
+  let list = participantsDoc.students || [];
+  if (RB_CYCLE.verify_source === 'attended') list = list.filter(s => s.attended);
+  // من هم مسجَّلون بالفعل في أي غرفة ضمن هذا الفندق (يُستبعدون من القائمة)
+  const alreadyAssigned = new Set();
+  (h.rooms||[]).forEach(rm => (rm.occupants||[]).forEach(o => alreadyAssigned.add(o.uni_id)));
+  RB_ADD_CANDIDATES = list.filter(s => s.gender === r.gender && s.id && !alreadyAssigned.has((s.id||'').trim()));
+  rbFilterAddList();
 }
 
-async function rbAddOccupant(hotelId, roomId) {
-  const uid = document.getElementById('rb-add-uid').value.trim();
+function rbFilterAddList() {
+  const q = (document.getElementById('rb-add-search')?.value || '').trim().toLowerCase();
+  const box = document.getElementById('rb-add-list');
+  const items = q ? RB_ADD_CANDIDATES.filter(s => (s.name||'').toLowerCase().includes(q) || (s.id||'').includes(q)) : RB_ADD_CANDIDATES;
+  if (!items.length) { box.innerHTML = `<div style="padding:10px;font-size:12.5px;color:var(--muted)">${RB_ADD_CANDIDATES.length ? 'لا توجد نتائج مطابقة' : 'لا يوجد طلبة غير مسجَّلين في أي غرفة يطابقون جنس هذه الغرفة'}</div>`; return; }
+  box.innerHTML = items.slice(0,300).map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer" onmousedown="event.preventDefault();rbAddOccupantById('${rbEsc(s.id)}')">
+      <span style="font-size:12.5px">${rbEsc(s.name)}</span>
+      <span style="font-size:11px;color:var(--muted)">${rbEsc(s.id)}</span>
+    </div>`).join('');
+}
+
+async function rbAddOccupantById(uid) {
+  await rbAddOccupant(window.__rbAddHotelId, window.__rbAddRoomId, uid);
+}
+
+async function rbAddOccupant(hotelId, roomId, uidArg) {
+  const uid = uidArg || (document.getElementById('rb-add-uid')?.value.trim());
   const msgEl = document.getElementById('rb-add-msg');
-  const showErr = t => { msgEl.textContent = t; msgEl.className = 'msg err'; msgEl.style.display = 'block'; };
+  const showErr = t => { if (msgEl) { msgEl.textContent = t; msgEl.className = 'msg err'; msgEl.style.display = 'block'; } };
   if (!uid) { showErr('يرجى إدخال الرقم الجامعي'); return; }
   const h = (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId);
   const r = (h.rooms||[]).find(x=>x.id===roomId);
