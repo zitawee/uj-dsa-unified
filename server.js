@@ -182,6 +182,17 @@ function genCourseId() {
   return s;
 }
 
+// ══ لوحة تعليمات النشاط — وحدة مستقلة قابلة لإعادة الاستخدام لأي نشاط (بغض النظر
+// عن وجود حجز غرف). تعليمات باتجاه واحد فقط (الإدارة → الطلبة)، بلا أي تفاعل بين
+// الطلبة أنفسهم. عند نشر تعليمة جديدة، يُرسَل تنبيه بريدي فوري عبر Brevo لكل من
+// يملك بريداً إلكترونياً ضمن قائمة مشاركي/حاضري النشاط المرتبط ══
+const InstructionBoard = mongoose.model('activity_instructions', new mongoose.Schema({}, { strict:false, timestamps:true }));
+function genInstrId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = ''; for (let i=0;i<8;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
 // ══ اتصال MongoDB ══
 mongoose.connect(MONGODB_URI)
   .then(async () => {
@@ -489,6 +500,35 @@ app.post('/api/public/training-courses/:id/register', async (req, res) => {
     doc.markModified('registrants');
     await doc.save();
     res.json({ message: 'تم تسجيلك في الدورة بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ لوحة تعليمات النشاط — عرض عام بدون تسجيل دخول (تحقّق بالرقم الجامعي، بلا كتابة) ══
+function instrFindStudent(participantsDoc, board, uniId) {
+  let list = participantsDoc?.students || [];
+  if (board.verify_source === 'attended') list = list.filter(s => s.attended);
+  return list.find(s => (s.id || '').trim() === uniId);
+}
+
+app.get('/api/public/instructions/:id/status', async (req, res) => {
+  try {
+    const board = await InstructionBoard.findById(req.params.id).lean();
+    if (!board) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    res.json({ activity_name: board.activity_name });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/instructions/:id/verify', async (req, res) => {
+  try {
+    const board = await InstructionBoard.findById(req.params.id).lean();
+    if (!board) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const uniId = (req.body.id || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    const participantsDoc = await models['participants'].findById(board.activity_id).lean();
+    const student = instrFindStudent(participantsDoc, board, uniId);
+    if (!student) return res.status(404).json({ error: board.verify_source === 'attended' ? 'رقمك الجامعي غير مسجَّل ضمن الحاضرين فعلياً لهذا النشاط' : 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    const posts = (board.posts || []).slice().sort((a,b) => new Date(b.posted_at) - new Date(a.posted_at));
+    res.json({ name: student.name, activity_name: board.activity_name, posts });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -946,6 +986,87 @@ app.delete('/api/training_courses/:id', auth(['admin','editor']), async (req, re
   try {
     await TrainingCourse.findByIdAndDelete(req.params.id);
     res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ لوحة تعليمات النشاط — إدارة داخلية (admin وeditor) ══
+app.get('/api/activity_instructions', auth(['admin','editor']), async (req, res) => {
+  try {
+    const docs = await InstructionBoard.find().sort({ createdAt: -1 }).lean();
+    res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/activity_instructions', auth(['admin','editor']), async (req, res) => {
+  try {
+    if (!req.body.activity_id || !req.body.activity_name) return res.status(400).json({ error: 'يرجى اختيار النشاط' });
+    const verify_source = req.body.verify_source === 'attended' ? 'attended' : 'all';
+    const doc = await InstructionBoard.create({ activity_id: req.body.activity_id, activity_name: req.body.activity_name, verify_source, posts: [], created_by: req.user.username });
+    res.json({ id: doc._id, message: 'تم إنشاء لوحة التعليمات' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/activity_instructions/:id', auth(['admin','editor']), async (req, res) => {
+  try {
+    const doc = await InstructionBoard.findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'غير موجود' });
+    res.json({ ...doc, id: String(doc._id), _id: String(doc._id) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/activity_instructions/:id', auth(['admin','editor']), async (req, res) => {
+  try {
+    await InstructionBoard.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// تعديل إعدادات اللوحة أو تعديل/حذف تعليمة موجودة (بدون إرسال بريد) — استبدال كامل لمصفوفة posts
+app.put('/api/activity_instructions/:id', auth(['admin','editor']), async (req, res) => {
+  try {
+    const update = { updated_by: req.user.username, updatedAt: new Date() };
+    if (req.body.verify_source === 'attended' || req.body.verify_source === 'all') update.verify_source = req.body.verify_source;
+    if (Array.isArray(req.body.posts)) update.posts = req.body.posts;
+    await InstructionBoard.findByIdAndUpdate(req.params.id, update);
+    res.json({ message: 'تم الحفظ' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// نشر تعليمة جديدة + إرسال تنبيه بريدي فوري لكل من يملك بريداً ضمن مشاركي/حاضري النشاط
+app.post('/api/activity_instructions/:id/post', auth(['admin','editor']), async (req, res) => {
+  try {
+    const doc = await InstructionBoard.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'غير موجود' });
+    const text = (req.body.text || '').trim();
+    const link = (req.body.link || '').trim();
+    if (!text) return res.status(400).json({ error: 'يرجى كتابة نص التعليمة' });
+
+    const post = { id: genInstrId(), text, link, posted_at: new Date(), posted_by: req.user.username };
+    doc.posts = doc.posts || [];
+    doc.posts.push(post);
+    doc.markModified('posts');
+    await doc.save();
+
+    // إرسال التنبيه البريدي
+    let sent = 0, failed = 0;
+    try {
+      const participantsDoc = await models['participants'].findById(doc.activity_id).lean();
+      let students = participantsDoc?.students || [];
+      if (doc.verify_source === 'attended') students = students.filter(s => s.attended);
+      students = students.filter(s => (s.email || '').trim());
+      const subject = 'تعليمة جديدة — ' + doc.activity_name;
+      const linkLine = link ? `<p><a href="${link}">${link}</a></p>` : '';
+      const htmlContent = `<div dir="rtl" style="font-family:Tajawal,Arial,sans-serif;font-size:15px;line-height:1.8;color:#222">
+        <p><strong>${doc.activity_name}</strong></p>
+        <p>${text.replace(/\n/g,'<br>')}</p>
+        ${linkLine}
+      </div>`;
+      const results = await Promise.allSettled(students.map(s => sendBrevoEmail(s.email.trim(), s.name, subject, htmlContent)));
+      sent = results.filter(r => r.status === 'fulfilled').length;
+      failed = results.length - sent;
+    } catch(e) { failed = -1; }
+
+    res.json({ message: `تم نشر التعليمة${sent?` وإرسال تنبيه بريدي لـ ${sent} مشارك`:''}${failed>0?` (فشل ${failed})`:''}`, post_id: post.id, sent, failed });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
