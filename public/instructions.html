@@ -63,16 +63,16 @@
 
 <script>
 const params = new URLSearchParams(location.search);
-const BOARD_ID = params.get('board') || '';
+const PARTICIPANT_ID = params.get('id') || '';
 
 function showMsg(id, txt) { const el = document.getElementById(id); el.textContent = txt; el.className = 'msg err'; el.style.display = 'block'; }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtDate(d) { try { return new Date(d).toLocaleString('ar-JO', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' }); } catch(e) { return ''; } }
 
 async function loadStatus() {
-  if (!BOARD_ID) { document.getElementById('invalidArea').style.display = 'block'; document.getElementById('verifyArea').style.display = 'none'; return; }
+  if (!PARTICIPANT_ID) { document.getElementById('invalidArea').style.display = 'block'; document.getElementById('verifyArea').style.display = 'none'; return; }
   try {
-    const res = await fetch('/api/public/instructions/' + BOARD_ID + '/status');
+    const res = await fetch('/api/public/instructions/' + PARTICIPANT_ID + '/status');
     if (!res.ok) { document.getElementById('invalidArea').style.display = 'block'; document.getElementById('verifyArea').style.display = 'none'; return; }
     const s = await res.json();
     document.getElementById('pageTitle').textContent = 'تعليمات: ' + (s.activity_name || '');
@@ -86,7 +86,7 @@ loadStatus();
 async function verify() {
   const uid = document.getElementById('f-uid').value.trim();
   if (!uid) { showMsg('verifyMsg', 'يرجى إدخال الرقم الجامعي'); return; }
-  const res = await fetch('/api/public/instructions/' + BOARD_ID + '/verify', {
+  const res = await fetch('/api/public/instructions/' + PARTICIPANT_ID + '/verify', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: uid })
   });
   const data = await res.json();

@@ -62,6 +62,7 @@
   .modal .frow .val{font-weight:600;white-space:pre-wrap}
   .modal .reglink{display:block;text-align:center;margin-top:16px;background:var(--g);color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;font-size:14px}
   .modal .evallink{background:#1B5E9A;margin-top:10px}
+  .modal .instrlink{background:#5B4636;margin-top:10px}
   .modal .sharebtn{display:block;width:100%;text-align:center;margin-top:10px;background:#fff;color:var(--g);border:1px solid var(--g);padding:11px;border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit}
   .modal .noreg{margin-top:16px;text-align:center;font-size:12px;color:var(--muted);background:#F9FAFB;border-radius:10px;padding:12px}
 
@@ -173,6 +174,9 @@ function openDetails(idx){
   const evalHTML = e.eval_id
     ? `<a class="reglink evallink" href="/eval.html?id=${e.eval_id}">📝 تقييم النشاط</a>`
     : '';
+  const instrHTML = e.participant_id
+    ? `<a class="reglink instrlink" href="/instructions.html?id=${e.participant_id}">📋 تعليمات النشاط</a>`
+    : '';
   modal.innerHTML = `
   <div class="modal">
     <button class="close" onclick="document.getElementById('ev-modal').remove();history.replaceState(null,'','/events.html')">✕</button>
@@ -186,6 +190,7 @@ function openDetails(idx){
     ${e.description?`<div class="frow"><span class="lbl">الوصف</span><span class="val">${esc(e.description)}</span></div>`:''}
     ${regHTML}
     ${evalHTML}
+    ${instrHTML}
     <button class="sharebtn" onclick="shareEvent('${e.id}','${esc(e.title).replace(/'/g,"\\'")}')">🔗 مشاركة هذه الفعالية</button>
   </div>`;
   document.body.appendChild(modal);

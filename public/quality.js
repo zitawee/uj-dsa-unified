@@ -930,6 +930,7 @@ async function filterPart() {
       <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcelChoice('${r.id}')">📊 Excel</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
       ${ME?.role==='admin'?`<button class="btn btn-sm" style="color:#8A2A22;border-color:#8A2A22" onclick="openSendEmailModal('${r.id}')">📧 إرسال بريد</button>`:''}
+      ${ME?.role==='admin'?`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="openInstructionsModal('${r.id}')">📋 تعليمات النشاط</button>`:''}
       <button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="openHistoryModal('participants','${r.id}')">🕐 السجل التاريخي</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
