@@ -5,7 +5,19 @@
 
 let RB_CYCLES = [];
 let RB_CYCLE = null; // دورة الحجز المفتوحة حالياً (تفاصيل كاملة)، أو null لعرض القائمة الرئيسية
-const RB_CAP_LABEL = { 1:'فردية', 2:'مزدوجة', 3:'ثلاثية' };
+const RB_CAP_LABEL = { 1:'فردية', 2:'ثنائية', 3:'ثلاثية' }; // احتياطي للغرف القديمة التي أُنشئت قبل إضافة الأنواع الخمسة (لا تحمل حقل type)
+const RB_ROOM_TYPES = [
+  { id:'single', label:'فردية', capacity:1 },
+  { id:'double', label:'ثنائية', capacity:2 },
+  { id:'triple', label:'ثلاثية', capacity:3 },
+  { id:'quad', label:'رباعية', capacity:4 },
+  { id:'king', label:'King Size (ثنائية)', capacity:2 },
+];
+function rbLegacyType(capacity) { return capacity===1?'single':capacity===2?'double':capacity===3?'triple':null; }
+function rbRoomTypeLabel(r) {
+  const t = RB_ROOM_TYPES.find(x => x.id === (r.type || rbLegacyType(r.capacity)));
+  return t ? t.label : (RB_CAP_LABEL[r.capacity] || ('سعة ' + r.capacity));
+}
 
 function rbEsc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function rbGenId() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<8;i++) s+=c[Math.floor(Math.random()*c.length)]; return s; }
@@ -188,11 +200,13 @@ async function rbDeleteHotel(hotelId) {
 // ── نموذج إضافة/تعديل فندق (اسم، تاريخ إغلاق، عدد الغرف حسب النوع والجنس) ──
 function rbOpenHotelForm(hotelId) {
   const h = hotelId ? (RB_CYCLE.hotels||[]).find(x=>x.id===hotelId) : null;
-  const counts = { male: {1:0,2:0,3:0}, female: {1:0,2:0,3:0} };
+  const counts = { male: {}, female: {} };
+  RB_ROOM_TYPES.forEach(t => { counts.male[t.id] = 0; counts.female[t.id] = 0; });
   if (h) {
     (h.rooms||[]).forEach(r => {
       const key = r.gender === 'ذكر' ? 'male' : 'female';
-      counts[key][r.capacity] = (counts[key][r.capacity]||0) + 1;
+      const typeId = r.type || rbLegacyType(r.capacity);
+      if (typeId && counts[key][typeId] !== undefined) counts[key][typeId]++;
     });
   }
   document.getElementById('rb-modal-body').innerHTML = `
@@ -201,15 +215,11 @@ function rbOpenHotelForm(hotelId) {
     <div class="fg"><label>تاريخ إغلاق رابط التسجيل (اختياري)</label><input type="date" id="rb-h-close" value="${h?.close_date||''}"></div>
     <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">عدد الغرف — ذكور</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 8px">
-      <div class="fg"><label>فردية</label><input type="number" min="0" id="rb-h-m1" value="${counts.male[1]}"></div>
-      <div class="fg"><label>مزدوجة</label><input type="number" min="0" id="rb-h-m2" value="${counts.male[2]}"></div>
-      <div class="fg"><label>ثلاثية</label><input type="number" min="0" id="rb-h-m3" value="${counts.male[3]}"></div>
+      ${RB_ROOM_TYPES.map(t=>`<div class="fg"><label>${t.label}</label><input type="number" min="0" id="rb-h-m-${t.id}" value="${counts.male[t.id]}"></div>`).join('')}
     </div>
     <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">عدد الغرف — إناث</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 8px">
-      <div class="fg"><label>فردية</label><input type="number" min="0" id="rb-h-f1" value="${counts.female[1]}"></div>
-      <div class="fg"><label>مزدوجة</label><input type="number" min="0" id="rb-h-f2" value="${counts.female[2]}"></div>
-      <div class="fg"><label>ثلاثية</label><input type="number" min="0" id="rb-h-f3" value="${counts.female[3]}"></div>
+      ${RB_ROOM_TYPES.map(t=>`<div class="fg"><label>${t.label}</label><input type="number" min="0" id="rb-h-f-${t.id}" value="${counts.female[t.id]}"></div>`).join('')}
     </div>
     ${h ? `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">تخفيض عدد الغرف لن يحذف أي غرفة بها طلبة مسجَّلون بالفعل — سيتم فقط حذف الغرف الفارغة الزائدة.</div>` : ''}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -219,12 +229,18 @@ function rbOpenHotelForm(hotelId) {
   document.getElementById('rb-modal').classList.add('open');
 }
 
-// يدمج عدد الغرف الجديد مع الغرف الحالية لنفس (الجنس + السعة) دون حذف أي غرفة مشغولة
-function rbMergeRoomsFor(existingRooms, gender, capacity, desiredCount) {
-  const same = existingRooms.filter(r => r.gender===gender && r.capacity===capacity);
+// يدمج عدد الغرف الجديد مع الغرف الحالية لنفس (الجنس + نوع الغرفة) دون حذف أي غرفة مشغولة
+function rbMergeRoomsFor(existingRooms, gender, typeId, capacity, desiredCount) {
+  const same = existingRooms.filter(r => {
+    if (r.gender !== gender) return false;
+    if (r.type) return r.type === typeId;
+    // غرف قديمة بلا حقل "type" (أُنشئت قبل إضافة الأنواع الخمسة) — تُطابَق حسب السعة فقط،
+    // ولا يمكن أن تكون قد أُنشئت كـ"رباعية" أو "King Size" لأن هذين النوعين لم يكونا متاحين حينها
+    return r.capacity === capacity && typeId !== 'king';
+  });
   let result = same.slice();
   if (result.length < desiredCount) {
-    for (let i=result.length; i<desiredCount; i++) result.push({ id: rbGenId(), gender, capacity, occupants: [] });
+    for (let i=result.length; i<desiredCount; i++) result.push({ id: rbGenId(), gender, type: typeId, capacity, occupants: [] });
   } else if (result.length > desiredCount) {
     let toRemove = result.length - desiredCount;
     result = result.filter(r => {
@@ -232,6 +248,7 @@ function rbMergeRoomsFor(existingRooms, gender, capacity, desiredCount) {
       return true;
     });
   }
+  result.forEach(r => { if (!r.type) r.type = typeId; }); // ترقية الغرف القديمة المطابَقة لتحمل حقل type من الآن فصاعداً
   return result;
 }
 
@@ -247,12 +264,10 @@ async function rbSaveHotel(hotelId) {
   h.name = name; h.close_date = close_date;
 
   let rooms = [];
-  rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'ذكر', 1, gv('rb-h-m1')));
-  rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'ذكر', 2, gv('rb-h-m2')));
-  rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'ذكر', 3, gv('rb-h-m3')));
-  rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'أنثى', 1, gv('rb-h-f1')));
-  rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'أنثى', 2, gv('rb-h-f2')));
-  rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'أنثى', 3, gv('rb-h-f3')));
+  RB_ROOM_TYPES.forEach(t => {
+    rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'ذكر', t.id, t.capacity, gv('rb-h-m-'+t.id)));
+    rooms = rooms.concat(rbMergeRoomsFor(h.rooms||[], 'أنثى', t.id, t.capacity, gv('rb-h-f-'+t.id)));
+  });
   h.rooms = rooms;
 
   RB_CYCLE.hotels = RB_CYCLE.hotels || [];
@@ -276,7 +291,7 @@ function rbViewHotel(hotelId) {
     return `<div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">${title}</div>` + rooms.map((r,i) => `
       <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:6px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <div style="font-size:12.5px;font-weight:700">غرفة ${i+1} — ${RB_CAP_LABEL[r.capacity]} (${(r.occupants||[]).length}/${r.capacity})</div>
+          <div style="font-size:12.5px;font-weight:700">غرفة ${i+1} — ${rbRoomTypeLabel(r)} (${(r.occupants||[]).length}/${r.capacity})</div>
           ${(r.occupants||[]).length < r.capacity ? `<button class="btn btn-sm" onclick="rbAddOccupantPrompt('${hotelId}','${r.id}')"><i class="ti ti-user-plus"></i> إضافة</button>` : ''}
         </div>
         ${(r.occupants||[]).map(o=>`
@@ -321,7 +336,7 @@ function rbMoveOccupantPrompt(hotelId, fromRoomId, uniId) {
     ${targets.length ? targets.map((r,i) => {
       const full = (r.occupants||[]).length >= r.capacity;
       return `<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:6px">
-        <div style="font-size:12.5px">غرفة ${rbRoomIndex(h,r)} — ${RB_CAP_LABEL[r.capacity]} (${(r.occupants||[]).length}/${r.capacity})</div>
+        <div style="font-size:12.5px">غرفة ${rbRoomIndex(h,r)} — ${rbRoomTypeLabel(r)} (${(r.occupants||[]).length}/${r.capacity})</div>
         <button class="btn btn-sm" ${full?'disabled':''} onclick="rbMoveOccupant('${hotelId}','${fromRoomId}','${r.id}','${uniId}')">${full?'ممتلئة':'نقل هنا'}</button>
       </div>`;
     }).join('') : `<div class="center">لا توجد غرف أخرى من نفس الجنس في هذا الفندق</div>`}
@@ -391,9 +406,9 @@ function rbPrintHotel(hotelId) {
     const bodyRows = [];
     rooms.forEach((r,i) => {
       const occ = r.occupants||[];
-      if (!occ.length) { bodyRows.push(`<tr><td>${i+1}</td><td>${RB_CAP_LABEL[r.capacity]}</td><td colspan="3" style="color:#999">لا يوجد أحد</td></tr>`); return; }
+      if (!occ.length) { bodyRows.push(`<tr><td>${i+1}</td><td>${rbRoomTypeLabel(r)}</td><td colspan="3" style="color:#999">لا يوجد أحد</td></tr>`); return; }
       occ.forEach((o,oi) => {
-        bodyRows.push(`<tr>${oi===0?`<td rowspan="${occ.length}">${i+1}</td><td rowspan="${occ.length}">${RB_CAP_LABEL[r.capacity]}</td>`:''}<td>${rbEsc(o.name)}</td><td>${rbEsc(o.uni_id)}</td><td>${rbEsc(o.nationality)||'—'} — ${rbEsc(o.phone)||'—'}</td></tr>`);
+        bodyRows.push(`<tr>${oi===0?`<td rowspan="${occ.length}">${i+1}</td><td rowspan="${occ.length}">${rbRoomTypeLabel(r)}</td>`:''}<td>${rbEsc(o.name)}</td><td>${rbEsc(o.uni_id)}</td><td>${rbEsc(o.nationality)||'—'} — ${rbEsc(o.phone)||'—'}</td></tr>`);
       });
     });
     return `<div class="psub">${title}</div><table class="ptbl"><thead><tr><th>الغرفة</th><th>النوع</th><th>الاسم</th><th>الرقم الجامعي</th><th>الجنسية / الهاتف</th></tr></thead><tbody>${bodyRows.join('')}</tbody></table>`;
@@ -416,8 +431,8 @@ function rbExportHotelExcel(hotelId) {
   const sheetRows = [];
   (h.rooms||[]).forEach((r,i) => {
     const occ = r.occupants||[];
-    if (!occ.length) { sheetRows.push({ 'الجنس': r.gender, 'رقم الغرفة': i+1, 'النوع': RB_CAP_LABEL[r.capacity], 'الاسم':'', 'الرقم الجامعي':'', 'الجنسية':'', 'الهاتف':'' }); return; }
-    occ.forEach(o => sheetRows.push({ 'الجنس': r.gender, 'رقم الغرفة': i+1, 'النوع': RB_CAP_LABEL[r.capacity], 'الاسم': o.name, 'الرقم الجامعي': o.uni_id, 'الجنسية': o.nationality||'', 'الهاتف': o.phone||'' }));
+    if (!occ.length) { sheetRows.push({ 'الجنس': r.gender, 'رقم الغرفة': i+1, 'النوع': rbRoomTypeLabel(r), 'الاسم':'', 'الرقم الجامعي':'', 'الجنسية':'', 'الهاتف':'' }); return; }
+    occ.forEach(o => sheetRows.push({ 'الجنس': r.gender, 'رقم الغرفة': i+1, 'النوع': rbRoomTypeLabel(r), 'الاسم': o.name, 'الرقم الجامعي': o.uni_id, 'الجنسية': o.nationality||'', 'الهاتف': o.phone||'' }));
   });
   const ws = XLSX.utils.json_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();

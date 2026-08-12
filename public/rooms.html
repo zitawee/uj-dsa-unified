@@ -136,13 +136,14 @@ async function loadRooms() {
   if (!res.ok) { showMsg('roomsMsg', data.error || 'تعذّر تحميل الغرف', true); return; }
   const list = document.getElementById('roomsList');
   if (!data.rooms.length) { list.innerHTML = '<div class="card">لا توجد غرف متاحة حالياً لهذا الفندق.</div>'; return; }
-  const CAP_LABEL = { 1: 'فردية', 2: 'مزدوجة', 3: 'ثلاثية' };
+  const ROOM_TYPES = { single:'فردية', double:'ثنائية', triple:'ثلاثية', quad:'رباعية', king:'King Size (ثنائية)' };
+  const CAP_LABEL = { 1: 'فردية', 2: 'ثنائية', 3: 'ثلاثية' }; // احتياطي للغرف القديمة بلا حقل type
   list.innerHTML = data.rooms.map((r, i) => {
     const seatsLeft = r.capacity - r.occupants.length;
     const full = seatsLeft <= 0 && !r.mine;
     return `<div class="room ${r.mine?'mine':''} ${full?'full':''}">
       <div class="room-hd">
-        <div class="room-title">غرفة ${i+1} <span style="font-weight:400;color:var(--muted);font-size:11.5px">(${CAP_LABEL[r.capacity]||r.capacity})</span> ${r.mine?'<span class="mine-tag">غرفتك الحالية</span>':''}</div>
+        <div class="room-title">غرفة ${i+1} <span style="font-weight:400;color:var(--muted);font-size:11.5px">(${ROOM_TYPES[r.type] || CAP_LABEL[r.capacity] || r.capacity})</span> ${r.mine?'<span class="mine-tag">غرفتك الحالية</span>':''}</div>
         <div class="room-seats">${r.occupants.length} / ${r.capacity} ${full?'— ممتلئة':''}</div>
       </div>
       ${r.occupants.map(o => `<div class="occ"><b>${esc(o.name)}</b>${o.uni_id===MY_UID?' (أنت)':''}<div class="d">${esc(o.uni_id)} — ${esc(o.nationality)||'—'} — ${esc(o.phone)||'—'}</div></div>`).join('') || '<div class="occ d">لا يوجد أحد بعد في هذه الغرفة</div>'}
