@@ -54,8 +54,8 @@ const TE_FIELDS = [
   { key:'major3',        label:'التخصص الثالث' },
   { key:'status',        label:'الحالة' },
   { key:'certs_received',label:'استلام الشهادات' },
-  { key:'committee_score',label:'علامة اللجنة (من 50)' },
-  { key:'hs_score',      label:'علامة الثانوية (من 50)' },
+  { key:'committee_score',label:'علامة اللجنة (من 70)' },
+  { key:'hs_score',      label:'علامة الثانوية (من 30)' },
   { key:'final_score',   label:'العلامة النهائية (من 100)' },
   { key:'createdAt',     label:'تاريخ التقديم' },
 ];
@@ -627,7 +627,7 @@ function teExportExcel() {
 // ورقية فارغة لتُمنح للجنة، ثم إدخال علاماتهم بعد المقابلات.
 // آلية الاحتساب: كل عضو يمنح علامة من (100 ÷ عدد الأعضاء)، فيكون
 // مجموع اللجنة دائماً من 100 بغض النظر عن عدد الأعضاء (4 أو 5) —
-// علامة اللجنة = المجموع ÷ 2 (من 50)، علامة الثانوية = المعدل × 0.5 (من 50)
+// علامة اللجنة = المجموع (من 100) × 0.7 (من 70)، علامة الثانوية = المعدل × 0.3 (من 30)
 // العلامة النهائية = علامة اللجنة + علامة الثانوية (من 100)
 // ══════════════════════════════════════════════════════════════
 
@@ -653,7 +653,7 @@ async function loadTalentCommittee() {
 
   <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">أعضاء اللجنة (من عضوين إلى 5 أعضاء)</div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُحسب علامة كل عضو تلقائياً من (100 ÷ عدد الأعضاء المدخلين هنا)، بحيث يكون مجموع علامات اللجنة دائماً من 100 مهما كان العدد الفعلي. الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع.</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُحسب علامة كل عضو تلقائياً من (100 ÷ عدد الأعضاء المدخلين هنا)، بحيث يكون مجموع علامات اللجنة دائماً من 100 مهما كان العدد الفعلي. تُحتسَب العلامة النهائية بواقع 70% من مجموع علامات اللجنة + 30% من معدل الثانوية. الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
       ${[0,1,2,3,4].map(i => `
       <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
@@ -680,8 +680,8 @@ async function loadTalentCommittee() {
       <thead><tr>
         <th>#</th><th>الاسم</th><th>نوع النشاط</th>
         ${members.map(m=>`<th>${teEsc(m.name)}<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من ${per.toFixed(1)})</span></th>`).join('')}
-        <th>علامة اللجنة<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 50)</span></th>
-        <th>علامة الثانوية<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 50)</span></th>
+        <th>علامة اللجنة<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 70)</span></th>
+        <th>علامة الثانوية<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 30)</span></th>
         <th>العلامة النهائية</th>
       </tr></thead>
       <tbody id="tc-tbody"></tbody>
@@ -743,9 +743,9 @@ function tcRenderTable() {
   const per = 100 / members.length;
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];
-    const hs = r.gpa ? (parseFloat(r.gpa) * 0.5) : 0;
+    const hs = r.gpa ? (parseFloat(r.gpa) * 0.3) : 0;
     const filled = scores.filter(v => v != null && v !== '');
-    const cscore = filled.length ? filled.reduce((a,b)=>a+(+b||0),0) / 2 : null;
+    const cscore = filled.length ? filled.reduce((a,b)=>a+(+b||0),0) * 0.7 : null;
     return `<tr data-id="${r.id}" data-hs="${hs}">
       <td>${i+1}</td>
       <td>${teEsc(r.full_name)} <button class="btn btn-sm" style="padding:2px 6px" onclick="tcViewApplicant('${r.id}')" title="عرض بيانات الطالب"><i class="ti ti-eye"></i></button></td>
@@ -763,7 +763,7 @@ function tcRecalc(input) {
   const hs = parseFloat(tr.dataset.hs) || 0;
   const vals = Array.from(tr.querySelectorAll('.tc-score')).map(el => el.value === '' ? null : parseFloat(el.value));
   const filled = vals.filter(v => v != null);
-  const cscore = filled.length ? filled.reduce((a,b)=>a+b, 0) / 2 : null;
+  const cscore = filled.length ? filled.reduce((a,b)=>a+b, 0) * 0.7 : null;
   tr.querySelector('.tc-cscore').textContent = cscore!=null ? cscore.toFixed(1) : '—';
   tr.querySelector('.tc-final').textContent = cscore!=null ? (cscore+hs).toFixed(1) : '—';
 }
@@ -809,7 +809,7 @@ async function tcSaveAll() {
     const committee_scores = Array.from(tr.querySelectorAll('.tc-score')).map(el => el.value === '' ? null : parseFloat(el.value));
     const filled = committee_scores.filter(v => v != null);
     const committee_total = filled.length ? filled.reduce((a,b)=>a+b, 0) : null;
-    const committee_score = filled.length ? committee_total / 2 : null;
+    const committee_score = filled.length ? committee_total * 0.7 : null;
     const final_score = filled.length ? committee_score + hs : null;
     return api('/api/talent_excellence/'+id, 'PUT', { committee_scores, committee_total, committee_score, hs_score: hs, final_score });
   });
@@ -883,7 +883,7 @@ function tcPrintFinalReport() {
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${members.map(m=>`<th>${teEsc(m.name)}<br>(من ${per})</th>`).join('')}
-      <th>علامة اللجنة (50)</th><th>علامة الثانوية (50)</th><th>العلامة النهائية</th>
+      <th>علامة اللجنة (70)</th><th>علامة الثانوية (30)</th><th>العلامة النهائية</th>
     </tr></thead><tbody>
       ${rows.map((r,i) => {
         const scores = r.committee_scores || [];
