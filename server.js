@@ -527,6 +527,47 @@ app.post('/api/public/instructions/:id/verify', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ══ تحديث بيانات إضافية للمشارك (تاريخ الميلاد وغيرها لاحقاً) — لطالب مسجَّل بالفعل في
+// النشاط، يُدخل رقمه الجامعي فيصل لسجله الموجود ليكمّل حقلاً ناقصاً، دون تسجيل جديد ══
+app.get('/api/public/participant-update/:id/status', async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    res.json({ activity_name: doc.activity });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/participant-update/:id/lookup', async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const uniId = (req.body.id || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    const student = (doc.students || []).find(s => (s.id || '').trim() === uniId);
+    if (!student) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    res.json({ name: student.name, activity_name: doc.activity, birth_date: student.birth_date || '' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/participant-update/:id/save', async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const uniId = (req.body.id || '').trim();
+    const birthDate = (req.body.birth_date || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    if (!birthDate) return res.status(400).json({ error: 'يرجى إدخال تاريخ الميلاد' });
+    const students = doc.students || [];
+    const idx = students.findIndex(s => (s.id || '').trim() === uniId);
+    if (idx === -1) return res.status(404).json({ error: 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
+    students[idx].birth_date = birthDate;
+    doc.students = students;
+    doc.markModified('students');
+    await doc.save();
+    res.json({ message: 'تم حفظ تاريخ الميلاد بنجاح، شكراً لك' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══ رابط عام لتسجيل الطلبة المشاركين في نشاط (بدون تسجيل دخول) ══
 // يعرض فقط بيانات النشاط الأساسية (بدون قائمة الطلبة) للتحقق من صحة الرابط
 // ══ قائمة عامة بالإعلانات/الفعاليات (سابقة وقادمة) — بحقول آمنة فقط، بلا بيانات شخصية ══
