@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1B6B3A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إكمال البيانات — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  .wrap{max-width:520px;margin:0 auto;padding:16px 14px 48px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:14px}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0;line-height:1.6}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:16px;margin-bottom:10px;font-family:inherit;-webkit-appearance:none;min-height:44px}
+  button{width:100%;padding:13px 18px;border:none;border-radius:var(--r);background:var(--g);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px}
+  .msg{margin-top:10px;font-size:12.5px;border-radius:var(--r);padding:10px 12px;display:none;line-height:1.6}
+  .ok{background:#EAF3DE;color:#27500A;border:1px solid #cfe3bd}
+  .err{background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5}
+  .who-box{background:#EAF3DE;border:1px solid #cfe3bd;border-radius:var(--r);padding:10px 12px;font-size:13px;color:#27500A;margin-bottom:14px}
+</style>
+</head>
+<body>
+<header>🗓️ الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap">
+  <div class="card">
+    <h1 id="pageTitle">إكمال بيانات المشاركة</h1>
+    <p class="sub" id="pageSub">أدخل رقمك الجامعي لإكمال تاريخ ميلادك ضمن بيانات مشاركتك المسجَّلة بالفعل.</p>
+  </div>
+
+  <div id="invalidArea" style="display:none">
+    <div class="card" style="text-align:center;border-color:#c0392b">
+      <div style="font-size:15px;font-weight:700;color:#791F1F">⚠️ الرابط غير صحيح</div>
+    </div>
+  </div>
+
+  <div id="lookupArea">
+    <div class="card">
+      <label>الرقم الجامعي *</label>
+      <input id="f-uid" type="text" inputmode="numeric" placeholder="أدخل رقمك الجامعي...">
+      <button onclick="lookup()">متابعة</button>
+      <div class="msg" id="lookupMsg"></div>
+    </div>
+  </div>
+
+  <div id="formArea" style="display:none">
+    <div class="who-box" id="whoBox"></div>
+    <div class="card">
+      <label>تاريخ الميلاد *</label>
+      <input id="f-birthdate" type="date">
+      <button onclick="save()">حفظ</button>
+      <div class="msg" id="saveMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const PARTICIPANT_ID = params.get('id') || '';
+let MY_UID = '';
+
+function showMsg(id, txt, err) { const el = document.getElementById(id); el.textContent = txt; el.className = 'msg ' + (err?'err':'ok'); el.style.display = 'block'; }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadStatus() {
+  if (!PARTICIPANT_ID) { document.getElementById('invalidArea').style.display = 'block'; document.getElementById('lookupArea').style.display = 'none'; return; }
+  try {
+    const res = await fetch('/api/public/participant-update/' + PARTICIPANT_ID + '/status');
+    if (!res.ok) { document.getElementById('invalidArea').style.display = 'block'; document.getElementById('lookupArea').style.display = 'none'; return; }
+    const s = await res.json();
+    document.getElementById('pageTitle').textContent = 'إكمال بيانات المشاركة — ' + (s.activity_name || '');
+  } catch (e) {
+    document.getElementById('invalidArea').style.display = 'block';
+    document.getElementById('lookupArea').style.display = 'none';
+  }
+}
+loadStatus();
+
+async function lookup() {
+  const uid = document.getElementById('f-uid').value.trim();
+  if (!uid) { showMsg('lookupMsg', 'يرجى إدخال الرقم الجامعي', true); return; }
+  const res = await fetch('/api/public/participant-update/' + PARTICIPANT_ID + '/lookup', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: uid })
+  });
+  const data = await res.json();
+  if (!res.ok) { showMsg('lookupMsg', data.error || 'حدث خطأ', true); return; }
+  MY_UID = uid;
+  document.getElementById('lookupArea').style.display = 'none';
+  document.getElementById('formArea').style.display = 'block';
+  document.getElementById('whoBox').innerHTML = `أهلاً <b>${esc(data.name)}</b> — أكمل تاريخ ميلادك أدناه.`;
+  if (data.birth_date) document.getElementById('f-birthdate').value = data.birth_date;
+}
+
+async function save() {
+  const birth_date = document.getElementById('f-birthdate').value;
+  if (!birth_date) { showMsg('saveMsg', 'يرجى إدخال تاريخ الميلاد', true); return; }
+  const res = await fetch('/api/public/participant-update/' + PARTICIPANT_ID + '/save', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: MY_UID, birth_date })
+  });
+  const data = await res.json();
+  if (!res.ok) { showMsg('saveMsg', data.error || 'حدث خطأ', true); return; }
+  document.querySelector('#formArea .card').innerHTML = `<div style="text-align:center;padding:20px 0"><div style="font-size:38px">✅</div><div style="font-weight:700;color:var(--g);margin-top:8px">تم الحفظ بنجاح</div></div>`;
+}
+</script>
+</body>
+</html>
