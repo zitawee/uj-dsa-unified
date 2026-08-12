@@ -72,9 +72,9 @@ function teFieldValue(r, key) {
     case 'major3':         return (r.majors||[])[2] || '';
     case 'status':         return TE_STATUS[r.status]?.label || TE_STATUS.pending.label;
     case 'certs_received': return r.certs_received ? 'نعم' : 'لا';
-    case 'committee_score':return r.committee_score!=null ? r.committee_score.toFixed(1) : '';
-    case 'hs_score':       return r.hs_score!=null ? r.hs_score.toFixed(1) : '';
-    case 'final_score':    return r.final_score!=null ? r.final_score.toFixed(1) : '';
+    case 'committee_score':return r.committee_score!=null ? tePct(r.committee_score) : '';
+    case 'hs_score':       return r.hs_score!=null ? tePct(r.hs_score) : '';
+    case 'final_score':    return r.final_score!=null ? tePct(r.final_score) : '';
     case 'createdAt':      return teDate(r.createdAt);
     default:                return r[key] || '';
   }
@@ -101,6 +101,7 @@ function teCopyLink() {
   }
 }
 
+function tePct(n) { return n.toFixed(2) + '%'; }
 function teEsc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -208,7 +209,7 @@ function teRender() {
       <td>${(r.activity_types||[]).map(teEsc).join('، ')}</td>
       <td>${teEsc(TE_TRACKS[r.cert_track]||r.cert_track||'')}</td>
       <td>${teEsc(r.gpa)}%</td>
-      <td style="font-weight:700">${r.final_score!=null ? r.final_score.toFixed(1) : '—'}</td>
+      <td style="font-weight:700">${r.final_score!=null ? tePct(r.final_score) : '—'}</td>
       <td class="te-status-cell">${teBadge(r.status)}</td>
       <td>${teDate(r.createdAt)}</td>
       <td style="white-space:nowrap">
@@ -751,9 +752,9 @@ function tcRenderTable() {
       <td>${teEsc(r.full_name)} <button class="btn btn-sm" style="padding:2px 6px" onclick="tcViewApplicant('${r.id}')" title="عرض بيانات الطالب"><i class="ti ti-eye"></i></button></td>
       <td>${(r.activity_types||[]).map(teEsc).join('، ')}</td>
       ${members.map((m,mi) => `<td><input type="number" min="0" max="${per}" step="0.5" class="tc-score" style="width:64px" value="${scores[mi]!=null?scores[mi]:''}" oninput="tcRecalc(this)"></td>`).join('')}
-      <td class="tc-cscore">${cscore!=null ? cscore.toFixed(1) : '—'}</td>
-      <td>${hs.toFixed(1)}</td>
-      <td class="tc-final" style="font-weight:700">${cscore!=null ? (cscore+hs).toFixed(1) : '—'}</td>
+      <td class="tc-cscore">${cscore!=null ? tePct(cscore) : '—'}</td>
+      <td>${tePct(hs)}</td>
+      <td class="tc-final" style="font-weight:700">${cscore!=null ? tePct(cscore+hs) : '—'}</td>
     </tr>`;
   }).join('');
 }
@@ -764,8 +765,8 @@ function tcRecalc(input) {
   const vals = Array.from(tr.querySelectorAll('.tc-score')).map(el => el.value === '' ? null : parseFloat(el.value));
   const filled = vals.filter(v => v != null);
   const cscore = filled.length ? filled.reduce((a,b)=>a+b, 0) * 0.7 : null;
-  tr.querySelector('.tc-cscore').textContent = cscore!=null ? cscore.toFixed(1) : '—';
-  tr.querySelector('.tc-final').textContent = cscore!=null ? (cscore+hs).toFixed(1) : '—';
+  tr.querySelector('.tc-cscore').textContent = cscore!=null ? tePct(cscore) : '—';
+  tr.querySelector('.tc-final').textContent = cscore!=null ? tePct(cscore+hs) : '—';
 }
 
 // عرض سريع (للقراءة فقط) لبيانات الطالب من شاشة علامات اللجنة، دون مغادرتها
@@ -887,7 +888,7 @@ function tcPrintFinalReport() {
     </tr></thead><tbody>
       ${rows.map((r,i) => {
         const scores = r.committee_scores || [];
-        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}<td style="text-align:center">${r.committee_score!=null?r.committee_score.toFixed(1):'—'}</td><td style="text-align:center">${r.hs_score!=null?r.hs_score.toFixed(1):'—'}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?r.final_score.toFixed(1):'—'}</td></tr>`;
+        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${teEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${teEsc(teFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}<td style="text-align:center">${r.committee_score!=null?tePct(r.committee_score):'—'}</td><td style="text-align:center">${r.hs_score!=null?tePct(r.hs_score):'—'}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?tePct(r.final_score):'—'}</td></tr>`;
       }).join('')}
     </tbody></table>
     ${teSignatureBlockHTML()}`;
