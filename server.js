@@ -407,7 +407,7 @@ app.get('/api/public/room-booking/:hotelId/rooms', async (req, res) => {
     const student = rbFindStudent(participantsDoc, cycle, uniId);
     if (!student) return res.status(404).json({ error: cycle.verify_source === 'attended' ? 'رقمك الجامعي غير مسجَّل ضمن الحاضرين فعلياً لهذا النشاط' : 'رقمك الجامعي غير مسجَّل ضمن قائمة المشاركين في هذا النشاط' });
     const rooms = (hotel.rooms || []).filter(r => r.gender === student.gender).map(r => ({
-      id: r.id, capacity: r.capacity, occupants: r.occupants || [],
+      id: r.id, type: r.type, capacity: r.capacity, occupants: r.occupants || [],
       mine: (r.occupants || []).some(o => o.uni_id === uniId),
     }));
     res.json({ rooms, my_gender: student.gender, my_name: student.name });
