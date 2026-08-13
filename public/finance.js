@@ -38,7 +38,8 @@ function fiRenderList() {
         const students = p.students||[];
         const paid = students.filter(s=>s.payment_status==='paid');
         const refunded = students.filter(s=>s.payment_status==='refunded');
-        const net = paid.reduce((a,s)=>a+(Number(s.payment_amount)||0),0) - refunded.reduce((a,s)=>a+(Number(s.refund_amount)||0),0);
+        const totalCollected = students.filter(s=>s.payment_status==='paid'||s.payment_status==='refunded').reduce((a,s)=>a+(Number(s.payment_amount)||0),0);
+        const net = totalCollected - refunded.reduce((a,s)=>a+(Number(s.refund_amount)||0),0);
         return `<tr>
           <td>${i+1}</td><td><strong>${fiEsc(p.activity)}</strong></td><td>${fiMoney(p.fee_amount)}</td>
           <td>${students.length}</td><td>${paid.length}</td><td style="font-weight:700;color:var(--g)">${fiMoney(net)}</td>
@@ -157,7 +158,9 @@ function fiRenderMain() {
 
   const paid = students.filter(s => s.payment_status === 'paid');
   const refunded = students.filter(s => s.payment_status === 'refunded');
-  const totalCollected = paid.reduce((a,s) => a + (Number(s.payment_amount)||0), 0);
+  // المُحصَّل الإجمالي = مجموع كل من دفع فعلياً في أي وقت (مدفوع حالياً + من استُرجِع له لاحقاً)،
+  // فالاسترجاع لا يُلغي واقعة "أنه دفع"، بل يُخصَم كبند منفصل عبر totalRefunded أدناه
+  const totalCollected = students.filter(s => s.payment_status === 'paid' || s.payment_status === 'refunded').reduce((a,s) => a + (Number(s.payment_amount)||0), 0);
   const totalRefunded = refunded.reduce((a,s) => a + (Number(s.refund_amount)||0), 0);
   const net = totalCollected - totalRefunded;
 
@@ -231,9 +234,11 @@ function fiOpenPayFlow() {
     <div class="fg"><label>اسم من قام بالدفع</label><input type="text" id="fi-payer-name" placeholder="اسم الطالب أو من دفع نيابة عنه/عن مجموعته"></div>
     <div class="fg"><label>طريقة الدفع</label><select id="fi-method"><option value="cash">نقداً</option><option value="cliq">كليك (CliQ)</option></select></div>
     <div class="fg"><label>الطلبة المشمولون بهذا السند (يمكن اختيار أكثر من طالب)</label>
-      <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
-        ${unpaid.map(s => `<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-weight:400;font-size:12.5px;cursor:pointer"><input type="checkbox" class="fi-pay-cb" value="${fiEsc(s.id)}" onchange="fiUpdatePayTotal()"> ${fiEsc(s.name)} <span style="color:var(--muted);font-size:11px">— ${fiEsc(s.id)}</span></label>`).join('')}
+      <input type="text" id="fi-pay-search" placeholder="🔍 ابحثي بالاسم أو الرقم الجامعي..." oninput="fiFilterPayList()" autocomplete="off" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:8px">
+      <div id="fi-pay-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+        ${unpaid.map(s => `<label class="fi-pay-item" data-search="${fiEsc((s.name+' '+s.id).toLowerCase())}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-weight:400;font-size:12.5px;cursor:pointer"><input type="checkbox" class="fi-pay-cb" value="${fiEsc(s.id)}" onchange="fiUpdatePayTotal()"> ${fiEsc(s.name)} <span style="color:var(--muted);font-size:11px">— ${fiEsc(s.id)}</span></label>`).join('')}
       </div>
+      <div id="fi-pay-noresults" style="display:none;font-size:12px;color:var(--muted);padding:8px">لا توجد نتائج مطابقة</div>
     </div>
     <div style="font-size:13px;font-weight:700;margin-bottom:8px">الإجمالي: <span id="fi-pay-total">${fiMoney(0)}</span></div>
     <div id="fi-pay-msg" class="msg"></div>
@@ -241,6 +246,18 @@ function fiOpenPayFlow() {
       <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="fiSubmitPay()"><i class="ti ti-cash"></i> تسجيل الدفع وإصدار السند</button>
       <button class="btn" onclick="fiRenderMain()">رجوع</button>
     </div>`;
+}
+
+function fiFilterPayList() {
+  const q = document.getElementById('fi-pay-search').value.trim().toLowerCase();
+  const items = document.querySelectorAll('.fi-pay-item');
+  let visible = 0;
+  items.forEach(el => {
+    const match = !q || el.dataset.search.includes(q);
+    el.style.display = match ? 'flex' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('fi-pay-noresults').style.display = visible ? 'none' : 'block';
 }
 
 function fiUpdatePayTotal() {
