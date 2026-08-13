@@ -1077,6 +1077,11 @@ app.post('/api/participants/:id/pay', auth(['admin']), async (req, res) => {
       students[c.idx].receipt_no = receipt_no;
       students[c.idx].paid_by = payerName;
       students[c.idx].paid_at = now;
+      // مسح أي بيانات استرجاع سابقة إن دفع الطالب من جديد بعد استرجاع سابق، لتفادي بقاء بيانات قديمة مضلِّلة
+      delete students[c.idx].refund_amount;
+      delete students[c.idx].refund_reason;
+      delete students[c.idx].refund_at;
+      delete students[c.idx].refund_by;
     });
     doc.students = students;
     doc.markModified('students');
@@ -1124,17 +1129,15 @@ app.get('/api/payment_receipts/:receiptNo', auth(['admin']), async (req, res) =>
 // كسجل تدقيق دائم رغم أن النشاط لن يظهر بعد الآن في شاشة النظام المالي)
 app.post('/api/participants/:id/finance/reset', auth(['admin']), async (req, res) => {
   try {
-    const doc = await models['participants'].findById(req.params.id);
+    const doc = await models['participants'].findById(req.params.id).lean();
     if (!doc) return res.status(404).json({ error: 'السجل غير موجود' });
-    doc.fee_amount = null;
     const fields = ['payment_status','payment_amount','payment_method','receipt_no','paid_by','paid_at','refund_amount','refund_reason','refund_at','refund_by'];
-    doc.students = (doc.students || []).map(s => {
-      const copy = { ...(s.toObject ? s.toObject() : s) };
+    const students = (doc.students || []).map(s => {
+      const copy = { ...s };
       fields.forEach(f => delete copy[f]);
       return copy;
     });
-    doc.markModified('students');
-    await doc.save();
+    await models['participants'].findByIdAndUpdate(req.params.id, { $set: { students }, $unset: { fee_amount: '' } });
     res.json({ message: 'تم إلغاء تتبّع النظام المالي لهذا النشاط' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
