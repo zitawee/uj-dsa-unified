@@ -187,6 +187,19 @@ function genCourseId() {
 // فتُحذف تلقائياً مع حذف طلب النشاط ضمن آلية الحذف التتابعي الحالية دون أي كود إضافي،
 // ويُعاد استخدام نفس participant_id المستخدم أصلاً لرابطَي التسجيل والتقييم ══
 
+// ══ النظام المالي لرسوم الأنشطة (Admin فقط) — توثيق تحصيل نقدي/CliQ يدوي، وليس بوابة
+// دفع فعلية. حالة الدفع/الاسترجاع تُخزَّن لكل طالب داخل نفس سجل "أسماء المشاركين"
+// (student.payment_status/payment_amount/receipt_no/paid_by/...)، فتُحذف تلقائياً مع
+// حذف طلب النشاط كباقي البيانات. سندات القبض توثَّق في مجموعة مستقلة PaymentReceipt
+// لأنها قد تشمل عدة طلبة تحت رقم واحد (دفع شخص عن زميله)، وبرقم تسلسلي عام واحد
+// عبر كل الأنشطة معاً (وليس لكل نشاط على حدة) عبر عدّاد ذرّي مستقل ══
+const PaymentReceipt = mongoose.model('payment_receipts', new mongoose.Schema({}, { strict:false, timestamps:true }));
+const Counter = mongoose.model('counters', new mongoose.Schema({ _id: String, seq: { type: Number, default: 0 } }));
+async function nextReceiptNo() {
+  const c = await Counter.findByIdAndUpdate('receipt_no', { $inc: { seq: 1 } }, { upsert: true, new: true });
+  return c.seq;
+}
+
 // ══ اتصال MongoDB ══
 mongoose.connect(MONGODB_URI)
   .then(async () => {
@@ -1022,6 +1035,87 @@ app.post('/api/participants/:id/post-instruction', auth(['admin']), async (req, 
     } catch(e) { failed = -1; }
 
     res.json({ message: `تم نشر التعليمة${sent?` وإرسال تنبيه بريدي لـ ${sent} مشارك`:''}${failed>0?` (فشل ${failed})`:''}`, post_id: post.id, sent, failed });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ النظام المالي — تسجيل دفعة (فردية أو جماعية بسند واحد) لطلبة مسجَّلين بالفعل في النشاط ══
+app.post('/api/participants/:id/pay', auth(['admin']), async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'السجل غير موجود' });
+    const payerName = (req.body.payer_name || '').trim();
+    const method = req.body.payment_method === 'cliq' ? 'cliq' : 'cash';
+    const uniIds = Array.isArray(req.body.student_ids) ? req.body.student_ids.map(x => String(x).trim()).filter(Boolean) : [];
+    if (!payerName) return res.status(400).json({ error: 'يرجى إدخال اسم من قام بالدفع' });
+    if (!uniIds.length) return res.status(400).json({ error: 'يرجى اختيار طالب واحد على الأقل' });
+    const feeAmount = Number(doc.fee_amount) || 0;
+    if (!feeAmount) return res.status(400).json({ error: 'يرجى تحديد رسوم النشاط أولاً' });
+
+    const students = doc.students || [];
+    const covered = [];
+    for (const uid of uniIds) {
+      const idx = students.findIndex(s => (s.id||'').trim() === uid);
+      if (idx === -1) return res.status(404).json({ error: `الرقم الجامعي ${uid} غير مسجَّل ضمن هذا النشاط` });
+      if (students[idx].payment_status === 'paid') return res.status(400).json({ error: `${students[idx].name} مدفوع بالفعل` });
+      covered.push({ idx, uni_id: uid, name: students[idx].name });
+    }
+
+    const receipt_no = await nextReceiptNo();
+    const total_amount = feeAmount * covered.length;
+    const receipt = await PaymentReceipt.create({
+      receipt_no, activity_id: String(doc._id), activity_name: doc.activity,
+      payer_name: payerName, payment_method: method, fee_amount: feeAmount, total_amount,
+      students: covered.map(c => ({ uni_id: c.uni_id, name: c.name })),
+      created_by: req.user.username,
+    });
+
+    const now = new Date();
+    covered.forEach(c => {
+      students[c.idx].payment_status = 'paid';
+      students[c.idx].payment_amount = feeAmount;
+      students[c.idx].payment_method = method;
+      students[c.idx].receipt_no = receipt_no;
+      students[c.idx].paid_by = payerName;
+      students[c.idx].paid_at = now;
+    });
+    doc.students = students;
+    doc.markModified('students');
+    await doc.save();
+
+    res.json({ message: `تم تسجيل الدفع بنجاح — سند رقم ${receipt_no}`, receipt_no, receipt_id: receipt._id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/participants/:id/refund', auth(['admin']), async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'السجل غير موجود' });
+    const uniId = (req.body.id || '').trim();
+    const refundAmount = Number(req.body.refund_amount);
+    const reason = (req.body.reason || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'بيانات ناقصة' });
+    if (isNaN(refundAmount) || refundAmount < 0) return res.status(400).json({ error: 'يرجى إدخال مبلغ استرجاع صحيح' });
+    const students = doc.students || [];
+    const idx = students.findIndex(s => (s.id||'').trim() === uniId);
+    if (idx === -1) return res.status(404).json({ error: 'الطالب غير موجود ضمن هذا النشاط' });
+    if (students[idx].payment_status !== 'paid') return res.status(400).json({ error: 'هذا الطالب ليس في حالة "مدفوع"' });
+    students[idx].payment_status = 'refunded';
+    students[idx].refund_amount = refundAmount;
+    students[idx].refund_reason = reason;
+    students[idx].refund_at = new Date();
+    students[idx].refund_by = req.user.username;
+    doc.students = students;
+    doc.markModified('students');
+    await doc.save();
+    res.json({ message: 'تم تسجيل الاسترجاع بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/payment_receipts/:receiptNo', auth(['admin']), async (req, res) => {
+  try {
+    const r = await PaymentReceipt.findOne({ receipt_no: Number(req.params.receiptNo) }).lean();
+    if (!r) return res.status(404).json({ error: 'السند غير موجود' });
+    res.json({ ...r, id: String(r._id) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
