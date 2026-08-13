@@ -7,10 +7,86 @@
 // ══════════════════════════════════════════════════════════════
 
 let FI_PARTICIPANT = null;
+let FI_ALL_ACTIVITIES = [];
 
 function fiEsc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fiDate(d) { if (!d) return ''; try { return new Date(d).toLocaleString('ar-JO', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' }); } catch(e) { return ''; } }
 function fiMoney(n) { return (Number(n)||0).toFixed(3) + ' د.أ'; }
+
+// ── شاشة "النظام المالي" الرئيسية: تسرد فقط الأنشطة التي حُدِّدت لها رسوم بالفعل ──
+async function loadFinance() {
+  const panel = document.getElementById('panel-finance');
+  if (!panel) return;
+  panel.innerHTML = `<div class="ph"><div><div class="pt">النظام المالي</div><div class="ps">إدارة رسوم الأنشطة، الدفعات، والاسترجاعات</div></div></div>
+    <div class="card"><div class="center" style="padding:24px">جارٍ التحميل...</div></div>`;
+  const all = await api('/api/participants');
+  if (!Array.isArray(all)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
+  FI_ALL_ACTIVITIES = all;
+  fiRenderList();
+}
+
+function fiRenderList() {
+  const panel = document.getElementById('panel-finance');
+  const list = FI_ALL_ACTIVITIES.filter(p => Number(p.fee_amount) > 0);
+  panel.innerHTML = `
+  <div class="ph"><div><div class="pt">النظام المالي</div><div class="ps">إدارة رسوم الأنشطة، الدفعات، والاسترجاعات — ${list.length} نشاط عليه رسوم</div></div></div>
+  <div class="card"><button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="fiOpenAddActivity()"><i class="ti ti-plus"></i> إضافة نشاط جديد للرسوم</button></div>
+  <div class="card">
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>النشاط</th><th>الرسوم / طالب</th><th>المسجَّلون</th><th>الدافعون</th><th>الصافي المُحصَّل</th><th></th></tr></thead>
+      <tbody>${list.length ? list.map((p,i) => {
+        const students = p.students||[];
+        const paid = students.filter(s=>s.payment_status==='paid');
+        const refunded = students.filter(s=>s.payment_status==='refunded');
+        const net = paid.reduce((a,s)=>a+(Number(s.payment_amount)||0),0) - refunded.reduce((a,s)=>a+(Number(s.refund_amount)||0),0);
+        return `<tr>
+          <td>${i+1}</td><td><strong>${fiEsc(p.activity)}</strong></td><td>${fiMoney(p.fee_amount)}</td>
+          <td>${students.length}</td><td>${paid.length}</td><td style="font-weight:700;color:var(--g)">${fiMoney(net)}</td>
+          <td><button class="btn btn-sm" onclick="openFinanceModal('${p.id}')"><i class="ti ti-eye"></i> فتح</button></td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="7" class="center">لا توجد أنشطة عليها رسوم بعد</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function fiOpenAddActivity() {
+  const noFee = FI_ALL_ACTIVITIES.filter(p => !(Number(p.fee_amount) > 0));
+  if (!document.getElementById('mod-finance')) { alert('تعذّر فتح النافذة'); return; }
+  const modal = document.getElementById('mod-finance');
+  modal.querySelector('.modal').innerHTML = `
+    <h3>إضافة نشاط جديد للرسوم</h3>
+    ${!noFee.length ? `<div class="center">كل الأنشطة الحالية لديها رسوم مُحدَّدة بالفعل</div><button class="btn" style="width:100%;margin-top:8px" onclick="fiCloseModal()">إغلاق</button>` : `
+    <div class="fg"><label>اختر النشاط (من قائمة أسماء المشاركين)</label>
+      <select id="fi-add-act">
+        <option value="">اختر...</option>
+        ${noFee.map(p => `<option value="${p.id}">${fiEsc(p.activity)} — ${fiEsc(p.date||'')} (${(p.students||[]).length} مسجَّل)</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg"><label>رسوم الطالب الواحد (دينار)</label><input type="number" id="fi-add-fee" min="0" step="0.001" placeholder="مثال: 25"></div>
+    <div id="fi-add-msg" class="msg"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="fiSaveNewActivityFee()"><i class="ti ti-device-floppy"></i> حفظ</button>
+      <button class="btn" onclick="fiCloseModal()">إغلاق</button>
+    </div>`}`;
+  modal.classList.add('open');
+  if (!window.__fiEscBound) {
+    window.__fiEscBound = true;
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fiCloseModal(); });
+  }
+}
+
+async function fiSaveNewActivityFee() {
+  const id = document.getElementById('fi-add-act').value;
+  const fee = parseFloat(document.getElementById('fi-add-fee').value);
+  const msgEl = document.getElementById('fi-add-msg');
+  const show = (t) => { msgEl.textContent = t; msgEl.className = 'msg err'; msgEl.style.display = 'block'; };
+  if (!id) { show('يرجى اختيار النشاط'); return; }
+  if (isNaN(fee) || fee <= 0) { show('يرجى إدخال رسوم صحيحة أكبر من صفر'); return; }
+  const r = await api('/api/participants/'+id, 'PUT', { fee_amount: fee });
+  if (r.error) { show(r.error); return; }
+  fiCloseModal();
+  loadFinance();
+}
 
 async function openFinanceModal(participantId) {
   const doc = await api('/api/participants/'+participantId);
@@ -22,7 +98,11 @@ async function openFinanceModal(participantId) {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('mod-finance')?.classList.remove('open'); });
   }
 }
-function fiCloseModal() { document.getElementById('mod-finance')?.classList.remove('open'); }
+function fiCloseModal() {
+  document.getElementById('mod-finance')?.classList.remove('open');
+  // تحديث القائمة الرئيسية إن كانت مفتوحة، لتظهر أي تغييرات حدثت داخل النافذة فوراً
+  if (document.getElementById('panel-finance')?.classList.contains('active')) loadFinance();
+}
 async function fiReload() {
   const doc = await api('/api/participants/'+FI_PARTICIPANT.id);
   if (!doc.error) FI_PARTICIPANT = doc;

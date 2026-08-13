@@ -931,7 +931,6 @@ async function filterPart() {
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
       ${ME?.role==='admin'?`<button class="btn btn-sm" style="color:#8A2A22;border-color:#8A2A22" onclick="openSendEmailModal('${r.id}')">📧 Email</button>`:''}
       ${ME?.role==='admin'?`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="openInstructionsModal('${r.id}')">📋 تعليمات</button>`:''}
-      ${ME?.role==='admin'?`<button class="btn btn-sm" style="color:#0F7B4A;border-color:#0F7B4A" onclick="openFinanceModal('${r.id}')">💰 الرسوم المالية</button>`:''}
       <button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="openHistoryModal('participants','${r.id}')">🕐 سجل</button>
       ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
     </div></td>
