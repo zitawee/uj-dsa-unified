@@ -1119,6 +1119,26 @@ app.get('/api/payment_receipts/:receiptNo', auth(['admin']), async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// إزالة نشاط بالكامل من تتبّع النظام المالي (إلغاء الرسوم وأي بيانات دفع/استرجاع مرتبطة
+// بطلبته) — لا يحذف سجل "أسماء المشاركين" نفسه، ولا سندات القبض الصادرة فعلياً (تبقى
+// كسجل تدقيق دائم رغم أن النشاط لن يظهر بعد الآن في شاشة النظام المالي)
+app.post('/api/participants/:id/finance/reset', auth(['admin']), async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'السجل غير موجود' });
+    doc.fee_amount = null;
+    const fields = ['payment_status','payment_amount','payment_method','receipt_no','paid_by','paid_at','refund_amount','refund_reason','refund_at','refund_by'];
+    doc.students = (doc.students || []).map(s => {
+      const copy = { ...(s.toObject ? s.toObject() : s) };
+      fields.forEach(f => delete copy[f]);
+      return copy;
+    });
+    doc.markModified('students');
+    await doc.save();
+    res.json({ message: 'تم إلغاء تتبّع النظام المالي لهذا النشاط' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══ CRUD لجميع الجداول ══
 TABLES.forEach(table => {
   const Model = models[table];
