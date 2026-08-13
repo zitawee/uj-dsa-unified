@@ -42,7 +42,7 @@ function fiRenderList() {
         return `<tr>
           <td>${i+1}</td><td><strong>${fiEsc(p.activity)}</strong></td><td>${fiMoney(p.fee_amount)}</td>
           <td>${students.length}</td><td>${paid.length}</td><td style="font-weight:700;color:var(--g)">${fiMoney(net)}</td>
-          <td><button class="btn btn-sm" onclick="openFinanceModal('${p.id}')"><i class="ti ti-eye"></i> فتح</button></td>
+          <td><button class="btn btn-sm" onclick="openFinanceModal('${p.id}')"><i class="ti ti-eye"></i> فتح</button> <button class="btn btn-sm" style="color:#c0392b" onclick="fiOpenDeleteConfirm('${p.id}','${fiEsc(p.activity).replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i> حذف</button></td>
         </tr>`;
       }).join('') : `<tr><td colspan="7" class="center">لا توجد أنشطة عليها رسوم بعد</td></tr>`}</tbody>
     </table></div>
@@ -85,7 +85,35 @@ async function fiSaveNewActivityFee() {
   const r = await api('/api/participants/'+id, 'PUT', { fee_amount: fee });
   if (r.error) { show(r.error); return; }
   fiCloseModal();
-  loadFinance();
+}
+
+// حذف نشاط من تتبّع النظام المالي — يشترط كتابة عبارة تأكيد صريحة نظراً لحساسية البيانات المالية
+const FI_DELETE_PHRASE = 'Delete this file';
+function fiOpenDeleteConfirm(id, activityName) {
+  const modal = document.getElementById('mod-finance');
+  modal.querySelector('.modal').innerHTML = `
+    <h3 style="color:#c0392b">⚠️ إزالة "${activityName}" من النظام المالي</h3>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.8">
+      سيتم إلغاء الرسوم وكل بيانات الدفع/الاسترجاع المرتبطة بهذا النشاط. لن يتأثر سجل الطلبة أنفسهم، ولن تُحذف أي سندات قبض صادرة فعلياً (تبقى محفوظة كسجل تدقيق دائم).<br><br>
+      للتأكيد، اكتبي العبارة التالية بالضبط:
+    </div>
+    <div style="text-align:center;font-weight:700;font-family:monospace;background:#F9FAFB;border:1px dashed var(--border);border-radius:8px;padding:8px;margin-bottom:10px;user-select:all">${FI_DELETE_PHRASE}</div>
+    <input type="text" id="fi-del-confirm" placeholder="اكتبي العبارة هنا..." autocomplete="off" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:10px;font-family:inherit">
+    <div id="fi-del-msg" class="msg"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1;background:#c0392b;color:#fff" onclick="fiConfirmDelete('${id}')"><i class="ti ti-trash"></i> تأكيد الحذف</button>
+      <button class="btn" onclick="fiCloseModal()">إلغاء</button>
+    </div>`;
+  modal.classList.add('open');
+}
+
+async function fiConfirmDelete(id) {
+  const typed = document.getElementById('fi-del-confirm').value;
+  const msgEl = document.getElementById('fi-del-msg');
+  if (typed !== FI_DELETE_PHRASE) { msgEl.textContent = 'العبارة المكتوبة غير مطابقة تماماً — يرجى نسخها كما هي'; msgEl.className = 'msg err'; msgEl.style.display = 'block'; return; }
+  const r = await api('/api/participants/'+id+'/finance/reset', 'POST', {});
+  if (r.error) { msgEl.textContent = r.error; msgEl.className = 'msg err'; msgEl.style.display = 'block'; return; }
+  fiCloseModal();
 }
 
 async function openFinanceModal(participantId) {
