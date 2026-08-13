@@ -175,6 +175,7 @@ function fiRenderMain() {
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">إجمالي المُحصَّل: ${fiMoney(totalCollected)} — إجمالي المُسترجَع: ${fiMoney(totalRefunded)}</div>
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <button class="btn btn-sm" style="flex:1;background:var(--g);color:#fff" onclick="fiOpenPayFlow()"><i class="ti ti-plus"></i> تسجيل دفعة جديدة</button>
+      <button class="btn btn-sm" onclick="fiPrintPaymentsReport()"><i class="ti ti-printer"></i> كشف PDF</button>
       <button class="btn btn-sm" onclick="fiExportExcel()"><i class="ti ti-file-spreadsheet"></i> تصدير Excel</button>
     </div>
     <div class="tw" style="max-height:280px"><table>
@@ -335,6 +336,56 @@ async function fiPrintReceipt(receiptNo) {
       <div><div style="border-top:1px solid #333;padding-top:6px">توقيع المستلم</div></div>
       <div><div style="border-top:1px solid #333;padding-top:6px">توقيع الموظف المسؤول</div></div>
     </div>`;
+  openPrint(html);
+}
+
+// كشف عام بكل الدافعين مجمَّعين حسب رقم السند (يُظهر كل من شملهم سند واحد معاً بنفس الرقم)
+// + ملخّص في الأعلى بعدد السندات والقيمة المحصَّلة والمُسترجَعة والصافي
+function fiPrintPaymentsReport() {
+  const p = FI_PARTICIPANT;
+  const paid = (p.students||[]).filter(s => s.payment_status === 'paid');
+  const refunded = (p.students||[]).filter(s => s.payment_status === 'refunded');
+  const totalCollected = [...paid, ...refunded].reduce((a,s) => a + (Number(s.payment_amount)||0), 0);
+  const totalRefunded = refunded.reduce((a,s) => a + (Number(s.refund_amount)||0), 0);
+  const net = totalCollected - totalRefunded;
+
+  const byReceipt = {};
+  paid.forEach(s => {
+    const rn = s.receipt_no || 0;
+    (byReceipt[rn] = byReceipt[rn] || []).push(s);
+  });
+  const receiptNos = Object.keys(byReceipt).map(Number).sort((a,b) => a-b);
+
+  let rowNum = 0;
+  const rowsHTML = receiptNos.map(rn => {
+    const group = byReceipt[rn];
+    const groupTotal = group.reduce((a,s) => a + (Number(s.payment_amount)||0), 0);
+    return group.map((s,gi) => {
+      rowNum++;
+      return `<tr>
+        <td>${rowNum}</td><td>${fiEsc(s.name)}</td><td>${fiEsc(s.id)}</td>
+        ${gi===0 ? `<td rowspan="${group.length}">#${rn}</td><td rowspan="${group.length}">${fiEsc(group[0].paid_by||'')}</td><td rowspan="${group.length}">${fiMoney(groupTotal)}</td>` : ''}
+      </tr>`;
+    }).join('');
+  }).join('');
+
+  const html = `
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">${fiDate(new Date())}</div>
+    </div>
+    <div class="ptitle">كشف الدفعات المالية — ${fiEsc(p.activity)}</div>
+    <div class="fg2">
+      <div class="fr"><div class="fl">عدد السندات الصادرة</div><div class="fv">${receiptNos.length}</div></div>
+      <div class="fr"><div class="fl">عدد الطلبة الدافعين حالياً</div><div class="fv">${paid.length}</div></div>
+      <div class="fr"><div class="fl">إجمالي المُحصَّل</div><div class="fv">${fiMoney(totalCollected)}</div></div>
+      <div class="fr"><div class="fl">إجمالي المُسترجَع</div><div class="fv">${fiMoney(totalRefunded)}</div></div>
+      <div class="fr"><div class="fl">الصافي</div><div class="fv" style="font-weight:700">${fiMoney(net)}</div></div>
+    </div>
+    <table class="ptbl"><thead><tr><th>#</th><th>اسم الطالب</th><th>الرقم الجامعي</th><th>رقم السند</th><th>دُفع بواسطة</th><th>قيمة السند</th></tr></thead><tbody>
+      ${rowsHTML || `<tr><td colspan="6" style="text-align:center">لا يوجد دافعون حالياً</td></tr>`}
+    </tbody></table>`;
   openPrint(html);
 }
 
