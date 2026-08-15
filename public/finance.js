@@ -178,19 +178,34 @@ function fiRenderMain() {
       <button class="btn btn-sm" onclick="fiPrintPaymentsReport()"><i class="ti ti-printer"></i> كشف PDF</button>
       <button class="btn btn-sm" onclick="fiExportExcel()"><i class="ti ti-file-spreadsheet"></i> تصدير Excel</button>
     </div>
+    <input type="text" id="fi-main-search" placeholder="🔍 ابحثي بالاسم أو الرقم الجامعي..." oninput="fiFilterMainList()" autocomplete="off" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:8px">
     <div class="tw" style="max-height:280px"><table>
       <thead><tr><th>#</th><th>الاسم</th><th>الرقم الجامعي</th><th>الحالة</th><th>المبلغ</th><th>السند</th><th>إجراءات</th></tr></thead>
-      <tbody>${students.map((s,i) => `
-        <tr>
+      <tbody id="fi-main-tbody">${students.map((s,i) => `
+        <tr class="fi-main-row" data-search="${fiEsc((s.name+' '+s.id).toLowerCase())}">
           <td>${i+1}</td><td>${fiEsc(s.name)}</td><td>${fiEsc(s.id)}</td>
           <td>${fiStatusBadge(s.payment_status)}</td>
           <td>${s.payment_status==='paid'?fiMoney(s.payment_amount):(s.payment_status==='refunded'?'مُسترجَع '+fiMoney(s.refund_amount):'—')}</td>
           <td>${s.receipt_no?`<a href="#" onclick="fiPrintReceipt(${s.receipt_no});return false" style="color:var(--g)">#${s.receipt_no}</a>`:'—'}</td>
           <td>${s.payment_status==='paid'?`<button class="btn btn-sm" style="color:#c0392b" onclick="fiOpenRefund('${fiEsc(s.id)}')">استرجاع</button>`:''}</td>
         </tr>`).join('')}</tbody>
-    </table></div>
+    </table>
+    <div id="fi-main-noresults" style="display:none;font-size:12px;color:var(--muted);padding:8px;text-align:center">لا توجد نتائج مطابقة</div>
+    </div>
     <button class="btn" style="width:100%;margin-top:10px" onclick="fiCloseModal()">إغلاق</button>`;
   modal.classList.add('open');
+}
+
+function fiFilterMainList() {
+  const q = document.getElementById('fi-main-search').value.trim().toLowerCase();
+  const rows = document.querySelectorAll('.fi-main-row');
+  let visible = 0;
+  rows.forEach(el => {
+    const match = !q || el.dataset.search.includes(q);
+    el.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('fi-main-noresults').style.display = visible ? 'none' : 'block';
 }
 
 function fiStatusBadge(status) {
