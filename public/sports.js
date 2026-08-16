@@ -634,10 +634,8 @@ function spExportExcel() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// شاشة "علامات لجنة التحكيم" (الاختبار) — إدخال أسماء اللجنة، طباعة كشوف تقييم
-// ورقية فارغة لتُمنح للجنة، ثم إدخال علاماتهم بعد المقابلات.
-// آلية الاحتساب: كل عضو يمنح علامة من (60 ÷ عدد الأعضاء)، فيكون
-// مجموع علامات اللجنة دائماً من 60 بغض النظر عن عدد الأعضاء (2 إلى 5) —
+// شاشة "علامات لجنة التحكيم" (الاختبار) — لكل لعبة لجنة مستقلة (3 إلى 5 أعضاء)
+// آلية الاحتساب: كل عضو يمنح علامة كاملة من (60)، وعلامة اللجنة النهائية = متوسط علامات الأعضاء المُدخَلة (يبقى الناتج من 60 دائماً) —
 // علامة الثانوية = المعدل × 0.2 (من 20)، علامة نوع النموذج ثابتة (من 20) حسب الفئة المختارة عند التقديم
 // العلامة النهائية = علامة اللجنة (60) + علامة الثانوية (20) + علامة نوع النموذج (20) = من 100
 // ══════════════════════════════════════════════════════════════
@@ -691,12 +689,12 @@ function scRenderGameBody() {
   if (!container) return;
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   const n = members.length;
-  const per = n ? 60 / n : 0;
+  const per = 60;
 
   container.innerHTML = `
   <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">أعضاء لجنة "${spEsc(SC_CURRENT_GAME)}" (من 3 إلى 5 أعضاء)</div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُحسب علامة كل عضو تلقائياً من (60 ÷ عدد الأعضاء المدخلين هنا)، بحيث يكون مجموع علامات اللجنة دائماً من 60 مهما كان العدد الفعلي. تُحتسَب العلامة النهائية من: علامة اللجنة (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع. هذه اللجنة خاصة بلعبة "${spEsc(SC_CURRENT_GAME)}" فقط ومستقلة عن بقية الألعاب.</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">يمنح كل عضو علامة كاملة من (60)، وتُحتسَب علامة اللجنة تلقائياً كمتوسط علامات جميع الأعضاء المُدخَلين (يبقى الناتج دائماً من 60 كحد أقصى). تُحتسَب العلامة النهائية من: علامة اللجنة (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع. هذه اللجنة خاصة بلعبة "${spEsc(SC_CURRENT_GAME)}" فقط ومستقلة عن بقية الألعاب.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
       ${[0,1,2,3,4].map(i => `
       <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
@@ -777,13 +775,13 @@ function scRenderTable() {
   if (!tbody) return;
   const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME));
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد متقدمون للعبة "${spEsc(SC_CURRENT_GAME)}"</td></tr>`; return; }
-  const per = 60 / members.length;
+  const per = 60;
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];
     const hs = r.gpa ? (parseFloat(r.gpa) * 0.2) : 0;
     const nom = spNominationScore(r.nomination_type) || 0;
     const filled = scores.filter(v => v != null && v !== '');
-    const cscore = filled.length ? filled.reduce((a,b)=>a+(+b||0),0) : null;
+    const cscore = filled.length ? filled.reduce((a,b)=>a+(+b||0),0) / filled.length : null;
     return `<tr data-id="${r.id}" data-hs="${hs}" data-nom="${nom}">
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)} <button class="btn btn-sm" style="padding:2px 6px" onclick="scViewApplicant('${r.id}')" title="عرض بيانات الطالب"><i class="ti ti-eye"></i></button></td>
@@ -802,7 +800,7 @@ function scRecalc(input) {
   const nom = parseFloat(tr.dataset.nom) || 0;
   const vals = Array.from(tr.querySelectorAll('.sc-score')).map(el => el.value === '' ? null : parseFloat(el.value));
   const filled = vals.filter(v => v != null);
-  const cscore = filled.length ? filled.reduce((a,b)=>a+b, 0) : null;
+  const cscore = filled.length ? filled.reduce((a,b)=>a+b, 0) / filled.length : null;
   tr.querySelector('.sc-cscore').textContent = cscore!=null ? spPct(cscore) : '—';
   tr.querySelector('.sc-final').textContent = cscore!=null ? spPct(cscore+hs+nom) : '—';
 }
@@ -849,8 +847,8 @@ async function scSaveAll() {
     const nom = parseFloat(tr.dataset.nom) || 0;
     const committee_scores = Array.from(tr.querySelectorAll('.sc-score')).map(el => el.value === '' ? null : parseFloat(el.value));
     const filled = committee_scores.filter(v => v != null);
-    const committee_total = filled.length ? filled.reduce((a,b)=>a+b, 0) : null;
-    const committee_score = committee_total;
+    const committee_total = filled.length ? filled.reduce((a,b)=>a+b, 0) : null; // مجموع خام (للمرجعية فقط)
+    const committee_score = filled.length ? committee_total / filled.length : null; // متوسط علامات الأعضاء (من 60)
     const final_score = filled.length ? committee_score + hs + nom : null;
     return api('/api/sports_excellence/'+id, 'PUT', { committee_scores, committee_total, committee_score, hs_score: hs, nomination_score: nom, final_score });
   });
@@ -880,7 +878,7 @@ function scPrintGradingSheet() {
   if (!rows.length) { alert('لا يوجد متقدمون لهذه اللعبة'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
-  const per = (60 / members.length).toFixed(1);
+  const per = '60';
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
     <div class="ph2">
@@ -909,7 +907,7 @@ function scPrintFinalReport() {
   if (!rows.length) { alert('لا يوجد متقدمون لهذه اللعبة'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
-  const per = (60 / members.length).toFixed(1);
+  const per = '60';
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
     <div class="ph2">
