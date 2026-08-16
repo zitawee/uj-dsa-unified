@@ -719,6 +719,109 @@ function spExportExcel() {
 
 let SC_CURRENT_GAME = '';
 
+// ══════════════════════════════════════════════════════════════
+// شاشة "نماذج الطلبات" — عرض كل شهادات نماذج التفوق الرياضي المُعبَّأة عبر الرابط العام،
+// حالتها (مستخدَمة/غير مستخدَمة)، وربطها بالطلب الذي استُخدمت فيه إن وُجد
+// ══════════════════════════════════════════════════════════════
+let SP_CERT_ROWS = [];
+
+async function loadSportsCertificates() {
+  const panel = document.getElementById('panel-sports_certificate');
+  if (!panel) return;
+  panel.innerHTML = `<div class="ph"><div><div class="pt">نماذج الطلبات</div><div class="ps">شهادات نماذج التفوق الرياضي المُعبَّأة عبر الرابط العام</div></div></div>
+    <div class="card"><div class="center" style="padding:24px">جارٍ التحميل...</div></div>`;
+
+  const rows = await api('/api/sports_certificate');
+  if (!Array.isArray(rows)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
+  SP_CERT_ROWS = rows;
+
+  panel.innerHTML = `
+  <div class="ph"><div><div class="pt">نماذج الطلبات</div><div class="ps">شهادات نماذج التفوق الرياضي المُعبَّأة عبر الرابط العام — ${rows.length} شهادة</div></div></div>
+
+  <div class="card">
+    <div class="fb">
+      <input type="text" id="spc-q" placeholder="بحث بالاسم أو الرقم المرجعي..." style="flex:1;min-width:180px" oninput="spcRender()">
+      <select id="spc-f-status" onchange="spcRender()"><option value="">كل الحالات</option><option value="used">مُستخدَمة</option><option value="unused">غير مُستخدَمة</option></select>
+      <select id="spc-f-model" onchange="spcRender()"><option value="">كل النماذج</option>${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}">نموذج رقم (${n})</option>`).join('')}</select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tw"><table>
+      <thead><tr>
+        <th>#</th><th>الرقم المرجعي</th><th>رقم النموذج</th><th>اسم اللاعب/ـة</th><th>اللعبة</th><th>الحالة</th><th>الطلب المرتبط</th><th>تاريخ التعبئة</th><th>إجراءات</th>
+      </tr></thead>
+      <tbody id="spc-tbody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="modal-ov" id="spc-modal" onclick="if(event.target===this) spcCloseModal()"><div class="modal" style="max-width:520px;max-height:88vh;overflow-y:auto" id="spc-modal-body"></div></div>`;
+
+  if (!window.__spcEscBound) {
+    window.__spcEscBound = true;
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') spcCloseModal(); });
+  }
+  spcRender();
+}
+function spcCloseModal() { document.getElementById('spc-modal')?.classList.remove('open'); }
+
+function spcRender() {
+  const q = (document.getElementById('spc-q')?.value || '').trim().toLowerCase();
+  const statusF = document.getElementById('spc-f-status')?.value || '';
+  const modelF = document.getElementById('spc-f-model')?.value || '';
+  let rows = SP_CERT_ROWS.filter(r => {
+    if (statusF === 'used' && !r.used) return false;
+    if (statusF === 'unused' && r.used) return false;
+    if (modelF && String(r.model_number) !== modelF) return false;
+    if (q && !((r.player_name||'').toLowerCase().includes(q) || (r.ref_code||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const tb = document.getElementById('spc-tbody');
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="9" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
+  tb.innerHTML = rows.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td style="font-family:monospace">${spEsc(r.ref_code)}</td>
+      <td>نموذج (${r.model_number})</td>
+      <td>${spEsc(r.player_name)}</td>
+      <td>${spEsc(r.game)}</td>
+      <td>${r.used ? '<span style="color:#c0392b;font-weight:700">مُستخدَمة</span>' : '<span style="color:var(--g);font-weight:700">غير مُستخدَمة</span>'}</td>
+      <td>${r.used_in_application_ref ? spEsc(r.used_in_application_ref) : '—'}</td>
+      <td>${spDate(r.createdAt)}</td>
+      <td>
+        <button class="btn btn-sm" onclick="spcView('${r.id}')" title="عرض التفاصيل"><i class="ti ti-eye"></i></button>
+        <button class="btn btn-sm" style="color:#c0392b" onclick="spcDelete('${r.id}')" title="حذف"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`).join('');
+}
+
+function spcView(id) {
+  const r = SP_CERT_ROWS.find(x => x.id === id); if (!r) return;
+  const skipKeys = ['id','_id','__v','ref_code','player_name','game','model_number','model_label','used','used_in_application_ref','used_at','createdAt','updatedAt'];
+  const extraRows = Object.keys(r).filter(k => !skipKeys.includes(k) && r[k]).map(k => `<div class="fr"><div class="fl">${spEsc(k)}</div><div class="fv">${spEsc(r[k])}</div></div>`).join('');
+  document.getElementById('spc-modal-body').innerHTML = `
+    <h3>تفاصيل الشهادة</h3>
+    <div class="fr"><div class="fl">الرقم المرجعي</div><div class="fv" style="font-family:monospace">${spEsc(r.ref_code)}</div></div>
+    <div class="fr"><div class="fl">رقم النموذج</div><div class="fv">نموذج (${r.model_number})</div></div>
+    <div class="fr"><div class="fl">الوصف</div><div class="fv">${spEsc(r.model_label)}</div></div>
+    <div class="fr"><div class="fl">اسم اللاعب/ـة</div><div class="fv">${spEsc(r.player_name)}</div></div>
+    <div class="fr"><div class="fl">اللعبة</div><div class="fv">${spEsc(r.game)}</div></div>
+    ${extraRows}
+    <div class="fr"><div class="fl">الحالة</div><div class="fv">${r.used ? 'مُستخدَمة في طلب رقم '+spEsc(r.used_in_application_ref) : 'غير مُستخدَمة بعد'}</div></div>
+    <div class="fr"><div class="fl">تاريخ التعبئة</div><div class="fv">${spDate(r.createdAt)}</div></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" style="flex:1" onclick="spcCloseModal()">إغلاق</button>
+    </div>`;
+  document.getElementById('spc-modal').classList.add('open');
+}
+
+async function spcDelete(id) {
+  if (!confirm('هل تريدين حذف هذه الشهادة نهائياً؟')) return;
+  const r = await api('/api/sports_certificate/'+id, 'DELETE');
+  if (r.error) { alert(r.error); return; }
+  loadSportsCertificates();
+}
+
 async function loadSportsCommittee() {
   const panel = document.getElementById('panel-sports_committee');
   if (!panel) return;

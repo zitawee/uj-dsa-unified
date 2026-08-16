@@ -70,6 +70,7 @@
   <div class="card">
     <h1>طلب الالتحاق للدراسة على أساس التفوق الرياضي</h1>
     <p class="sub">يرجى تعبئة كل الحقول المطلوبة (*) بدقة. سيصلك رقم مرجعي لمتابعة حالة طلبك بعد الإرسال.</p>
+    <a href="/sports-certificate.html" target="_blank" style="display:block;text-align:center;margin-top:10px;background:#F7F9F6;border:1px dashed var(--g);border-radius:var(--r);padding:10px 12px;color:var(--g);font-weight:700;font-size:12.5px;text-decoration:none">📄 لم تُعبّئ شهادة النموذج بعد؟ اضغطي هنا لتعبئتها وطباعتها أولاً</a>
   </div>
 
   <div id="closedArea" style="display:none">
@@ -168,6 +169,8 @@
           <div id="f-nomination-desc" style="min-height:44px;border:1px solid var(--border);border-radius:var(--r);padding:11px 12px;font-size:13px;background:#F7F9F6;line-height:1.5">—</div>
         </div>
       </div>
+      <div><label>الرقم المرجعي لشهادة النموذج (إن كانت مُعبّأة إلكترونياً مسبقاً)</label><input id="f-cert-ref" type="text" placeholder="مثال: CERT-A7K92X" style="text-transform:uppercase"></div>
+      <p class="sub" style="margin-top:-8px">اختياري — إن كنتِ قد عبّأتِ الشهادة عبر الرابط أعلى الصفحة، أدخلي الرقم المرجعي هنا لربطها تلقائياً بطلبك.</p>
     </div>
 
     <div class="card">
@@ -378,7 +381,7 @@ async function submitApp() {
     equivalency_doc: equivDoc, arab_branch: arabBranch,
     address, phone, phone_alt: phoneAlt,
     majors: [major1, major2, major3],
-    nomination_type: nomination, photo: PHOTO_DATA, agree,
+    nomination_type: nomination, cert_ref_code: v('f-cert-ref').toUpperCase(), photo: PHOTO_DATA, agree,
     captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
   };
 
