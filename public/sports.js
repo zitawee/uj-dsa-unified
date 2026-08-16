@@ -170,7 +170,7 @@ async function loadSports() {
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick="spSaveHigherCommittee()"><i class="ti ti-device-floppy"></i> حفظ أسماء اللجنة العليا</button>
-      <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="spPrintPassedList()"><i class="ti ti-printer"></i> طباعة كشف الطلبة الناجحين (المحدَّدين بـ "مقبول")</button>
+      <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="spOpenPassedListPrintFields()"><i class="ti ti-printer"></i> طباعة كشف الطلبة الناجحين (المحدَّدين بـ "مقبول")</button>
     </div>
   </div>
 
@@ -638,6 +638,26 @@ async function spSaveHigherCommittee() {
   alert('✅ تم حفظ أسماء اللجنة العليا');
 }
 
+// نافذة اختيار الحقول قبل طباعة كشف الناجحين (بنفس أسلوب "قائمة مخصصة")
+const SP_PASSED_LIST_DEFAULT_COLS = ['gender','seat_number','game_types','school','final_score'];
+function spOpenPassedListPrintFields() {
+  const members = (SP_SETTINGS.higher_committee || []);
+  if (!members.length) { alert('يرجى إدخال أسماء اللجنة العليا أولاً'); return; }
+  const passedCount = SP_ROWS.filter(r => r.status === 'passed').length;
+  if (!passedCount) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" حتى الآن'); return; }
+  document.getElementById('sp-modal-body').innerHTML = `
+    <h3>الحقول المطلوب إدراجها في كشف الناجحين</h3>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">عمود "اسم الطالب" يظهر دائماً. اختاري أي حقول إضافية تريدين عرضها بجانبه في الكشف المطبوع (${passedCount} طالب/طالبة).</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+      ${SP_FIELDS.filter(f=>f.key!=='full_name').map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sp-pl-col" value="${f.key}"${SP_PASSED_LIST_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="spPrintPassedList()"><i class="ti ti-printer"></i> طباعة الكشف</button>
+      <button class="btn" onclick="spCloseModal()">إغلاق</button>
+    </div>`;
+  document.getElementById('sp-modal').classList.add('open');
+}
+
 // كشف مختصر بأسماء الطلبة الذين وُضعت عليهم إشارة "مقبول" (اختيار اللجنة العليا النهائي) — صفحة واحدة، موقّعة من اللجنة العليا
 function spPrintPassedList() {
   const members = (SP_SETTINGS.higher_committee || []);
@@ -645,6 +665,8 @@ function spPrintPassedList() {
   const passed = SP_ROWS.filter(r => r.status === 'passed')
     .sort((a,b) => (a.game_types?.[0]||'').localeCompare(b.game_types?.[0]||'', 'ar') || (b.final_score||0)-(a.final_score||0));
   if (!passed.length) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" حتى الآن'); return; }
+  const extraKeys = Array.from(document.querySelectorAll('.sp-pl-col:checked')).map(el => el.value);
+  const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
     <div class="ph2">
@@ -655,14 +677,16 @@ function spPrintPassedList() {
     <div class="ptitle">كشف أسماء الطلبة الناجحين — التفوق الرياضي</div>
     <div style="text-align:center;font-size:11pt;margin-bottom:10px">العدد الإجمالي: ${passed.length} طالب/طالبة</div>
     <table class="ptbl"><thead><tr>
-      <th>#</th><th>اسم الطالب</th><th>الجنس</th><th>رقم الجلوس</th><th>نوع اللعبة</th><th>المدرسة</th><th>العلامة النهائية</th>
+      <th>#</th><th>اسم الطالب</th>
+      ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
     </tr></thead><tbody>
-      ${passed.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td><td style="text-align:center">${spEsc(r.gender)}</td><td style="text-align:center">${spEsc(r.seat_number)}</td><td style="text-align:center">${(r.game_types||[]).map(spEsc).join('، ')}</td><td style="text-align:right">${spEsc(r.school)}</td><td style="text-align:center;font-weight:700">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`).join('')}
+      ${passed.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}</tr>`).join('')}
     </tbody></table>
     <div style="margin-top:50px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt;page-break-inside:avoid">
       ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${spEsc(m.title)||'&nbsp;'}</div><div style="margin-top:60px;font-weight:700">${spEsc(m.name)}</div></div>`).join('')}
     </div>`;
   openPrint(html);
+  spCloseModal();
 }
 
 // ── تصدير Excel ──
