@@ -159,6 +159,22 @@ async function loadSports() {
   </div>
 
   <div class="card">
+    <div style="font-weight:700;color:var(--g);margin-bottom:8px">اللجنة العليا للتفوق الرياضي (5 أعضاء) — تختار الناجحين النهائيين من بين كل المتقدمين، عبر كل الألعاب</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">هذه اللجنة مستقلة تماماً عن لجان الاختبار الخاصة بكل لعبة. أسماؤها تظهر فقط في توقيع "كشف الطلبة الناجحين" النهائي أدناه.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+      ${[0,1,2,3,4].map(i => `
+      <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
+        <div class="fg"><label>العضو ${i+1} — الاسم</label><input type="text" id="sp-hc-m-${i}" value="${spEsc((settings?.higher_committee||[])[i]?.name||'')}" placeholder="اسم العضو..."></div>
+        <div class="fg" style="margin-top:6px"><label>الاسم الوظيفي</label><input type="text" id="sp-hc-t-${i}" value="${spEsc((settings?.higher_committee||[])[i]?.title||'')}" placeholder="مثال: عميد شؤون الطلبة..."></div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="spSaveHigherCommittee()"><i class="ti ti-device-floppy"></i> حفظ أسماء اللجنة العليا</button>
+      <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="spPrintPassedList()"><i class="ti ti-printer"></i> طباعة كشف الطلبة الناجحين (المحدَّدين بـ "مقبول")</button>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="fb">
       <input type="text" id="sp-q" placeholder="بحث بالاسم أو الهاتف أو المدرسة..." style="flex:1;min-width:180px" oninput="spRender()">
       <select id="sp-f-status" onchange="spRender()"><option value="">كل الحالات</option>${Object.entries(SP_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select>
@@ -609,6 +625,43 @@ function printSelectedSports() {
     const r = SP_ROWS.find(x => x.id === id); if (!r) return '';
     return `${i>0 ? '<div style="page-break-before:always"></div>' : ''}${spPrintRecordHTML(r)}`;
   }).join('');
+  openPrint(html);
+}
+
+async function spSaveHigherCommittee() {
+  const members = [0,1,2,3,4]
+    .map(i => ({ name: document.getElementById('sp-hc-m-'+i).value.trim(), title: document.getElementById('sp-hc-t-'+i).value.trim() }))
+    .filter(m => m.name);
+  SP_SETTINGS.higher_committee = members;
+  const r = await api('/api/sports_excellence/settings', 'PUT', SP_SETTINGS);
+  if (r.error) { alert(r.error); return; }
+  alert('✅ تم حفظ أسماء اللجنة العليا');
+}
+
+// كشف مختصر بأسماء الطلبة الذين وُضعت عليهم إشارة "مقبول" (اختيار اللجنة العليا النهائي) — صفحة واحدة، موقّعة من اللجنة العليا
+function spPrintPassedList() {
+  const members = (SP_SETTINGS.higher_committee || []);
+  if (!members.length) { alert('يرجى إدخال أسماء اللجنة العليا أولاً'); return; }
+  const passed = SP_ROWS.filter(r => r.status === 'passed')
+    .sort((a,b) => (a.game_types?.[0]||'').localeCompare(b.game_types?.[0]||'', 'ar') || (b.final_score||0)-(a.final_score||0));
+  if (!passed.length) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" حتى الآن'); return; }
+  const html = `
+    ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">${spDate(new Date())}</div>
+    </div>
+    <div class="ptitle">كشف أسماء الطلبة الناجحين — التفوق الرياضي</div>
+    <div style="text-align:center;font-size:11pt;margin-bottom:10px">العدد الإجمالي: ${passed.length} طالب/طالبة</div>
+    <table class="ptbl"><thead><tr>
+      <th>#</th><th>اسم الطالب</th><th>الجنس</th><th>رقم الجلوس</th><th>نوع اللعبة</th><th>المدرسة</th><th>العلامة النهائية</th>
+    </tr></thead><tbody>
+      ${passed.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td><td style="text-align:center">${spEsc(r.gender)}</td><td style="text-align:center">${spEsc(r.seat_number)}</td><td style="text-align:center">${(r.game_types||[]).map(spEsc).join('، ')}</td><td style="text-align:right">${spEsc(r.school)}</td><td style="text-align:center;font-weight:700">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`).join('')}
+    </tbody></table>
+    <div style="margin-top:50px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt;page-break-inside:avoid">
+      ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${spEsc(m.title)||'&nbsp;'}</div><div style="margin-top:60px;font-weight:700">${spEsc(m.name)}</div></div>`).join('')}
+    </div>`;
   openPrint(html);
 }
 
