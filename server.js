@@ -159,17 +159,27 @@ function genSportsRef() {
   return 'SP-' + s;
 }
 // نوع نموذج التفوق الرياضي: كل فئة تحمل علامة ثابتة (من 20) — يُتحقَّق منها هنا ويُخزَّن الاسم فقط في السجل
-const SPORTS_NOMINATION_SCORES = {
-  'لاعب منتخب وطني مثّل الأردن': 20,
-  'لاعب منتخب وطني': 19,
-  'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.': 17,
-  'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.': 16,
-  'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.': 14,
-  'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.': 13,
-  'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.': 11,
-  'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.': 10,
-};
+const SPORTS_NOMINATION_MODELS = [
+  { num: 1, label: 'لاعب منتخب وطني مثّل الأردن', score: 20 },
+  { num: 2, label: 'لاعب منتخب وطني', score: 19 },
+  { num: 3, label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.', score: 17 },
+  { num: 4, label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.', score: 16 },
+  { num: 5, label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.', score: 14 },
+  { num: 6, label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.', score: 13 },
+  { num: 7, label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.', score: 11 },
+  { num: 8, label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.', score: 10 },
+];
+const SPORTS_NOMINATION_SCORES = Object.fromEntries(SPORTS_NOMINATION_MODELS.map(m => [m.label, m.score]));
+const SPORTS_NOMINATION_NUM_BY_LABEL = Object.fromEntries(SPORTS_NOMINATION_MODELS.map(m => [m.label, m.num]));
 const SPORTS_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج'];
+
+// ══ نماذج شهادات التفوق الرياضي (تُعبَّأ وتُطبَع من قِبل الجهة المانحة/الطالب قبل تقديم الطلب، ثم تُربَط بالطلب عبر رقم مرجعي فريد) ══
+const SportsCertificate = mongoose.model('sports_certificate', new mongoose.Schema({}, { strict:false, timestamps:true }));
+function genCertRef() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = ''; for (let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return 'CERT-' + s;
+}
 
 // ══ نظام حجز الغرف الفندقية — وحدة مستقلة قابلة لإعادة الاستخدام لأي نشاط
 // (رحلات، معسكرات...)، الوصول لإدارتها مقصور على admin فقط.
@@ -455,6 +465,18 @@ app.post('/api/public/sports-excellence', async (req, res) => {
       return res.status(400).json({ error: 'يرجى اختيار نوع لعبة واحدة صحيحة على الأقل' });
     if (!data.nomination_type || !(data.nomination_type in SPORTS_NOMINATION_SCORES))
       return res.status(400).json({ error: 'يرجى اختيار نوع نموذج التفوق الرياضي' });
+
+    // الرقم المرجعي لشهادة النموذج (اختياري) — إن أُدخل، يجب أن يكون صحيحاً وغير مُستخدَم سابقاً ومطابقاً لرقم النموذج المُختار
+    const certRefCode = (data.cert_ref_code || '').trim().toUpperCase();
+    let certDoc = null;
+    if (certRefCode) {
+      certDoc = await SportsCertificate.findOne({ ref_code: certRefCode }).lean();
+      if (!certDoc) return res.status(400).json({ error: 'الرقم المرجعي لشهادة النموذج غير صحيح' });
+      if (certDoc.used) return res.status(400).json({ error: 'هذا الرقم المرجعي مُستخدَم مسبقاً في طلب آخر' });
+      const expectedNum = SPORTS_NOMINATION_NUM_BY_LABEL[data.nomination_type];
+      if (certDoc.model_number !== expectedNum)
+        return res.status(400).json({ error: `الرقم المرجعي المُدخَل يخص نموذج رقم (${certDoc.model_number})، وهذا لا يطابق نوع النموذج المُختار أعلاه` });
+    }
     if (!data.photo || !String(data.photo).startsWith('data:image/'))
       return res.status(400).json({ error: 'يرجى إرفاق الصورة الشخصية (إلزامية)' });
     if (!data.agree) return res.status(400).json({ error: 'يرجى الموافقة على إقرار صحة البيانات' });
@@ -466,9 +488,42 @@ app.post('/api/public/sports-excellence', async (req, res) => {
     data.status = 'pending';
     data.nomination_score = SPORTS_NOMINATION_SCORES[data.nomination_type];
     data.submitted_ip = ip;
+    if (certRefCode) data.cert_ref_code = certRefCode;
 
     const doc = await SportsApp.create(data);
+    if (certDoc) {
+      await SportsCertificate.findByIdAndUpdate(certDoc._id, { used: true, used_in_application_ref: doc.ref_code, used_at: new Date() });
+    }
     res.json({ id: doc._id, ref_code: doc.ref_code, message: 'تم استلام طلبك بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ نماذج شهادات التفوق الرياضي — تعبئة وطباعة عامة بدون تسجيل دخول (بحماية كابتشا)، قبل تقديم الطلب الرئيسي ══
+app.post('/api/public/sports-certificate', async (req, res) => {
+  try {
+    const { captcha_token, captcha_answer } = req.body;
+    const cap = publicCaptchas[captcha_token];
+    if (!cap || Date.now() > cap.expires || Number(captcha_answer) !== cap.answer)
+      return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[captcha_token];
+
+    const data = { ...req.body };
+    delete data.captcha_token; delete data.captcha_answer;
+
+    const modelNumber = Number(data.model_number);
+    const modelDef = SPORTS_NOMINATION_MODELS.find(m => m.num === modelNumber);
+    if (!modelDef) return res.status(400).json({ error: 'يرجى اختيار رقم نموذج صحيح (من 1 إلى 8)' });
+    const playerName = (data.player_name || '').trim();
+    if (!playerName) return res.status(400).json({ error: 'يرجى إدخال اسم اللاعب/ـة' });
+    if (!data.game || !SPORTS_GAME_TYPES.includes(data.game)) return res.status(400).json({ error: 'يرجى اختيار اللعبة' });
+
+    data.model_number = modelNumber;
+    data.model_label = modelDef.label;
+    data.ref_code = genCertRef();
+    data.used = false;
+
+    const doc = await SportsCertificate.create(data);
+    res.json({ id: doc._id, ref_code: doc.ref_code, message: 'تم حفظ نموذج الشهادة بنجاح' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1048,6 +1103,21 @@ app.put('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
 app.delete('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
   try {
     await SportsApp.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ نماذج شهادات التفوق الرياضي — إدارة داخلية (admin فقط) ══
+app.get('/api/sports_certificate', auth(['admin']), async (req, res) => {
+  try {
+    const docs = await SportsCertificate.find({}).sort({ createdAt: -1 }).lean();
+    res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/sports_certificate/:id', auth(['admin']), async (req, res) => {
+  try {
+    await SportsCertificate.findByIdAndDelete(req.params.id);
     res.json({ message: 'تم الحذف' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
