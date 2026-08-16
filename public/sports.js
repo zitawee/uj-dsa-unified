@@ -642,10 +642,12 @@ function spExportExcel() {
 // العلامة النهائية = علامة اللجنة (60) + علامة الثانوية (20) + علامة نوع النموذج (20) = من 100
 // ══════════════════════════════════════════════════════════════
 
+let SC_CURRENT_GAME = '';
+
 async function loadSportsCommittee() {
   const panel = document.getElementById('panel-sports_committee');
   if (!panel) return;
-  panel.innerHTML = `<div class="ph"><div><div class="pt">علامات لجنة التحكيم</div><div class="ps">إدخال أسماء اللجنة، وتجهيز كشوف التقييم، وإدخال العلامات</div></div></div>
+  panel.innerHTML = `<div class="ph"><div><div class="pt">علامات لجنة التحكيم</div><div class="ps">لكل لعبة لجنة تحكيم مستقلة بأعضائها الخاصين</div></div></div>
     <div class="card"><div class="center" style="padding:24px">جارٍ التحميل...</div></div>`;
 
   const [rows, settings] = await Promise.all([
@@ -655,50 +657,19 @@ async function loadSportsCommittee() {
   if (!Array.isArray(rows)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
   SP_ROWS = rows;
   SP_SETTINGS = settings || {};
-  const members = spCommitteeMembers();
-  const n = members.length;
-  const per = n ? 60 / n : 0;
+  if (!SP_SETTINGS.committee_members_by_game) SP_SETTINGS.committee_members_by_game = {};
+  if (!SC_CURRENT_GAME) SC_CURRENT_GAME = SP_GAME_TYPES[0];
 
   panel.innerHTML = `
-  <div class="ph"><div><div class="pt">علامات لجنة التحكيم</div><div class="ps">إدخال أسماء اللجنة، وتجهيز كشوف التقييم، وإدخال العلامات</div></div></div>
+  <div class="ph"><div><div class="pt">علامات لجنة التحكيم</div><div class="ps">لكل لعبة لجنة تحكيم مستقلة بأعضائها الخاصين (3 أعضاء كحد أدنى، 5 كحد أقصى)</div></div></div>
 
   <div class="card">
-    <div style="font-weight:700;color:var(--g);margin-bottom:8px">أعضاء اللجنة (من عضوين إلى 5 أعضاء)</div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُحسب علامة كل عضو تلقائياً من (60 ÷ عدد الأعضاء المدخلين هنا)، بحيث يكون مجموع علامات اللجنة دائماً من 60 مهما كان العدد الفعلي. تُحتسَب العلامة النهائية من: علامة اللجنة (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع.</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
-      ${[0,1,2,3,4].map(i => `
-      <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
-        <div class="fg"><label>العضو ${i+1}${i>3?' (اختياري)':''} — الاسم</label><input type="text" id="sc-m-${i}" value="${spEsc(members[i]?.name||'')}" placeholder="اسم العضو..."></div>
-        <div class="fg" style="margin-top:6px"><label>الاسم الوظيفي</label><input type="text" id="sc-t-${i}" value="${spEsc(members[i]?.title||'')}" placeholder="مثال: عميد شؤون الطلبة..."></div>
-      </div>`).join('')}
-    </div>
-    <button class="btn btn-sm" style="margin-top:10px" onclick="scSaveCommittee()"><i class="ti ti-device-floppy"></i> حفظ أسماء اللجنة</button>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <div class="fg" style="min-width:180px"><label>تصفية حسب نوع اللعبة</label><select id="sc-f-game" onchange="scRenderTable()"><option value="">كل الألعاب</option>${SP_GAME_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
-      <button class="btn btn-sm" onclick="scOpenPrintFields('blank')"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
-      <button class="btn btn-sm" onclick="scOpenPrintFields('final')"><i class="ti ti-printer"></i> طباعة كشف العلامات النهائي</button>
-      <div style="flex:1"></div>
-      <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="scSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
+    <div class="fg" style="max-width:340px"><label style="font-weight:700;color:var(--g)">اللعبة</label>
+      <select id="sc-game-select" onchange="scSwitchGame(this.value)">${SP_GAME_TYPES.map(t=>`<option value="${spEsc(t)}"${t===SC_CURRENT_GAME?' selected':''}>${spEsc(t)}</option>`).join('')}</select>
     </div>
   </div>
 
-  <div class="card">
-    ${!n ? `<div class="center">يرجى إدخال أسماء أعضاء اللجنة أعلاه أولاً قبل إدخال العلامات</div>` : `
-    <div class="tw"><table>
-      <thead><tr>
-        <th>#</th><th>الاسم</th><th>نوع اللعبة</th>
-        ${members.map(m=>`<th>${spEsc(m.name)}<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من ${per.toFixed(1)})</span></th>`).join('')}
-        <th>علامة الاختبار<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 60)</span></th>
-        <th>علامة الثانوية<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 20)</span></th>
-        <th>علامة نوع النموذج<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 20)</span></th>
-        <th>العلامة النهائية</th>
-      </tr></thead>
-      <tbody id="sc-tbody"></tbody>
-    </table></div>`}
-  </div>
+  <div id="sc-body-container"></div>
 
   <div class="modal-ov" id="sc-modal" onclick="if(event.target===this) scCloseModal()"><div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto" id="sc-modal-body"></div></div>`;
 
@@ -707,20 +678,74 @@ async function loadSportsCommittee() {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') scCloseModal(); });
   }
 
+  scRenderGameBody();
+}
+
+function scSwitchGame(game) {
+  SC_CURRENT_GAME = game;
+  scRenderGameBody();
+}
+
+function scRenderGameBody() {
+  const container = document.getElementById('sc-body-container');
+  if (!container) return;
+  const members = spCommitteeMembers(SC_CURRENT_GAME);
+  const n = members.length;
+  const per = n ? 60 / n : 0;
+
+  container.innerHTML = `
+  <div class="card">
+    <div style="font-weight:700;color:var(--g);margin-bottom:8px">أعضاء لجنة "${spEsc(SC_CURRENT_GAME)}" (من 3 إلى 5 أعضاء)</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُحسب علامة كل عضو تلقائياً من (60 ÷ عدد الأعضاء المدخلين هنا)، بحيث يكون مجموع علامات اللجنة دائماً من 60 مهما كان العدد الفعلي. تُحتسَب العلامة النهائية من: علامة اللجنة (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع. هذه اللجنة خاصة بلعبة "${spEsc(SC_CURRENT_GAME)}" فقط ومستقلة عن بقية الألعاب.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+      ${[0,1,2,3,4].map(i => `
+      <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
+        <div class="fg"><label>العضو ${i+1}${i>2?' (اختياري)':''} — الاسم</label><input type="text" id="sc-m-${i}" value="${spEsc(members[i]?.name||'')}" placeholder="اسم العضو..."></div>
+        <div class="fg" style="margin-top:6px"><label>الاسم الوظيفي</label><input type="text" id="sc-t-${i}" value="${spEsc(members[i]?.title||'')}" placeholder="مثال: عميد شؤون الطلبة..."></div>
+      </div>`).join('')}
+    </div>
+    <button class="btn btn-sm" style="margin-top:10px" onclick="scSaveCommittee()"><i class="ti ti-device-floppy"></i> حفظ أسماء لجنة هذه اللعبة</button>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <button class="btn btn-sm" onclick="scOpenPrintFields('blank')"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
+      <button class="btn btn-sm" onclick="scOpenPrintFields('final')"><i class="ti ti-printer"></i> طباعة كشف العلامات النهائي</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="scSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
+    </div>
+  </div>
+
+  <div class="card">
+    ${!n ? `<div class="center">يرجى إدخال أسماء أعضاء لجنة "${spEsc(SC_CURRENT_GAME)}" أعلاه أولاً (3 أعضاء كحد أدنى) قبل إدخال العلامات</div>` : `
+    <div class="tw"><table>
+      <thead><tr>
+        <th>#</th><th>الاسم</th>
+        ${members.map(m=>`<th>${spEsc(m.name)}<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من ${per.toFixed(1)})</span></th>`).join('')}
+        <th>علامة الاختبار<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 60)</span></th>
+        <th>علامة الثانوية<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 20)</span></th>
+        <th>علامة نوع النموذج<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 20)</span></th>
+        <th>العلامة النهائية</th>
+      </tr></thead>
+      <tbody id="sc-tbody"></tbody>
+    </table></div>`}
+  </div>`;
+
   if (n) scRenderTable();
 }
 function scCloseModal() { document.getElementById('sc-modal')?.classList.remove('open'); }
 
-// يعيد أعضاء اللجنة بصيغة موحّدة {name, title} — مع التوافق مع الصيغة القديمة (أسماء نصّية فقط بلا مسمّى وظيفي)
-function spCommitteeMembers() {
-  return (SP_SETTINGS.committee_members || []).map(m => typeof m === 'string' ? { name: m, title: '' } : m);
+// يعيد أعضاء لجنة لعبة معيَّنة بصيغة موحّدة {name, title}
+function spCommitteeMembers(game) {
+  const map = SP_SETTINGS.committee_members_by_game || {};
+  return (map[game] || []).map(m => typeof m === 'string' ? { name: m, title: '' } : m);
 }
 
 const SC_SHEET_FIELDS = SP_FIELDS.filter(f => !['committee_score','hs_score','final_score','status'].includes(f.key));
 
 function scOpenPrintFields(mode) {
-  const members = spCommitteeMembers();
-  if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
+  const members = spCommitteeMembers(SC_CURRENT_GAME);
+  if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   document.getElementById('sc-modal-body').innerHTML = `
     <h3>${mode==='final' ? 'بيانات إضافية تُعرض في كشف العلامات النهائي' : 'بيانات إضافية تُعرض للجنة في الكشف'}</h3>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع.</div>
@@ -738,20 +763,20 @@ async function scSaveCommittee() {
   const members = [0,1,2,3,4]
     .map(i => ({ name: document.getElementById('sc-m-'+i).value.trim(), title: document.getElementById('sc-t-'+i).value.trim() }))
     .filter(m => m.name);
-  if (members.length < 2) { alert('يرجى إدخال اسمين على الأقل لأعضاء اللجنة'); return; }
-  SP_SETTINGS.committee_members = members;
+  if (members.length < 3) { alert('يرجى إدخال ثلاثة أسماء على الأقل لأعضاء لجنة هذه اللعبة'); return; }
+  if (!SP_SETTINGS.committee_members_by_game) SP_SETTINGS.committee_members_by_game = {};
+  SP_SETTINGS.committee_members_by_game[SC_CURRENT_GAME] = members;
   const r = await api('/api/sports_excellence/settings', 'PUT', SP_SETTINGS);
   if (r.error) { alert(r.error); return; }
-  loadSportsCommittee();
+  scRenderGameBody();
 }
 
 function scRenderTable() {
-  const act = document.getElementById('sc-f-game')?.value || '';
-  const members = spCommitteeMembers();
+  const members = spCommitteeMembers(SC_CURRENT_GAME);
   const tbody = document.getElementById('sc-tbody');
   if (!tbody) return;
-  const rows = SP_ROWS.filter(r => !act || (r.game_types||[]).includes(act));
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${3+members.length+4}" class="center">لا يوجد متقدمون مطابقون لهذه التصفية</td></tr>`; return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME));
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد متقدمون للعبة "${spEsc(SC_CURRENT_GAME)}"</td></tr>`; return; }
   const per = 60 / members.length;
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];
@@ -762,7 +787,6 @@ function scRenderTable() {
     return `<tr data-id="${r.id}" data-hs="${hs}" data-nom="${nom}">
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)} <button class="btn btn-sm" style="padding:2px 6px" onclick="scViewApplicant('${r.id}')" title="عرض بيانات الطالب"><i class="ti ti-eye"></i></button></td>
-      <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       ${members.map((m,mi) => `<td><input type="number" min="0" max="${per}" step="0.5" class="sc-score" style="width:64px" value="${scores[mi]!=null?scores[mi]:''}" oninput="scRecalc(this)"></td>`).join('')}
       <td class="sc-cscore">${cscore!=null ? spPct(cscore) : '—'}</td>
       <td>${spPct(hs)}</td>
@@ -842,7 +866,7 @@ const SC_PRINT_FONT = `<link rel="stylesheet" href="https://fonts.googleapis.com
 const SP_TABLE_ALIGN_STYLE = `<style>.ptbl th{text-align:center!important}</style>`;
 // مربّع توقيعات أعضاء اللجنة (الاسم الوظيفي أعلى الاسم) — يُستخدم في أكثر من كشف مطبوع
 function spSignatureBlockHTML() {
-  const members = spCommitteeMembers();
+  const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) return '';
   return `<div style="margin-top:60px;display:grid;grid-template-columns:repeat(${members.length},1fr);gap:14px;text-align:center;font-size:10.5pt;page-break-inside:avoid">
     ${members.map(m => `<div><div style="border-top:1px solid #333;padding-top:6px">${spEsc(m.title)||'&nbsp;'}</div><div style="margin-top:60px;font-weight:700">${spEsc(m.name)}</div></div>`).join('')}
@@ -850,11 +874,10 @@ function spSignatureBlockHTML() {
 }
 
 function scPrintGradingSheet() {
-  const act = document.getElementById('sc-f-game')?.value || '';
-  const members = spCommitteeMembers();
-  if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => !act || (r.game_types||[]).includes(act));
-  if (!rows.length) { alert('لا يوجد متقدمون مطابقون لهذه التصفية'); return; }
+  const members = spCommitteeMembers(SC_CURRENT_GAME);
+  if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME));
+  if (!rows.length) { alert('لا يوجد متقدمون لهذه اللعبة'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = (60 / members.length).toFixed(1);
@@ -865,7 +888,7 @@ function scPrintGradingSheet() {
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف تقييم لجنة الاختبار${act?' — '+spEsc(act):''}</div>
+    <div class="ptitle">كشف تقييم لجنة الاختبار — ${spEsc(SC_CURRENT_GAME)}</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
@@ -880,11 +903,10 @@ function scPrintGradingSheet() {
 
 // كشف العلامات النهائي — يشمل العلامات الفعلية المُدخَلة + مربّع توقيعات أعضاء اللجنة (الاسم الوظيفي فوق الاسم)
 function scPrintFinalReport() {
-  const act = document.getElementById('sc-f-game')?.value || '';
-  const members = spCommitteeMembers();
-  if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => !act || (r.game_types||[]).includes(act));
-  if (!rows.length) { alert('لا يوجد متقدمون مطابقون لهذه التصفية'); return; }
+  const members = spCommitteeMembers(SC_CURRENT_GAME);
+  if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME));
+  if (!rows.length) { alert('لا يوجد متقدمون لهذه اللعبة'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = (60 / members.length).toFixed(1);
@@ -895,7 +917,7 @@ function scPrintFinalReport() {
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف علامات لجنة الاختبار${act?' — '+spEsc(act):''}</div>
+    <div class="ptitle">كشف علامات لجنة الاختبار — ${spEsc(SC_CURRENT_GAME)}</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
