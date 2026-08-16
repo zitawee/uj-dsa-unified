@@ -148,6 +148,29 @@ function genTalentRef() {
   return 'TE-' + s;
 }
 
+// ══ بند مؤقت: التفوق الرياضي — نموذج مستقل تماماً (بنفس معمارية التفوق الفني أعلاه)
+// لسهولة إزالته لاحقاً بالكامل بمجرد حذف هذا القسم + سطر الشريط الجانبي + صفحة sports.html
+// الوصول لبياناته مقصور على admin فقط ══
+const SportsApp = mongoose.model('sports_excellence', new mongoose.Schema({}, { strict:false, timestamps:true }));
+const SportsSettings = mongoose.model('sports_excellence_settings', new mongoose.Schema({}, { strict:false }));
+function genSportsRef() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = ''; for (let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return 'SP-' + s;
+}
+// نوع نموذج التفوق الرياضي: كل فئة تحمل علامة ثابتة (من 20) — يُتحقَّق منها هنا ويُخزَّن الاسم فقط في السجل
+const SPORTS_NOMINATION_SCORES = {
+  'لاعب منتخب وطني مثل الأردن': 20,
+  'لاعب منتخب وطني': 19,
+  'لاعب نادي أو مركز حائز على المركز الأول على مستوى المملكة في لعبة جماعية أو فردية': 17,
+  'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني على مستوى المملكة في لعبة جماعية أو فردية': 16,
+  'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية': 14,
+  'لاعب مديرية التربية والتعليم حائز على المركز الثاني، أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي حائز على المركز الثالث لمعاهد المملكة في لعبة جماعية': 13,
+  'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية': 11,
+  'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية': 10,
+};
+const SPORTS_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج'];
+
 // ══ نظام حجز الغرف الفندقية — وحدة مستقلة قابلة لإعادة الاستخدام لأي نشاط
 // (رحلات، معسكرات...)، الوصول لإدارتها مقصور على admin فقط.
 // دورة حجز واحدة = نشاط واحد (مرتبط بسجل من جدول "أسماء المشاركين")،
@@ -384,6 +407,67 @@ app.post('/api/public/talent-excellence', async (req, res) => {
     data.submitted_ip = ip;
 
     const doc = await TalentApp.create(data);
+    res.json({ id: doc._id, ref_code: doc.ref_code, message: 'تم استلام طلبك بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ بند مؤقت: التفوق الرياضي — تقديم عام بدون تسجيل دخول ══
+app.get('/api/public/sports-excellence/status', async (req, res) => {
+  try {
+    const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
+    const closeDate = s?.close_date || null;
+    const todayStr = new Date().toISOString().slice(0,10);
+    const open = !closeDate || closeDate >= todayStr;
+    res.json({ open, close_date: closeDate });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/sports-excellence', async (req, res) => {
+  try {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+
+    const { captcha_token, captcha_answer } = req.body;
+    const cap = publicCaptchas[captcha_token];
+    if (!cap || Date.now() > cap.expires || Number(captcha_answer) !== cap.answer)
+      return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[captcha_token];
+
+    const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
+    const closeDate = s?.close_date || null;
+    const todayStr = new Date().toISOString().slice(0,10);
+    if (closeDate && closeDate < todayStr)
+      return res.status(400).json({ error: 'عذراً، انتهت مدة استقبال طلبات التفوق الرياضي' });
+
+    const data = { ...req.body };
+    delete data.captcha_token; delete data.captcha_answer;
+
+    const fullName = (data.full_name || '').trim();
+    const phone = (data.phone || '').trim();
+    const gender = (data.gender || '').trim();
+    const seatNumber = (data.seat_number || '').trim();
+    if (!fullName || !phone) return res.status(400).json({ error: 'يرجى إدخال الاسم الكامل ورقم الهاتف' });
+    if (!['ذكر','أنثى'].includes(gender)) return res.status(400).json({ error: 'يرجى اختيار الجنس' });
+    if (!seatNumber) return res.status(400).json({ error: 'يرجى إدخال رقم الجلوس' });
+    if (!/^07\d{8}$/.test(phone)) return res.status(400).json({ error: 'صيغة رقم الهاتف غير صحيحة (يجب أن يبدأ بـ 07 ويتكون من 10 خانات)' });
+    if (data.phone_alt && !/^07\d{8}$/.test(String(data.phone_alt).trim()))
+      return res.status(400).json({ error: 'صيغة رقم الهاتف البديل غير صحيحة' });
+    if (!Array.isArray(data.game_types) || !data.game_types.length || !data.game_types.every(g => SPORTS_GAME_TYPES.includes(g)))
+      return res.status(400).json({ error: 'يرجى اختيار نوع لعبة واحدة صحيحة على الأقل' });
+    if (!data.nomination_type || !(data.nomination_type in SPORTS_NOMINATION_SCORES))
+      return res.status(400).json({ error: 'يرجى اختيار نوع نموذج التفوق الرياضي' });
+    if (!data.photo || !String(data.photo).startsWith('data:image/'))
+      return res.status(400).json({ error: 'يرجى إرفاق الصورة الشخصية (إلزامية)' });
+    if (!data.agree) return res.status(400).json({ error: 'يرجى الموافقة على إقرار صحة البيانات' });
+
+    const dup = await SportsApp.findOne({ $or: [{ phone }, ...(data.phone_alt ? [{ phone: data.phone_alt }] : [])] }).lean();
+    if (dup) return res.status(400).json({ error: 'يوجد طلب مسبق بنفس رقم الهاتف — لا يُسمح بالتقديم أكثر من مرة' });
+
+    data.ref_code = genSportsRef();
+    data.status = 'pending';
+    data.nomination_score = SPORTS_NOMINATION_SCORES[data.nomination_type];
+    data.submitted_ip = ip;
+
+    const doc = await SportsApp.create(data);
     res.json({ id: doc._id, ref_code: doc.ref_code, message: 'تم استلام طلبك بنجاح' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -902,6 +986,68 @@ app.put('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
 app.delete('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
   try {
     await TalentApp.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ بند مؤقت: التفوق الرياضي — إدارة داخلية (admin فقط) ══
+app.get('/api/sports_excellence', auth(['admin']), async (req, res) => {
+  try {
+    let query = {};
+    const { q, status, activity, governorate } = req.query;
+    if (status) query.status = status;
+    if (governorate) query.governorate = governorate;
+    if (activity) query.game_types = activity;
+    let docs = await SportsApp.find(query).sort({ createdAt: -1 }).lean();
+    if (q) {
+      const ql = q.toLowerCase();
+      docs = docs.filter(d => JSON.stringify(d).toLowerCase().includes(ql));
+    }
+    res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sports_excellence/settings', auth(['admin']), async (req, res) => {
+  try {
+    const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
+    res.json({ close_date: s?.close_date || null, committee_members: s?.committee_members || [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/sports_excellence/settings', auth(['admin']), async (req, res) => {
+  try {
+    await SportsSettings.findOneAndUpdate(
+      { key: 'sports_excellence' },
+      { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members: Array.isArray(req.body.committee_members) ? req.body.committee_members : [] },
+      { upsert: true }
+    );
+    res.json({ message: 'تم الحفظ' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
+  try {
+    const doc = await SportsApp.findById(req.params.id).lean();
+    if (!doc) return res.status(404).json({ error: 'غير موجود' });
+    res.json({ ...doc, id: String(doc._id), _id: String(doc._id) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
+  try {
+    const update = { ...req.body, updated_by: req.user.username, updatedAt: new Date() };
+    // إعادة احتساب علامة نوع النموذج تلقائياً إن تغيّر التصنيف من شاشة التعديل
+    if (update.nomination_type && SPORTS_NOMINATION_SCORES[update.nomination_type] != null && update.nomination_score == null) {
+      update.nomination_score = SPORTS_NOMINATION_SCORES[update.nomination_type];
+    }
+    await SportsApp.findByIdAndUpdate(req.params.id, update, { new: true });
+    res.json({ message: 'تم التحديث' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
+  try {
+    await SportsApp.findByIdAndDelete(req.params.id);
     res.json({ message: 'تم الحذف' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
