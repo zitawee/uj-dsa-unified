@@ -80,6 +80,12 @@
   }
   .install-banner .yes{background:var(--g);color:#fff}
   .install-banner .no{background:#F1F2F1;color:var(--muted)}
+
+  /* وضع التضمين (Embed) — عند فتح الصفحة داخل iframe بموقع آخر: بلا رأس أخضر مكرر وبلا خلفية صفحة منفصلة */
+  body.embed-mode{background:transparent}
+  body.embed-mode header,
+  body.embed-mode .install-banner{display:none !important}
+  body.embed-mode .wrap{padding-top:14px}
 </style>
 </head>
 <body>
@@ -116,6 +122,10 @@ function setTab(t){
   ['upcoming','past','all'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('active', x===t));
   render();
 }
+
+// وضع التضمين: يُكتشف تلقائياً عند التشغيل داخل iframe (أو صراحةً عبر ?embed=1)
+const IS_EMBED = (window.self !== window.top) || new URLSearchParams(location.search).get('embed') === '1';
+if (IS_EMBED) document.body.classList.add('embed-mode');
 
 async function init(){
   try{
@@ -228,8 +238,9 @@ function isIOS(){
   return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 }
 
-// أندرويد/Chrome: يعرض المتصفح نفسه فرصة التثبيت، نعترضها لعرض رسالتنا المخصَّصة أولاً
+// أندرويد/Chrome: يعرض المتصفح نفسه فرصة التثبيت، نعترضها لعرض رسالتنا المخصَّصة أولاً (مُعطَّل بالكامل في وضع التضمين)
 window.addEventListener('beforeinstallprompt', (e) => {
+  if(IS_EMBED) return;
   e.preventDefault();
   deferredInstallPrompt = e;
   if(!isDismissed() && !isStandalone()){
@@ -246,14 +257,14 @@ async function doInstall(){
   }
 }
 
-// آيفون/Safari: لا تدعم نافذة تثبيت تلقائية إطلاقاً — نعرض إرشاداً بدلاً من ذلك
-if(isIOS() && !isStandalone() && !isDismissed()){
+// آيفون/Safari: لا تدعم نافذة تثبيت تلقائية إطلاقاً — نعرض إرشاداً بدلاً من ذلك (مُعطَّل في وضع التضمين)
+if(!IS_EMBED && isIOS() && !isStandalone() && !isDismissed()){
   document.getElementById('installBannerTxt').innerHTML = '<b>للتثبيت على هاتفك:</b> اضغطي على زر المشاركة 📤 ثم اختاري "Add to Home Screen"';
   document.getElementById('installBannerBtns').innerHTML = '<button class="no" onclick="dismissInstallBanner()">فهمت</button>';
   document.getElementById('installBanner').style.display='flex';
 }
 
-if('serviceWorker' in navigator){
+if(!IS_EMBED && 'serviceWorker' in navigator){
   navigator.serviceWorker.register('/events-sw.js').catch(()=>{});
 }
 
