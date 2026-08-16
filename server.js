@@ -1010,7 +1010,7 @@ app.get('/api/sports_excellence', auth(['admin']), async (req, res) => {
 app.get('/api/sports_excellence/settings', auth(['admin']), async (req, res) => {
   try {
     const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
-    res.json({ close_date: s?.close_date || null, committee_members: s?.committee_members || [] });
+    res.json({ close_date: s?.close_date || null, committee_members_by_game: s?.committee_members_by_game || {} });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1018,7 +1018,7 @@ app.put('/api/sports_excellence/settings', auth(['admin']), async (req, res) => 
   try {
     await SportsSettings.findOneAndUpdate(
       { key: 'sports_excellence' },
-      { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members: Array.isArray(req.body.committee_members) ? req.body.committee_members : [] },
+      { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members_by_game: (req.body.committee_members_by_game && typeof req.body.committee_members_by_game === 'object') ? req.body.committee_members_by_game : {} },
       { upsert: true }
     );
     res.json({ message: 'تم الحفظ' });
