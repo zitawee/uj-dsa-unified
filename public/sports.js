@@ -17,16 +17,16 @@ const SP_TRACK_SUB = {
   arabic: ['الإمارات العربية المتحدة','البحرين','تونس','الجزائر','جزر القمر','جيبوتي','السعودية','السودان','سوريا','الصومال','العراق','سلطنة عُمان','فلسطين','قطر','الكويت','لبنان','ليبيا','مصر','المغرب','موريتانيا','اليمن']
 };
 const SP_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج'];
-// نوع نموذج التفوق الرياضي: كل فئة تحمل علامة ثابتة محدَّدة سلفاً (من 20) — تُحتسب تلقائياً عند اختيار الفئة، بلا إدخال يدوي
+// نوع نموذج التفوق الرياضي: كل فئة تحمل علامة ثابتة محدَّدة سلفاً (من 20) — تُحتسب تلقائياً عند اختيار رقم النموذج
 const SP_NOMINATION_TYPES = [
-  { label: 'لاعب منتخب وطني مثل الأردن', score: 20 },
-  { label: 'لاعب منتخب وطني', score: 19 },
-  { label: 'لاعب نادي أو مركز حائز على المركز الأول على مستوى المملكة في لعبة جماعية أو فردية', score: 17 },
-  { label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني على مستوى المملكة في لعبة جماعية أو فردية', score: 16 },
-  { label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية', score: 14 },
-  { label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني، أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي حائز على المركز الثالث لمعاهد المملكة في لعبة جماعية', score: 13 },
-  { label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية', score: 11 },
-  { label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية', score: 10 },
+  { num: 1, label: 'لاعب منتخب وطني مثّل الأردن', score: 20 },
+  { num: 2, label: 'لاعب منتخب وطني', score: 19 },
+  { num: 3, label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.', score: 17 },
+  { num: 4, label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.', score: 16 },
+  { num: 5, label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.', score: 14 },
+  { num: 6, label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.', score: 13 },
+  { num: 7, label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.', score: 11 },
+  { num: 8, label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.', score: 10 },
 ];
 const SP_NOMINATION_SCORES = Object.fromEntries(SP_NOMINATION_TYPES.map(t => [t.label, t.score]));
 function spNominationScore(label) { return SP_NOMINATION_SCORES[label] ?? null; }
@@ -306,9 +306,11 @@ function spEditFormHTML(r) {
     <div class="fg"><label>التخصص الثاني</label><select id="sp-e-major2">${spMajorOpts((r.majors||[])[1])}</select></div>
     <div class="fg"><label>التخصص الثالث</label><select id="sp-e-major3">${spMajorOpts((r.majors||[])[2])}</select></div>
 
-    <div class="fg"><label>نوع نموذج التفوق الرياضي</label>
-      <select id="sp-e-nomination"><option value="">اختر...</option>${SP_NOMINATION_TYPES.map(t=>`<option${t.label===r.nomination_type?' selected':''}>${spEsc(t.label)}</option>`).join('')}</select>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">العلامة المقابلة (من 20): <b>${r.nomination_type && spNominationScore(r.nomination_type)!=null ? spNominationScore(r.nomination_type) : '—'}</b></div>
+    <div class="fg"><label>رقم نموذج شهادة التفوق الرياضي</label>
+      <select id="sp-e-nomination" onchange="spUpdateNominationDesc()"><option value="">اختر...</option>${SP_NOMINATION_TYPES.map(t=>`<option value="${t.num}"${t.label===r.nomination_type?' selected':''}>نموذج رقم (${t.num})</option>`).join('')}</select>
+      <div style="font-size:11px;color:var(--muted);margin:6px 0 2px">وصف النموذج</div>
+      <div id="sp-e-nomination-desc" style="border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:12.5px;background:#F7F9F6;min-height:20px">${spEsc(r.nomination_type)||'—'}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">العلامة المقابلة (من 20): <b id="sp-e-nomination-score">${r.nomination_type && spNominationScore(r.nomination_type)!=null ? spNominationScore(r.nomination_type) : '—'}</b></div>
     </div>
 
     <div class="fg" style="margin-top:8px"><label>الحالة</label>
@@ -374,6 +376,14 @@ function spView(id) {
 }
 function spCloseModal() { document.getElementById('sp-modal')?.classList.remove('open'); }
 
+function spUpdateNominationDesc() {
+  const sel = document.getElementById('sp-e-nomination');
+  const num = parseInt(sel.value) || null;
+  const t = SP_NOMINATION_TYPES.find(x => x.num === num);
+  document.getElementById('sp-e-nomination-desc').textContent = t ? t.label : '—';
+  document.getElementById('sp-e-nomination-score').textContent = t ? t.score : '—';
+}
+
 function spMsg(txt) {
   const el = document.getElementById('sp-e-msg'); if (!el) return;
   el.textContent = txt; el.className = 'msg err'; el.style.display = 'block';
@@ -389,7 +399,9 @@ async function spSaveEdit(id) {
   const cert_year = gv('sp-e-year'), gpa = gv('sp-e-gpa'), address = gv('sp-e-address');
   const phone = gv('sp-e-phone'), phone_alt = gv('sp-e-phone-alt');
   const major1 = gv('sp-e-major1'), major2 = gv('sp-e-major2'), major3 = gv('sp-e-major3');
-  const nomination_type = gv('sp-e-nomination');
+  const nominationNum = parseInt(gv('sp-e-nomination')) || null;
+  const nominationEntry = SP_NOMINATION_TYPES.find(x => x.num === nominationNum);
+  const nomination_type = nominationEntry ? nominationEntry.label : '';
   const status = gv('sp-status-sel');
 
   if (!full_name || !school) return spMsg('يرجى إدخال اسم الطالب والمدرسة');
