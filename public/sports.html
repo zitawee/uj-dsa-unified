@@ -83,7 +83,7 @@
   <div id="formArea">
     <div class="card">
       <div class="ct">نوع اللعبة</div>
-      <label class="full">نوع اللعبة * <span style="font-weight:400;color:var(--muted)">(يمكن اختيار أكثر من لعبة)</span></label>
+      <label class="full">نوع اللعبة *</label>
       <div class="cb-grid" id="actTypesBox"></div>
     </div>
 
@@ -228,11 +228,11 @@ const TRACKS = [
   { id:'arabic', label:'الثانوية العربية (من دولة عربية أخرى)', sub:['الإمارات العربية المتحدة','البحرين','تونس','الجزائر','جزر القمر','جيبوتي','السعودية','السودان','سوريا','الصومال','العراق','سلطنة عُمان','فلسطين','قطر','الكويت','لبنان','ليبيا','مصر','المغرب','موريتانيا','اليمن'] }
 ];
 
-// ── نوع اللعبة (اختيار متعدد) ──
+// ── نوع اللعبة (اختيار واحد فقط) ──
 const actBox = document.getElementById('actTypesBox');
 GAME_TYPES.forEach(t => {
   const lbl = document.createElement('label');
-  lbl.innerHTML = `<input type="checkbox" class="act-cb" value="${t}"> ${t}`;
+  lbl.innerHTML = `<input type="radio" name="act-radio" class="act-cb" value="${t}"> ${t}`;
   actBox.appendChild(lbl);
 });
 
@@ -355,7 +355,7 @@ async function submitApp() {
   if (!gender) { showMsg('يرجى اختيار الجنس', true); return; }
   if (!seat) { showMsg('يرجى إدخال رقم الجلوس', true); return; }
   if (!gov || !dist) { showMsg('يرجى اختيار المحافظة واللواء', true); return; }
-  if (!gameTypes.length) { showMsg('يرجى اختيار نوع لعبة واحدة على الأقل', true); return; }
+  if (!gameTypes.length) { showMsg('يرجى اختيار نوع اللعبة', true); return; }
   if (!trackEl) { showMsg('يرجى اختيار فرع الشهادة', true); return; }
   const track = TRACKS.find(t => t.id === trackEl.value);
   const subfield = v('f-subfield');
