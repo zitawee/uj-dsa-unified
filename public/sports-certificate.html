@@ -181,6 +181,7 @@
 if (document.fonts && document.fonts.load) {
   document.fonts.load('700 14pt "Scheherazade New"').catch(()=>{});
   document.fonts.load('400 14pt "Scheherazade New"').catch(()=>{});
+  document.fonts.load('800 16px "Scheherazade New"').catch(()=>{});
 }
 
 function openGuideModal() { document.getElementById('guideModalOv').style.display = 'flex'; }
@@ -404,13 +405,19 @@ async function submitCert() {
       </div>
       <div id="certFooter">تُسلَّم هذه الشهادة إلى دائرة النشاطات الرياضية في الجامعة الأردنية.</div>`;
 
-    // ننتظر اكتمال تحميل الخط وكل الصور (الشعارين) فعلياً قبل فتح نافذة الطباعة —
-    // بدون هذا الانتظار، قد تُفتح نافذة الطباعة قبل اكتمال تحميلهما فيظهر النموذج ناقصاً في أول محاولة
+    // ننتظر اكتمال تحميل الخط (بطلب صريح للتنسيقات المستخدَمة فعلياً، أدق وأوثق من fonts.ready وحدها)
+    // وكل الصور (الشعارين) قبل فتح نافذة الطباعة تلقائياً
     const imgEls = Array.from(document.getElementById('printArea').querySelectorAll('img'));
     const imgReady = imgEls.map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; img.onerror = res; }));
-    const fontReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    const fontReady = (document.fonts && document.fonts.load)
+      ? Promise.all([
+          document.fonts.load('700 14pt "Scheherazade New"'),
+          document.fonts.load('400 14pt "Scheherazade New"'),
+          document.fonts.load('800 16px "Scheherazade New"'),
+        ]).then(() => document.fonts.ready).catch(() => {})
+      : Promise.resolve();
 
-    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 150));
+    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 350));
   } catch (e) {
     showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
     btn.disabled = false; btn.textContent = '📨 حفظ وطباعة الشهادة';
