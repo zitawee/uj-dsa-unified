@@ -56,13 +56,15 @@
     #printArea{display:flex;flex-direction:column;position:absolute;top:0;left:0;right:0;padding:14px 0;min-height:230mm}
   }
   #certFooter{text-align:center;font-size:11px;color:#6b7280;margin-top:auto;padding-top:24px}
-  .cert-h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--g);padding-bottom:10px;margin-bottom:18px}
+  .cert-h{display:grid;grid-template-columns:1fr auto 1fr;align-items:flex-start;border-bottom:3px solid var(--g);padding-bottom:10px;margin-bottom:18px}
+  .cert-h .meta{justify-self:start}
+  .cert-h img{justify-self:end}
   .cert-h img{width:60px;height:60px;object-fit:contain}
-  .cert-h .uni{text-align:center;flex:1}
+  .cert-h .uni{text-align:center}
   .cert-h .uni .ar{font-weight:800;font-size:16px;color:var(--g)}
   .cert-h .uni .en{font-size:11px;color:var(--muted);font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif}
   .cert-h .meta{text-align:left;white-space:nowrap}
-  .cert-h .meta .ref{font-size:16px;font-weight:700;color:#000;font-family:'Scheherazade New',serif}
+  .cert-h .meta .ref{font-size:13px;font-weight:700;color:#000;font-family:'Scheherazade New',serif}
   .cert-h .meta .date{font-size:10.5px;color:var(--muted);margin-top:2px}
   .cert-title{text-align:center;font-weight:800;font-size:18px;color:var(--g);margin:14px 0 2px}
   .cert-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:22px;font-family:'Scheherazade New',serif}
