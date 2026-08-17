@@ -478,8 +478,8 @@ app.post('/api/public/sports-excellence', async (req, res) => {
     if (!/^07\d{8}$/.test(phone)) return res.status(400).json({ error: 'صيغة رقم الهاتف غير صحيحة (يجب أن يبدأ بـ 07 ويتكون من 10 خانات)' });
     if (data.phone_alt && !/^07\d{8}$/.test(String(data.phone_alt).trim()))
       return res.status(400).json({ error: 'صيغة رقم الهاتف البديل غير صحيحة' });
-    if (!Array.isArray(data.game_types) || !data.game_types.length || !data.game_types.every(g => SPORTS_GAME_TYPES.includes(g)))
-      return res.status(400).json({ error: 'يرجى اختيار نوع لعبة واحدة صحيحة على الأقل' });
+    if (!Array.isArray(data.game_types) || data.game_types.length !== 1 || !SPORTS_GAME_TYPES.includes(data.game_types[0]))
+      return res.status(400).json({ error: 'يرجى اختيار نوع لعبة واحدة فقط' });
     if (!data.nomination_type || !(data.nomination_type in SPORTS_NOMINATION_NUM_BY_LABEL))
       return res.status(400).json({ error: 'يرجى اختيار نوع نموذج التفوق الرياضي' });
 
