@@ -404,12 +404,13 @@ async function submitCert() {
       </div>
       <div id="certFooter">تُسلَّم هذه الشهادة إلى دائرة النشاطات الرياضية في الجامعة الأردنية.</div>`;
 
-    // ننتظر اكتمال تحميل خط الشهادة فعلياً قبل الطباعة (بدل مهلة ثابتة قد لا تكفي عند بطء الإنترنت)
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => setTimeout(() => window.print(), 150));
-    } else {
-      setTimeout(() => window.print(), 600);
-    }
+    // ننتظر اكتمال تحميل الخط وكل الصور (الشعارين) فعلياً قبل فتح نافذة الطباعة —
+    // بدون هذا الانتظار، قد تُفتح نافذة الطباعة قبل اكتمال تحميلهما فيظهر النموذج ناقصاً في أول محاولة
+    const imgEls = Array.from(document.getElementById('printArea').querySelectorAll('img'));
+    const imgReady = imgEls.map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; img.onerror = res; }));
+    const fontReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+
+    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 150));
   } catch (e) {
     showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
     btn.disabled = false; btn.textContent = '📨 حفظ وطباعة الشهادة';
