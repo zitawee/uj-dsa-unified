@@ -417,7 +417,7 @@ async function submitCert() {
         ]).then(() => document.fonts.ready).catch(() => {})
       : Promise.resolve();
 
-    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 350));
+    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 500));
   } catch (e) {
     showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
     btn.disabled = false; btn.textContent = '📨 حفظ وطباعة الشهادة';
