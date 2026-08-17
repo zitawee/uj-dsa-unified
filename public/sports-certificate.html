@@ -45,7 +45,7 @@
   .desc-box{background:#F7F9F6;border:1px dashed var(--border);border-radius:var(--r);padding:10px 12px;font-size:12.5px;line-height:1.6;margin-bottom:14px}
 
   /* طباعة الشهادة */
-  #printArea{display:none}
+  #printArea{display:none;font-family:'Scheherazade New',serif}
   @media print{
     body *{visibility:hidden}
     #printArea, #printArea *{visibility:visible}
@@ -56,7 +56,7 @@
   .cert-h img{width:60px;height:60px;object-fit:contain}
   .cert-h .uni{text-align:center;flex:1}
   .cert-h .uni .ar{font-weight:800;font-size:16px;color:var(--g)}
-  .cert-h .uni .en{font-size:11px;color:var(--muted)}
+  .cert-h .uni .en{font-size:11px;color:var(--muted);font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif}
   .cert-h .meta{font-size:10.5px;color:var(--muted);text-align:left;white-space:nowrap}
   .cert-title{text-align:center;font-weight:800;font-size:18px;color:var(--g);margin:14px 0 2px}
   .cert-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:22px;font-family:'Scheherazade New',serif}
@@ -151,14 +151,14 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة اللقاء *', required:true},
        ],
-       template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وأنه كان ضمن صفوف المنتخب الوطني الذي مثّل الأردن في لقائه مع ${v.opponent_name} ضمن بطولة ${v.tournament_name} والتي أُقيمت عام ${v.year}.` },
+       template: v => `يشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وأنه كان ضمن صفوف المنتخب الوطني الذي مثّل الأردن في لقائه مع ${v.opponent_name} ضمن بطولة ${v.tournament_name} والتي أُقيمت عام ${v.year}.` },
   2: { label: 'لاعب منتخب وطني',
        signMode: 'federation',
        fields: [
          FED_FIELD,
          {key:'year', label:'السنة *', required:true},
        ],
-       template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وكان هذا اللاعب ضمن صفوف المنتخب الوطني للعام ${v.year}.` },
+       template: v => `يشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وكان هذا اللاعب ضمن صفوف المنتخب الوطني للعام ${v.year}.` },
   3: { label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.',
        signMode: 'federation',
        fields: [
@@ -168,7 +168,7 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة البطولة *', required:true},
        ],
-       template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي نادي/مركز ${v.club_name}، وكان هذا اللاعب ضمن الفريق الحائز على المركز الأول على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
+       template: v => `يشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي نادي/مركز ${v.club_name}، وكان هذا اللاعب ضمن الفريق الحائز على المركز الأول على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
   4: { label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.',
        signMode: 'federation',
        fields: [
