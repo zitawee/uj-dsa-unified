@@ -205,6 +205,8 @@ const FEDERATIONS = [
   'الاتحاد الأردني للرياضات المدرسية',
 ];
 const FED_FIELD = {key:'federation_name', label:'اسم الاتحاد الأردني *', required:true, type:'select', options:FEDERATIONS};
+// قائمة السنوات المتاحة للاختيار: السنة الحالية والثلاث سنوات السابقة لها — تتحدَّث تلقائياً كل عام بلا تعديل يدوي
+const YEAR_OPTIONS = [0,1,2,3].map(i => String(new Date().getFullYear() - i));
 
 // دالة مساعدة لاختيار صيغة الخطاب المذكّرة أو المؤنّثة حسب جنس اللاعب/ـة
 function M(v, male, female) { return v.gender === 'أنثى' ? female : male; }
@@ -216,21 +218,21 @@ const MODELS = {
          FED_FIELD,
          {key:'opponent_name', label:'الجهة/المنتخب الذي واجهه المنتخب الوطني *', required:true},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
-         {key:'year', label:'سنة اللقاء *', required:true},
+         {key:'year', label:'سنة اللقاء *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} المنتخب الوطني الأردني للعبة ${v.game}، وأن${M(v,'ه كان','ها كانت')} ضمن صفوف المنتخب الوطني الذي ${M(v,'مثّل','مثّلت')} الأردن في لقائه مع ${v.opponent_name} ضمن بطولة ${v.tournament_name} والتي أُقيمت عام ${v.year}.` },
   2: { label: 'لاعب منتخب وطني',
        signMode: 'federation',
        fields: [
          FED_FIELD,
-         {key:'year', label:'السنة *', required:true},
+         {key:'year', label:'السنة *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} المنتخب الوطني الأردني للعبة ${v.game}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن صفوف المنتخب الوطني للعام ${v.year}.` },
   3: { label: 'منتخب مدرسي مثّل الأردن',
        signMode: 'schoolsports_olympic', // توقيع ثابت: الاتحاد الأردني للرياضات المدرسية يمين / اللجنة الأولمبية الأردنية يسار
        fields: [
          {key:'opponent_name', label:'الجهة/المنتخب الذي واجهه المنتخب الوطني *', required:true},
-         {key:'year', label:'سنة اللقاء *', required:true},
+         {key:'year', label:'سنة اللقاء *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `يشهد الاتحاد الأردني للرياضات المدرسية في وزارة التربية والتعليم بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} المنتخب المدرسي في لعبة ${v.game}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن صفوف المنتخب المدرسي الذي ${M(v,'مثّل','مثّلت')} الأردن في لقائه مع ${v.opponent_name} في عام ${v.year}.` },
   4: { label: 'لاعب نادي – ألعاب جماعية (المراكز الثلاثة الأولى)',
@@ -240,7 +242,7 @@ const MODELS = {
          {key:'club_name', label:'اسم النادي *', required:true},
          {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
-         {key:'year', label:'سنة البطولة *', required:true},
+         {key:'year', label:'سنة البطولة *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} نادي ${v.club_name}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن الفريق الحائز على المركز ${v.rank} في بطولة ${v.tournament_name} عام ${v.year}.` },
   5: { label: 'لاعب نادي – ألعاب جماعية (المركز الرابع فما فوق)',
@@ -250,7 +252,7 @@ const MODELS = {
          {key:'club_name', label:'اسم النادي *', required:true},
          {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الرابع','الخامس','السادس','السابع فما فوق']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
-         {key:'year', label:'سنة البطولة *', required:true},
+         {key:'year', label:'سنة البطولة *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} نادي ${v.club_name}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن الفريق الحائز على المركز ${v.rank} في بطولة ${v.tournament_name} عام ${v.year}.` },
   6: { label: 'لاعب نادي – ألعاب فردية (المراكز الثلاثة الأولى)',
@@ -260,7 +262,7 @@ const MODELS = {
          {key:'club_name', label:'اسم النادي *', required:true},
          {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
-         {key:'year', label:'سنة البطولة *', required:true},
+         {key:'year', label:'سنة البطولة *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} نادي ${v.club_name}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن الفريق الحائز على المركز ${v.rank} في بطولة ${v.tournament_name} عام ${v.year}.` },
   7: { label: 'منتخب مديرية التربية والتعليم',
@@ -269,7 +271,7 @@ const MODELS = {
          {key:'directorate_name', label:'اسم المديرية *', required:true},
          {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
-         {key:'year', label:'العام الدراسي *', required:true},
+         {key:'year', label:'العام الدراسي *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `تشهد مديرية التربية والتعليم في ${v.directorate_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} فريق منتخب المديرية في لعبة ${v.game}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن الفريق الحائز على المركز ${v.rank} في بطولة ${v.tournament_name} التي أُقيمت على مستوى المملكة للعام الدراسي ${v.year}.` },
   8: { label: 'فريق مدرسي',
@@ -278,7 +280,7 @@ const MODELS = {
          {key:'directorate_name', label:'اسم مديرية التربية والتعليم *', required:true},
          {key:'school_name', label:'اسم المدرسة *', required:true},
          {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث']},
-         {key:'year', label:'العام الدراسي *', required:true},
+         {key:'year', label:'العام الدراسي *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `تشهد مديرية التربية والتعليم ${v.directorate_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} فريق مدرسة ${v.school_name} في لعبة ${v.game}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن الفريق الحائز على المركز ${v.rank} في البطولة التي أقامتها مديرية التربية والتعليم للعام الدراسي ${v.year}.` },
 };
