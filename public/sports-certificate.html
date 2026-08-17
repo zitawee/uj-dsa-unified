@@ -96,8 +96,9 @@
     <div class="card" id="fieldsCard" style="display:none">
       <div class="ct">بيانات الشهادة</div>
       <div class="g2">
-        <div class="full"><label>اسم اللاعب/ـة *</label><input id="f-player" type="text"></div>
-        <div class="full"><label>اللعبة *</label><select id="f-game"><option value="">اختر...</option></select></div>
+        <div class="full"><label>الاسم *</label><input id="f-player" type="text"></div>
+        <div><label>الجنس *</label><select id="f-gender"><option value="">اختر...</option><option>ذكر</option><option>أنثى</option></select></div>
+        <div><label>اللعبة *</label><select id="f-game"><option value="">اختر...</option></select></div>
         <div id="dynamicFields" class="full" style="display:contents"></div>
       </div>
     </div>
@@ -149,6 +150,9 @@ const FEDERATIONS = [
 ];
 const FED_FIELD = {key:'federation_name', label:'اسم الاتحاد الأردني *', required:true, type:'select', options:FEDERATIONS};
 
+// دالة مساعدة لاختيار صيغة الخطاب المذكّرة أو المؤنّثة حسب جنس اللاعب/ـة
+function M(v, male, female) { return v.gender === 'أنثى' ? female : male; }
+
 const MODELS = {
   1: { label: 'لاعب منتخب وطني مثّل الأردن',
        signMode: 'federation', // النموذج 1-6: خانة اتحاد منسدلة تظهر في التوقيع + "اللجنة الأولمبية الأردنية" ثابتة بالجهة الثانية
@@ -158,14 +162,14 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة اللقاء *', required:true},
        ],
-       template: v => `يشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وأنه كان ضمن صفوف المنتخب الوطني الذي مثّل الأردن في لقائه مع ${v.opponent_name} ضمن بطولة ${v.tournament_name} والتي أُقيمت عام ${v.year}.` },
+       template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} المنتخب الوطني الأردني للعبة ${v.game}، وأن${M(v,'ه كان','ها كانت')} ضمن صفوف المنتخب الوطني الذي ${M(v,'مثّل','مثّلت')} الأردن في لقائه مع ${v.opponent_name} ضمن بطولة ${v.tournament_name} والتي أُقيمت عام ${v.year}.` },
   2: { label: 'لاعب منتخب وطني',
        signMode: 'federation',
        fields: [
          FED_FIELD,
          {key:'year', label:'السنة *', required:true},
        ],
-       template: v => `يشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وكان هذا اللاعب ضمن صفوف المنتخب الوطني للعام ${v.year}.` },
+       template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} المنتخب الوطني الأردني للعبة ${v.game}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن صفوف المنتخب الوطني للعام ${v.year}.` },
   3: { label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.',
        signMode: 'federation',
        fields: [
@@ -175,7 +179,7 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة البطولة *', required:true},
        ],
-       template: v => `يشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي نادي/مركز ${v.club_name}، وكان هذا اللاعب ضمن الفريق الحائز على المركز الأول على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
+       template: v => `يشهد ${v.federation_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} نادي/مركز ${v.club_name}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن الفريق الحائز على المركز الأول على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
   4: { label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.',
        signMode: 'federation',
        fields: [
@@ -186,7 +190,7 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة البطولة *', required:true},
        ],
-       template: v => `تشهد ${v.granting_body} — ${v.club_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على المركز الثاني على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
+       template: v => `تشهد ${v.granting_body} — ${v.club_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'كان','كانت')} ضمن الفريق الحائز على المركز الثاني على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
   5: { label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.',
        signMode: 'federation',
        fields: [
@@ -197,7 +201,7 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة البطولة *', required:true},
        ],
-       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على ${v.granting_body.includes('الأول')?'المركز الأول على مستوى المملكة':'المركز الثالث'} في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
+       template: v => `تشهد ${v.entity_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'كان','كانت')} ضمن الفريق الحائز على ${v.granting_body.includes('الأول')?'المركز الأول على مستوى المملكة':'المركز الثالث'} في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
   6: { label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.',
        signMode: 'federation',
        fields: [
@@ -207,7 +211,7 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'السنة/العام الدراسي *', required:true},
        ],
-       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} في بطولة ${v.tournament_name} للعام ${v.year}.` },
+       template: v => `تشهد ${v.entity_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'كان','كانت')} ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} في بطولة ${v.tournament_name} للعام ${v.year}.` },
   7: { label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.',
        signMode: 'fixed_school', // توقيع ثابت: المدرسة يمين / مديرية التربية يسار
        fields: [
@@ -216,7 +220,7 @@ const MODELS = {
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'السنة/العام الدراسي *', required:true},
        ],
-       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} في بطولة ${v.tournament_name} للعام ${v.year}.` },
+       template: v => `تشهد ${v.entity_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'كان','كانت')} ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} في بطولة ${v.tournament_name} للعام ${v.year}.` },
   8: { label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.',
        signMode: 'fixed_school',
        fields: [
@@ -224,7 +228,7 @@ const MODELS = {
          {key:'school_name', label:'اسم المدرسة *', required:true},
          {key:'year', label:'العام الدراسي *', required:true},
        ],
-       template: v => `تشهد مديرية التربية والتعليم — ${v.directorate_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي فريق مدرسة ${v.school_name} في لعبة ${v.game}، وكان ضمن الفريق الحائز على المركز الثالث على مستوى المديرية للعام الدراسي ${v.year}.` },
+       template: v => `تشهد مديرية التربية والتعليم — ${v.directorate_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} فريق مدرسة ${v.school_name} في لعبة ${v.game}، و${M(v,'كان','كانت')} ضمن الفريق الحائز على المركز الثالث على مستوى المديرية للعام الدراسي ${v.year}.` },
 };
 
 const gameSel = document.getElementById('f-game');
@@ -274,8 +278,10 @@ function showMsg(txt, err) {
 async function submitCert() {
   if (!CURRENT_MODEL) { showMsg('يرجى اختيار رقم النموذج أولاً', true); return; }
   const player_name = v('f-player');
+  const gender = v('f-gender');
   const game = v('f-game');
-  if (!player_name) { showMsg('يرجى إدخال اسم اللاعب/ـة', true); return; }
+  if (!player_name) { showMsg('يرجى إدخال الاسم', true); return; }
+  if (!gender) { showMsg('يرجى اختيار الجنس', true); return; }
   if (!game) { showMsg('يرجى اختيار اللعبة', true); return; }
 
   const dynValues = {};
@@ -298,7 +304,7 @@ async function submitCert() {
 
   const payload = {
     model_number: parseInt(document.getElementById('f-num').value),
-    player_name, game, ...dynValues, signer1, signer2,
+    player_name, gender, game, ...dynValues, signer1, signer2,
     captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
   };
 
@@ -314,7 +320,7 @@ async function submitCert() {
     document.getElementById('doneArea').style.display = 'block';
     document.getElementById('refCodeOut').textContent = r.ref_code;
 
-    const allVals = { player_name, game, ...dynValues };
+    const allVals = { player_name, gender, game, ...dynValues };
     const bodyText = CURRENT_MODEL.template(allVals);
     document.getElementById('printArea').innerHTML = `
       <div class="cert-h">
