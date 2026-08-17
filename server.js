@@ -158,19 +158,36 @@ function genSportsRef() {
   let s = ''; for (let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
   return 'SP-' + s;
 }
-// نوع نموذج التفوق الرياضي: كل فئة تحمل علامة ثابتة (من 20) — يُتحقَّق منها هنا ويُخزَّن الاسم فقط في السجل
-const SPORTS_NOMINATION_MODELS = [
-  { num: 1, label: 'لاعب منتخب وطني مثّل الأردن', score: 20 },
-  { num: 2, label: 'لاعب منتخب وطني', score: 19 },
-  { num: 3, label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.', score: 17 },
-  { num: 4, label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.', score: 16 },
-  { num: 5, label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.', score: 14 },
-  { num: 6, label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.', score: 13 },
-  { num: 7, label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.', score: 11 },
-  { num: 8, label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.', score: 10 },
-];
-const SPORTS_NOMINATION_SCORES = Object.fromEntries(SPORTS_NOMINATION_MODELS.map(m => [m.label, m.score]));
-const SPORTS_NOMINATION_NUM_BY_LABEL = Object.fromEntries(SPORTS_NOMINATION_MODELS.map(m => [m.label, m.num]));
+// نوع نموذج التفوق الرياضي: أوصاف النماذج الثمانية الحالية (مطابقة تماماً لنماذج شهادة التفوق الرياضي)
+const SPORTS_NOMINATION_LABELS = {
+  1: 'لاعب منتخب وطني مثّل الأردن',
+  2: 'لاعب منتخب وطني',
+  3: 'منتخب مدرسي مثّل الأردن',
+  4: 'لاعب نادي – ألعاب جماعية (المراكز الثلاثة الأولى)',
+  5: 'لاعب نادي – ألعاب جماعية (المركز الرابع فما فوق)',
+  6: 'لاعب نادي – ألعاب فردية (المراكز الثلاثة الأولى)',
+  7: 'منتخب مديرية التربية والتعليم',
+  8: 'فريق مدرسي',
+};
+const SPORTS_NOMINATION_NUM_BY_LABEL = Object.fromEntries(Object.entries(SPORTS_NOMINATION_LABELS).map(([n,l]) => [l, Number(n)]));
+// جدول احتساب علامة "نوع نموذج التفوق الرياضي" (من 20) — بعض النماذج علامتها ثابتة، وبعضها يعتمد على المركز
+// المُسجَّل في شهادة النموذج المرتبطة بالطلب (النماذج 4، 6، 7)؛ يُقرأ المركز من سجل الشهادة نفسه دائماً
+const SPORTS_MODEL_RANK_SCORES = {
+  1: { fixed: 20 },
+  2: { fixed: 19 },
+  3: { fixed: 16 },
+  4: { 'الأول': 17, 'الثاني': 16, 'الثالث': 14 },
+  5: { fixed: 13 },
+  6: { 'الأول': 17, 'الثاني': 16, 'الثالث': 14 },
+  7: { 'الأول': 14, 'الثاني': 13, 'الثالث': 11 },
+  8: { fixed: 10 },
+};
+function computeSportsNominationScore(modelNumber, rank) {
+  const entry = SPORTS_MODEL_RANK_SCORES[modelNumber];
+  if (!entry) return null;
+  if (entry.fixed != null) return entry.fixed;
+  return (rank && entry[rank] != null) ? entry[rank] : null;
+}
 const SPORTS_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة القدم','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج'];
 
 // ══ نماذج شهادات التفوق الرياضي (تُعبَّأ وتُطبَع من قِبل الجهة المانحة/الطالب قبل تقديم الطلب، ثم تُربَط بالطلب عبر رقم مرجعي فريد) ══
@@ -463,20 +480,31 @@ app.post('/api/public/sports-excellence', async (req, res) => {
       return res.status(400).json({ error: 'صيغة رقم الهاتف البديل غير صحيحة' });
     if (!Array.isArray(data.game_types) || !data.game_types.length || !data.game_types.every(g => SPORTS_GAME_TYPES.includes(g)))
       return res.status(400).json({ error: 'يرجى اختيار نوع لعبة واحدة صحيحة على الأقل' });
-    if (!data.nomination_type || !(data.nomination_type in SPORTS_NOMINATION_SCORES))
+    if (!data.nomination_type || !(data.nomination_type in SPORTS_NOMINATION_NUM_BY_LABEL))
       return res.status(400).json({ error: 'يرجى اختيار نوع نموذج التفوق الرياضي' });
 
-    // الرقم المرجعي لشهادة النموذج (اختياري) — إن أُدخل، يجب أن يكون صحيحاً وغير مُستخدَم سابقاً ومطابقاً لرقم النموذج المُختار
+    // الرقم المرجعي لشهادة النموذج — إلزامي: يجب أن يكون صحيحاً وغير مُستخدَم سابقاً ومطابقاً لرقم النموذج المُختار.
+    // العلامة (من 20) تُحتسَب بالكامل من بيانات الشهادة نفسها (رقم النموذج + المركز المُسجَّل فيها إن وُجد)
     const certRefCode = (data.cert_ref_code || '').trim().toUpperCase();
-    let certDoc = null;
-    if (certRefCode) {
-      certDoc = await SportsCertificate.findOne({ ref_code: certRefCode }).lean();
-      if (!certDoc) return res.status(400).json({ error: 'الرقم المرجعي لشهادة النموذج غير صحيح' });
-      if (certDoc.used) return res.status(400).json({ error: 'هذا الرقم المرجعي مُستخدَم مسبقاً في طلب آخر' });
-      const expectedNum = SPORTS_NOMINATION_NUM_BY_LABEL[data.nomination_type];
-      if (certDoc.model_number !== expectedNum)
-        return res.status(400).json({ error: `الرقم المرجعي المُدخَل يخص نموذج رقم (${certDoc.model_number})، وهذا لا يطابق نوع النموذج المُختار أعلاه` });
-    }
+    if (!certRefCode) return res.status(400).json({ error: 'يرجى إدخال الرقم المرجعي لشهادة النموذج — ربط الشهادة إلزامي لتقديم الطلب' });
+    const certDoc = await SportsCertificate.findOne({ ref_code: certRefCode }).lean();
+    if (!certDoc) return res.status(400).json({ error: 'الرقم المرجعي لشهادة النموذج غير صحيح' });
+    if (certDoc.used) return res.status(400).json({ error: 'هذا الرقم المرجعي مُستخدَم مسبقاً في طلب آخر' });
+    const expectedNum = SPORTS_NOMINATION_NUM_BY_LABEL[data.nomination_type];
+    if (certDoc.model_number !== expectedNum)
+      return res.status(400).json({ error: `الرقم المرجعي المُدخَل يخص نموذج رقم (${certDoc.model_number})، وهذا لا يطابق نوع النموذج المُختار أعلاه` });
+
+    // شرط: يجب أن يكون تاريخ الإنجاز المذكور في الشهادة ضمن آخر 3 سنوات من تاريخ تقديم الطلب
+    const yearMatch = String(certDoc.year || '').match(/\d{4}/);
+    if (!yearMatch) return res.status(400).json({ error: 'تعذّر التحقق من سنة الإنجاز في الشهادة المرتبطة، يرجى مراجعة العمادة' });
+    const certYear = parseInt(yearMatch[0]);
+    const nowYear = new Date().getFullYear();
+    if (nowYear - certYear > 3)
+      return res.status(400).json({ error: `عذراً، يُشترط أن يكون الإنجاز المذكور في الشهادة خلال آخر 3 سنوات من تاريخ تقديم الطلب — سنة الإنجاز المسجَّلة (${certYear}) تتجاوز هذه المدة` });
+
+    const nomScore = computeSportsNominationScore(certDoc.model_number, certDoc.rank);
+    if (nomScore == null) return res.status(400).json({ error: 'تعذّر احتساب علامة نوع النموذج من بيانات الشهادة المرتبطة، يرجى مراجعة العمادة' });
+
     if (!data.photo || !String(data.photo).startsWith('data:image/'))
       return res.status(400).json({ error: 'يرجى إرفاق الصورة الشخصية (إلزامية)' });
     if (!data.agree) return res.status(400).json({ error: 'يرجى الموافقة على إقرار صحة البيانات' });
@@ -486,7 +514,7 @@ app.post('/api/public/sports-excellence', async (req, res) => {
 
     data.ref_code = genSportsRef();
     data.status = 'pending';
-    data.nomination_score = SPORTS_NOMINATION_SCORES[data.nomination_type];
+    data.nomination_score = nomScore;
     data.submitted_ip = ip;
     if (certRefCode) data.cert_ref_code = certRefCode;
 
@@ -511,8 +539,8 @@ app.post('/api/public/sports-certificate', async (req, res) => {
     delete data.captcha_token; delete data.captcha_answer;
 
     const modelNumber = Number(data.model_number);
-    const modelDef = SPORTS_NOMINATION_MODELS.find(m => m.num === modelNumber);
-    if (!modelDef) return res.status(400).json({ error: 'يرجى اختيار رقم نموذج صحيح (من 1 إلى 8)' });
+    const modelLabel = SPORTS_NOMINATION_LABELS[modelNumber];
+    if (!modelLabel) return res.status(400).json({ error: 'يرجى اختيار رقم نموذج صحيح (من 1 إلى 8)' });
     const playerName = (data.player_name || '').trim();
     if (!playerName) return res.status(400).json({ error: 'يرجى إدخال الاسم' });
     if (!['ذكر','أنثى'].includes(data.gender)) return res.status(400).json({ error: 'يرجى اختيار الجنس' });
@@ -521,7 +549,7 @@ app.post('/api/public/sports-certificate', async (req, res) => {
       return res.status(400).json({ error: 'يرجى إدخال اسم الجهتين الموقّعتين' });
 
     data.model_number = modelNumber;
-    data.model_label = modelDef.label;
+    data.model_label = modelLabel;
     data.ref_code = genCertRef();
     data.used = false;
 
@@ -1094,9 +1122,22 @@ app.get('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
 app.put('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
   try {
     const update = { ...req.body, updated_by: req.user.username, updatedAt: new Date() };
-    // إعادة احتساب علامة نوع النموذج تلقائياً إن تغيّر التصنيف من شاشة التعديل
-    if (update.nomination_type && SPORTS_NOMINATION_SCORES[update.nomination_type] != null && update.nomination_score == null) {
-      update.nomination_score = SPORTS_NOMINATION_SCORES[update.nomination_type];
+    // إعادة احتساب علامة نوع النموذج تلقائياً إن تغيّر التصنيف أو الرقم المرجعي من شاشة التعديل —
+    // العلامة تُشتق دائماً من رقم النموذج والمركز المُسجَّلين في الشهادة المرتبطة نفسها
+    if (update.nomination_type && SPORTS_NOMINATION_NUM_BY_LABEL[update.nomination_type] != null) {
+      const num = SPORTS_NOMINATION_NUM_BY_LABEL[update.nomination_type];
+      let refCode = (update.cert_ref_code || '').trim().toUpperCase();
+      if (!refCode) {
+        const existing = await SportsApp.findById(req.params.id).lean();
+        refCode = (existing?.cert_ref_code || '').trim().toUpperCase();
+      }
+      let rank = null;
+      if (refCode) {
+        const cert = await SportsCertificate.findOne({ ref_code: refCode }).lean();
+        rank = cert?.rank || null;
+      }
+      const score = computeSportsNominationScore(num, rank);
+      if (score != null) update.nomination_score = score;
     }
     await SportsApp.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ message: 'تم التحديث' });
