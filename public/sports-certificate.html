@@ -381,13 +381,13 @@ async function submitCert() {
     const bodyText = CURRENT_MODEL.template(allVals);
     document.getElementById('printArea').innerHTML = `
       <div class="cert-h2-top">
-        <img src="/logo-dsa.png" alt="شعار عمادة شؤون الطلبة">
+        <img src="/logo.png" alt="شعار الجامعة الأردنية">
         <div class="uni">
           <div class="ar">الجامعة الأردنية</div>
           <div class="en">The University Of Jordan</div>
           <div class="dep">عمادة شؤون الطلبة</div>
         </div>
-        <img src="/logo.png" alt="شعار الجامعة الأردنية">
+        <img src="/logo-dsa.png" alt="شعار عمادة شؤون الطلبة">
       </div>
       <div class="cert-h2-title">شهادة تفوق رياضي — نموذج (${payload.model_number})</div>
       <div class="cert-h2-sub">(${CURRENT_MODEL.label})</div>
