@@ -21,14 +21,16 @@ const SP_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة ال�
 const SP_NOMINATION_TYPES = [
   { num: 1, label: 'لاعب منتخب وطني مثّل الأردن', score: 20 },
   { num: 2, label: 'لاعب منتخب وطني', score: 19 },
-  { num: 3, label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.', score: 17 },
-  { num: 4, label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.', score: 16 },
-  { num: 5, label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.', score: 14 },
-  { num: 6, label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.', score: 13 },
-  { num: 7, label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.', score: 11 },
-  { num: 8, label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.', score: 10 },
+  { num: 3, label: 'منتخب مدرسي مثّل الأردن', score: 16 },
+  { num: 4, label: 'لاعب نادي – ألعاب جماعية (المراكز الثلاثة الأولى)', score: null },
+  { num: 5, label: 'لاعب نادي – ألعاب جماعية (المركز الرابع فما فوق)', score: 13 },
+  { num: 6, label: 'لاعب نادي – ألعاب فردية (المراكز الثلاثة الأولى)', score: null },
+  { num: 7, label: 'منتخب مديرية التربية والتعليم', score: null },
+  { num: 8, label: 'فريق مدرسي', score: 10 },
 ];
-const SP_NOMINATION_SCORES = Object.fromEntries(SP_NOMINATION_TYPES.map(t => [t.label, t.score]));
+// ملاحظة: النماذج 4، 6، 7 علامتها تعتمد على المركز المُسجَّل في الشهادة (score: null هنا عمداً) —
+// يُعتمَد دائماً على r.nomination_score المحفوظة وقت التقديم، وليس هذا الجدول الثابت، لعرضها بدقة
+const SP_NOMINATION_SCORES = Object.fromEntries(SP_NOMINATION_TYPES.filter(t => t.score != null).map(t => [t.label, t.score]));
 function spNominationScore(label) { return SP_NOMINATION_SCORES[label] ?? null; }
 const SP_DISTRICTS = {"العاصمة": ["عمان", "الجامعة", "القويسمة", "ماركا", "الجيزة", "الموقر", "ناعور", "سحاب", "وادي السير"], "البلقاء": ["السلط", "الشونة الجنوبية", "دير علا", "عين الباشا", "ماحص والفحيص"], "الزرقاء": ["الزرقاء", "الرصيفة", "الهاشمية", "بيرين"], "مأدبا": ["مأدبا", "ذيبان"], "إربد": ["إربد", "الرمثا", "بني كنانة", "بني عبيد", "الكورة", "المزار الشمالي", "الطيبة"], "المفرق": ["المفرق", "البادية الشمالية", "البادية الشمالية الغربية", "الرويشد", "الخالدية"], "جرش": ["جرش"], "عجلون": ["عجلون", "كفرنجة"], "الكرك": ["الكرك", "القصر", "القطرانة", "المزار الجنوبي", "الأغوار الجنوبية", "عي", "فقوع"], "الطفيلة": ["الطفيلة", "الحسا", "بصيرا"], "معان": ["معان", "البتراء", "الحسينية", "الشوبك"], "العقبة": ["العقبة", "القويرة"]};
 const SP_MAJORS = MAJORS_BY_COLLEGE; // مصدر مشترك مع كشف المشاركين (quality.js) — معرَّف في app.js
@@ -326,7 +328,7 @@ function spEditFormHTML(r) {
       <select id="sp-e-nomination" onchange="spUpdateNominationDesc()"><option value="">اختر...</option>${SP_NOMINATION_TYPES.map(t=>`<option value="${t.num}"${t.label===r.nomination_type?' selected':''}>نموذج رقم (${t.num})</option>`).join('')}</select>
       <div style="font-size:11px;color:var(--muted);margin:6px 0 2px">وصف النموذج</div>
       <div id="sp-e-nomination-desc" style="border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:12.5px;background:#F7F9F6;min-height:20px">${spEsc(r.nomination_type)||'—'}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">العلامة المقابلة (من 20): <b id="sp-e-nomination-score">${r.nomination_type && spNominationScore(r.nomination_type)!=null ? spNominationScore(r.nomination_type) : '—'}</b></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">العلامة المقابلة (من 20): <b id="sp-e-nomination-score">${r.nomination_score!=null ? r.nomination_score : (r.nomination_type && spNominationScore(r.nomination_type)!=null ? spNominationScore(r.nomination_type) : 'تعتمد على المركز في الشهادة')}</b></div>
     </div>
 
     <div class="fg" style="margin-top:8px"><label>الحالة</label>
@@ -397,7 +399,7 @@ function spUpdateNominationDesc() {
   const num = parseInt(sel.value) || null;
   const t = SP_NOMINATION_TYPES.find(x => x.num === num);
   document.getElementById('sp-e-nomination-desc').textContent = t ? t.label : '—';
-  document.getElementById('sp-e-nomination-score').textContent = t ? t.score : '—';
+  document.getElementById('sp-e-nomination-score').textContent = t ? (t.score != null ? t.score : 'تعتمد على المركز في الشهادة') : '—';
 }
 
 function spMsg(txt) {
@@ -959,7 +961,7 @@ function scRenderTable() {
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];
     const hs = r.gpa ? (parseFloat(r.gpa) * 0.2) : 0;
-    const nom = spNominationScore(r.nomination_type) || 0;
+    const nom = r.nomination_score!=null ? r.nomination_score : (spNominationScore(r.nomination_type) || 0);
     const filled = scores.filter(v => v != null && v !== '');
     const cscore = filled.length ? filled.reduce((a,b)=>a+(+b||0),0) / filled.length : null;
     return `<tr data-id="${r.id}" data-hs="${hs}" data-nom="${nom}">

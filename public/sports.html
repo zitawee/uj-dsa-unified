@@ -169,8 +169,9 @@
           <div id="f-nomination-desc" style="min-height:44px;border:1px solid var(--border);border-radius:var(--r);padding:11px 12px;font-size:13px;background:#F7F9F6;line-height:1.5">—</div>
         </div>
       </div>
-      <div><label>الرقم المرجعي لشهادة النموذج (إن كانت مُعبّأة إلكترونياً مسبقاً)</label><input id="f-cert-ref" type="text" placeholder="مثال: CERT-A7K92X" style="text-transform:uppercase"></div>
-      <p class="sub" style="margin-top:-8px">اختياري — إن كنتِ قد عبّأتِ الشهادة عبر الرابط أعلى الصفحة، أدخلي الرقم المرجعي هنا لربطها تلقائياً بطلبك.</p>
+      <div><label>الرقم المرجعي لشهادة النموذج *</label><input id="f-cert-ref" type="text" placeholder="مثال: CERT-A7K92X" style="text-transform:uppercase"></div>
+      <p class="sub" style="margin-top:-8px">إلزامي — عبّئي الشهادة أولاً عبر الرابط أعلى الصفحة، ثم أدخلي الرقم المرجعي الذي حصلتِ عليه هنا لربطها بطلبك؛ لا يمكن تقديم الطلب دون ربط شهادة صحيحة.</p>
+      <p class="sub" style="margin-top:-4px;color:#a15c00">⚠️ يُشترط أن يكون تاريخ الإنجاز المذكور في الشهادة خلال آخر 3 سنوات من تاريخ تقديم هذا الطلب.</p>
     </div>
 
     <div class="card">
@@ -207,12 +208,12 @@ const GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة القد
 const NOMINATION_MODELS = [
   { num: 1, label: 'لاعب منتخب وطني مثّل الأردن' },
   { num: 2, label: 'لاعب منتخب وطني' },
-  { num: 3, label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.' },
-  { num: 4, label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.' },
-  { num: 5, label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.' },
-  { num: 6, label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.' },
-  { num: 7, label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.' },
-  { num: 8, label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.' },
+  { num: 3, label: 'منتخب مدرسي مثّل الأردن' },
+  { num: 4, label: 'لاعب نادي – ألعاب جماعية (المراكز الثلاثة الأولى)' },
+  { num: 5, label: 'لاعب نادي – ألعاب جماعية (المركز الرابع فما فوق)' },
+  { num: 6, label: 'لاعب نادي – ألعاب فردية (المراكز الثلاثة الأولى)' },
+  { num: 7, label: 'منتخب مديرية التربية والتعليم' },
+  { num: 8, label: 'فريق مدرسي' },
 ];
 function updateNominationDesc() {
   const num = parseInt(document.getElementById('f-nomination-num').value) || null;
@@ -371,6 +372,7 @@ async function submitApp() {
   if (new Set([major1, major2, major3]).size < 3) { showMsg('لا يمكن تكرار نفس التخصص في أكثر من خيار', true); return; }
   if (!PHOTO_DATA) { showMsg('يرجى إرفاق الصورة الشخصية (إلزامية)', true); return; }
   if (!nomination) { showMsg('يرجى اختيار نوع نموذج التفوق الرياضي', true); return; }
+  if (!v('f-cert-ref')) { showMsg('يرجى إدخال الرقم المرجعي لشهادة النموذج — ربط الشهادة إلزامي لتقديم الطلب', true); return; }
   if (!agree) { showMsg('يرجى الموافقة على إقرار صحة البيانات', true); return; }
   if (!v('f-captcha')) { showMsg('يرجى الإجابة على سؤال التحقق', true); return; }
 
