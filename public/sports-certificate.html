@@ -48,10 +48,12 @@
 
   /* طباعة الشهادة */
   #printArea{display:none;font-family:'Scheherazade New',serif}
+  @page{ size:A4; margin:10mm 2.4cm; } /* نضبط هوامش الصفحة بأنفسنا بدل الاعتماد على إعدادات المتصفح الافتراضية غير الثابتة */
   @media print{
     body *{visibility:hidden}
+    body{margin:0}
     #printArea, #printArea *{visibility:visible}
-    #printArea{display:flex;flex-direction:column;padding:30px 2.4cm;min-height:257mm}
+    #printArea{display:flex;flex-direction:column;padding:14px 0;min-height:230mm}
   }
   #certFooter{text-align:center;font-size:11px;color:#6b7280;margin-top:auto;padding-top:24px}
   .cert-h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--g);padding-bottom:10px;margin-bottom:18px}
