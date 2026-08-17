@@ -514,7 +514,8 @@ app.post('/api/public/sports-certificate', async (req, res) => {
     const modelDef = SPORTS_NOMINATION_MODELS.find(m => m.num === modelNumber);
     if (!modelDef) return res.status(400).json({ error: 'يرجى اختيار رقم نموذج صحيح (من 1 إلى 8)' });
     const playerName = (data.player_name || '').trim();
-    if (!playerName) return res.status(400).json({ error: 'يرجى إدخال اسم اللاعب/ـة' });
+    if (!playerName) return res.status(400).json({ error: 'يرجى إدخال الاسم' });
+    if (!['ذكر','أنثى'].includes(data.gender)) return res.status(400).json({ error: 'يرجى اختيار الجنس' });
     if (!data.game || !SPORTS_GAME_TYPES.includes(data.game)) return res.status(400).json({ error: 'يرجى اختيار اللعبة' });
     if (!(data.signer1 || '').trim() || !(data.signer2 || '').trim())
       return res.status(400).json({ error: 'يرجى إدخال اسم الجهتين الموقّعتين' });
