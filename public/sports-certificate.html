@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1B6B3A">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Scheherazade+New:wght@400;700&display=swap">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>تعبئة نموذج شهادة تفوق رياضي — عمادة شؤون الطلبة</title>
 <style>
@@ -49,7 +49,8 @@
   @media print{
     body *{visibility:hidden}
     #printArea, #printArea *{visibility:visible}
-    #printArea{display:block;position:absolute;top:0;right:0;left:0;padding:30px}
+    #printArea{display:block;position:absolute;top:0;right:0;left:0;bottom:0;padding:30px 2.4cm;min-height:100vh}
+    #certFooter{position:absolute;bottom:1cm;right:2.4cm;left:2.4cm}
   }
   .cert-h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--g);padding-bottom:10px;margin-bottom:18px}
   .cert-h img{width:60px;height:60px;object-fit:contain}
@@ -58,10 +59,11 @@
   .cert-h .uni .en{font-size:11px;color:var(--muted)}
   .cert-h .meta{font-size:10.5px;color:var(--muted);text-align:left;white-space:nowrap}
   .cert-title{text-align:center;font-weight:800;font-size:18px;color:var(--g);margin:14px 0 2px}
-  .cert-sub{text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:22px}
-  .cert-body{font-size:14.5px;line-height:2.1;text-align:justify;margin-bottom:40px}
+  .cert-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:22px;font-family:'Scheherazade New',serif}
+  .cert-body{font-family:'Scheherazade New',serif;font-size:14pt;font-weight:700;line-height:2.3;text-align:justify;margin-bottom:40px}
   .cert-sign{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:60px;text-align:center;font-size:12px}
   .cert-sign .line{border-top:1px solid #333;padding-top:6px;margin-top:50px}
+  #certFooter{text-align:center;font-size:11px;color:#6b7280}
 </style>
 </head>
 <body>
@@ -125,73 +127,91 @@
 <script>
 const GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج'];
 
+// قائمة الاتحادات الرياضية الأردنية (تُستخدَم في النماذج 1-6 كخانة توقيع مباشرة)
+const FEDERATIONS = [
+  'الاتحاد الأردني لألعاب القوى',
+  'الاتحاد الأردني لكرة القدم',
+  'الاتحاد الأردني لكرة السلة',
+  'الاتحاد الأردني لكرة اليد',
+  'الاتحاد الأردني للكرة الطائرة',
+  'الاتحاد الأردني للتايكواندو',
+  'الاتحاد الأردني للكاراتيه',
+  'الاتحاد الأردني للريشة الطائرة',
+  'الاتحاد الأردني لكرة الطاولة',
+  'الاتحاد الملكي الأردني للشطرنج',
+];
+const FED_FIELD = {key:'federation_name', label:'اسم الاتحاد الأردني *', required:true, type:'select', options:FEDERATIONS};
+
 const MODELS = {
   1: { label: 'لاعب منتخب وطني مثّل الأردن',
-       signerHints: ['الاتحاد الأردني لـ...', 'اللجنة الأولمبية الأردنية'],
+       signMode: 'federation', // النموذج 1-6: خانة اتحاد منسدلة تظهر في التوقيع + "اللجنة الأولمبية الأردنية" ثابتة بالجهة الثانية
        fields: [
-         {key:'federation_name', label:'اسم الاتحاد الأردني *', required:true},
+         FED_FIELD,
          {key:'opponent_name', label:'الجهة/المنتخب الذي واجهه المنتخب الوطني *', required:true},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
-         {key:'year', label:'سنة البطولة *', required:true},
+         {key:'year', label:'سنة اللقاء *', required:true},
        ],
-       template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وأنه كان ضمن صفوف المنتخب الوطني الذي مثّل الأردن في لقائه مع ${v.opponent_name} ضمن بطولة ${v.tournament_name} التي أُقيمت عام ${v.year}.` },
+       template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وأنه كان ضمن صفوف المنتخب الوطني الذي مثّل الأردن في لقائه مع ${v.opponent_name} ضمن بطولة ${v.tournament_name} والتي أُقيمت عام ${v.year}.` },
   2: { label: 'لاعب منتخب وطني',
-       signerHints: ['الاتحاد الأردني لـ...', 'اللجنة الأولمبية الأردنية'],
+       signMode: 'federation',
        fields: [
-         {key:'federation_name', label:'اسم الاتحاد الأردني *', required:true},
+         FED_FIELD,
          {key:'year', label:'السنة *', required:true},
        ],
        template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي المنتخب الوطني الأردني للعبة ${v.game}، وكان هذا اللاعب ضمن صفوف المنتخب الوطني للعام ${v.year}.` },
   3: { label: 'لاعب نادي أو مركز حائز على المركز الأول في لعبة جماعية أو فردية على مستوى المملكة.',
-       signerHints: ['الاتحاد الأردني لـ...', 'اللجنة الأولمبية الأردنية'],
+       signMode: 'federation',
        fields: [
-         {key:'federation_name', label:'اسم الاتحاد الأردني *', required:true},
+         FED_FIELD,
          {key:'club_name', label:'اسم النادي أو المركز *', required:true},
          {key:'activity_type', label:'نوع اللعبة *', required:true, type:'select', options:['جماعية','فردية']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة البطولة *', required:true},
        ],
-       template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي نادي/مركز ${v.club_name}، وكان هذا اللاعب ضمن الفريق الحائز على المركز الأول على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) ضمن البطولة التي أُقيمت عام ${v.year}.` },
+       template: v => `تشهد ${v.federation_name} بأنّ اللاعب/ـة ${v.player_name} من لاعبي نادي/مركز ${v.club_name}، وكان هذا اللاعب ضمن الفريق الحائز على المركز الأول على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
   4: { label: 'لاعب نادي أو مركز أو وزارة التربية والتعليم حائز على المركز الثاني في لعبة جماعية أو فردية على مستوى المملكة.',
-       signerHints: ['الاتحاد الأردني لـ...', 'اللجنة الأولمبية الأردنية'],
+       signMode: 'federation',
        fields: [
-         {key:'granting_body', label:'الجهة المانحة *', required:true, type:'select', options:['نادي أو مركز','وزارة التربية والتعليم']},
+         FED_FIELD,
+         {key:'granting_body', label:'نوع الجهة المانحة *', required:true, type:'select', options:['نادي أو مركز','وزارة التربية والتعليم']},
          {key:'club_name', label:'اسم النادي أو المركز أو المديرية *', required:true},
          {key:'activity_type', label:'نوع اللعبة *', required:true, type:'select', options:['جماعية','فردية']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة البطولة *', required:true},
        ],
-       template: v => `تشهد ${v.granting_body} — ${v.club_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على المركز الثاني على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) ضمن البطولة التي أُقيمت عام ${v.year}.` },
+       template: v => `تشهد ${v.granting_body} — ${v.club_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على المركز الثاني على مستوى المملكة في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
   5: { label: 'لاعب مديرية التربية والتعليم حائز على المركز الأول على مستوى المملكة، أو لاعب نادي أو مركز حائز على المركز الثالث في لعبة جماعية أو فردية.',
-       signerHints: ['الاتحاد الأردني لـ...', 'اللجنة الأولمبية الأردنية'],
+       signMode: 'federation',
        fields: [
-         {key:'granting_body', label:'الجهة المانحة *', required:true, type:'select', options:['مديرية التربية والتعليم (المركز الأول)','نادي أو مركز (المركز الثالث)']},
+         FED_FIELD,
+         {key:'granting_body', label:'نوع الجهة المانحة *', required:true, type:'select', options:['مديرية التربية والتعليم (المركز الأول)','نادي أو مركز (المركز الثالث)']},
          {key:'entity_name', label:'اسم المديرية أو النادي/المركز *', required:true},
          {key:'activity_type', label:'نوع اللعبة *', required:true, type:'select', options:['جماعية','فردية']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'سنة البطولة *', required:true},
        ],
-       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على ${v.granting_body.includes('الأول')?'المركز الأول على مستوى المملكة':'المركز الثالث'} في لعبة ${v.game} (${v.activity_type}) ضمن البطولة التي أُقيمت عام ${v.year}.` },
+       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على ${v.granting_body.includes('الأول')?'المركز الأول على مستوى المملكة':'المركز الثالث'} في لعبة ${v.game} (${v.activity_type}) في بطولة ${v.tournament_name} للعام ${v.year}.` },
   6: { label: 'لاعب مديرية التربية والتعليم حائز على المركز الثاني أو لاعب فريق مدرسي حائز على المركز الأول على مستوى المديرية، أو لاعب نادي أو مركز حائز على المراكز مابعد الثالث في لعبة جماعية.',
-       signerHints: ['الاتحاد الأردني لـ...', 'اللجنة الأولمبية الأردنية'],
+       signMode: 'federation',
        fields: [
-         {key:'granting_body', label:'الجهة المانحة *', required:true, type:'select', options:['مديرية التربية والتعليم (المركز الثاني - مملكة)','فريق مدرسي (المركز الأول - مديرية)','نادي أو مركز (بعد المركز الثالث)']},
+         FED_FIELD,
+         {key:'granting_body', label:'نوع الجهة المانحة *', required:true, type:'select', options:['مديرية التربية والتعليم (المركز الثاني - مملكة)','فريق مدرسي (المركز الأول - مديرية)','نادي أو مركز (بعد المركز الثالث)']},
          {key:'entity_name', label:'اسم المديرية أو المدرسة أو النادي *', required:true},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'السنة/العام الدراسي *', required:true},
        ],
-       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} ضمن البطولة التي أُقيمت عام ${v.year}.` },
+       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} في بطولة ${v.tournament_name} للعام ${v.year}.` },
   7: { label: 'لاعب منتخب مديرية التربية والتعليم حائز على المركز الثالث على مستوى المملكة، أو لاعب فريق مدرسي حائز على المركز الثاني على مستوى المديرية.',
-       signerHints: ['قسم النشاط الرياضي', 'الاتحاد الرياضي المدرسي'],
+       signMode: 'fixed_school', // توقيع ثابت: المدرسة يمين / مديرية التربية يسار
        fields: [
-         {key:'granting_body', label:'الجهة المانحة *', required:true, type:'select', options:['منتخب مديرية التربية والتعليم (المركز الثالث - مملكة)','فريق مدرسي (المركز الثاني - مديرية)']},
+         {key:'granting_body', label:'نوع الجهة المانحة *', required:true, type:'select', options:['منتخب مديرية التربية والتعليم (المركز الثالث - مملكة)','فريق مدرسي (المركز الثاني - مديرية)']},
          {key:'entity_name', label:'اسم المديرية أو المدرسة *', required:true},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'السنة/العام الدراسي *', required:true},
        ],
-       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} ضمن البطولة التي أُقيمت عام ${v.year}.` },
+       template: v => `تشهد ${v.entity_name} بأنّ اللاعب/ـة ${v.player_name} كان ضمن الفريق الحائز على مركز متقدّم (${v.granting_body}) في لعبة ${v.game} في بطولة ${v.tournament_name} للعام ${v.year}.` },
   8: { label: 'لاعب مدرسة حائز على المركز الثالث على مستوى المديرية.',
-       signerHints: ['مديرية التربية والتعليم', 'الاتحاد الرياضي المدرسي'],
+       signMode: 'fixed_school',
        fields: [
          {key:'directorate_name', label:'اسم مديرية التربية والتعليم *', required:true},
          {key:'school_name', label:'اسم المدرسة *', required:true},
@@ -220,13 +240,13 @@ function onModelChange() {
     }
     return `<div><label>${f.label}</label><input id="f-dyn-${f.key}" type="text"></div>`;
   }).join('');
-  const [hint1, hint2] = CURRENT_MODEL.signerHints || ['', ''];
-  dyn.innerHTML = dynFieldsHtml + `
-    <div class="full" style="border-top:1px dashed var(--border);padding-top:10px;margin-top:4px">
-      <label style="color:var(--g)">أسماء الجهتين الموقّعتين (تظهران مطبوعتين أسفل الشهادة تلقائياً، بدل الكتابة اليدوية)</label>
-    </div>
-    <div><label>اسم الجهة الموقّعة الأولى *</label><input id="f-signer1" type="text" placeholder="${hint1}" value="${hint1.includes('...')?'':hint1}"></div>
-    <div><label>اسم الجهة الموقّعة الثانية *</label><input id="f-signer2" type="text" placeholder="${hint2}" value="${hint2.includes('...')?'':hint2}"></div>`;
+  let signNote = '';
+  if (CURRENT_MODEL.signMode === 'federation') {
+    signNote = `<div class="full" style="border-top:1px dashed var(--border);padding-top:10px;margin-top:4px;font-size:11.5px;color:var(--muted)">سيظهر في التوقيع: "ختم وتوقيع (الاتحاد المُختار أعلاه)" في الجهة اليمنى، و"ختم وتوقيع اللجنة الأولمبية الأردنية" في الجهة اليسرى — تلقائياً بلا إدخال إضافي.</div>`;
+  } else if (CURRENT_MODEL.signMode === 'fixed_school') {
+    signNote = `<div class="full" style="border-top:1px dashed var(--border);padding-top:10px;margin-top:4px;font-size:11.5px;color:var(--muted)">سيظهر في التوقيع: "ختم وتوقيع المدرسة" في الجهة اليمنى، و"ختم وتوقيع مديرية التربية" في الجهة اليسرى — ثابتة تلقائياً بلا إدخال إضافي.</div>`;
+  }
+  dyn.innerHTML = dynFieldsHtml + signNote;
 }
 
 let CAPTCHA_TOKEN = null;
@@ -257,9 +277,17 @@ async function submitCert() {
     if (f.required && !val) { showMsg(`يرجى تعبئة: ${f.label.replace(' *','')}`, true); return; }
     dynValues[f.key] = val;
   }
-  const signer1 = v('f-signer1'), signer2 = v('f-signer2');
-  if (!signer1 || !signer2) { showMsg('يرجى إدخال اسم الجهتين الموقّعتين', true); return; }
   if (!v('f-captcha')) { showMsg('يرجى الإجابة على سؤال التحقق', true); return; }
+
+  // تحديد اسمَي الجهتين الموقّعتين تلقائياً حسب نمط النموذج — بلا إدخال يدوي إضافي
+  let signer1, signer2;
+  if (CURRENT_MODEL.signMode === 'federation') {
+    signer1 = dynValues.federation_name;
+    signer2 = 'اللجنة الأولمبية الأردنية';
+  } else { // fixed_school
+    signer1 = 'المدرسة';
+    signer2 = 'مديرية التربية والتعليم';
+  }
 
   const payload = {
     model_number: parseInt(document.getElementById('f-num').value),
@@ -287,14 +315,14 @@ async function submitCert() {
         <div class="uni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div style="font-size:11px;color:#6b7280">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
         <div class="meta">الرقم المرجعي: ${r.ref_code}<br>${new Date().toLocaleDateString('ar-EG')}</div>
       </div>
-      <div class="cert-title">شهادة تفوق رياضي</div>
-      <div class="cert-sub">نموذج رقم (${payload.model_number}) — ${CURRENT_MODEL.label}</div>
+      <div class="cert-title">شهادة تفوق رياضي — نموذج (${payload.model_number})</div>
+      <div class="cert-sub">${CURRENT_MODEL.label}</div>
       <div class="cert-body">${bodyText}</div>
       <div class="cert-sign">
-        <div><div class="line">توقيع وختم<br><b>${signer1}</b></div></div>
-        <div><div class="line">توقيع وختم<br><b>${signer2}</b></div></div>
+        <div><div class="line">ختم وتوقيع<br><b>${signer1}</b></div></div>
+        <div><div class="line">ختم وتوقيع<br><b>${signer2}</b></div></div>
       </div>
-      <div style="text-align:center;font-size:11px;color:#6b7280;margin-top:30px">تُسلَّم هذه الشهادة إلى دائرة النشاطات الرياضية في الجامعة الأردنية.</div>`;
+      <div id="certFooter">تُسلَّم هذه الشهادة إلى دائرة النشاطات الرياضية في الجامعة الأردنية.</div>`;
 
     setTimeout(() => window.print(), 400);
   } catch (e) {
