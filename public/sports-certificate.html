@@ -51,15 +51,17 @@
   @media print{
     body *{visibility:hidden}
     #printArea, #printArea *{visibility:visible}
-    #printArea{display:block;position:absolute;top:0;right:0;left:0;bottom:0;padding:30px 2.4cm;min-height:100vh}
-    #certFooter{position:absolute;bottom:1cm;right:2.4cm;left:2.4cm}
+    #printArea{display:block;padding:30px 2.4cm}
+    #certFooter{position:fixed;bottom:1cm;right:2.4cm;left:2.4cm}
   }
   .cert-h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--g);padding-bottom:10px;margin-bottom:18px}
   .cert-h img{width:60px;height:60px;object-fit:contain}
   .cert-h .uni{text-align:center;flex:1}
   .cert-h .uni .ar{font-weight:800;font-size:16px;color:var(--g)}
   .cert-h .uni .en{font-size:11px;color:var(--muted);font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif}
-  .cert-h .meta{font-size:10.5px;color:var(--muted);text-align:left;white-space:nowrap}
+  .cert-h .meta{text-align:left;white-space:nowrap}
+  .cert-h .meta .ref{font-size:14pt;font-weight:700;color:#000;font-family:'Scheherazade New',serif}
+  .cert-h .meta .date{font-size:10.5px;color:var(--muted);margin-top:2px}
   .cert-title{text-align:center;font-weight:800;font-size:18px;color:var(--g);margin:14px 0 2px}
   .cert-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:22px;font-family:'Scheherazade New',serif}
   .cert-body{font-family:'Scheherazade New',serif;font-size:14pt;font-weight:700;line-height:2.3;text-align:justify;margin-bottom:40px}
@@ -332,7 +334,7 @@ async function submitCert() {
       <div class="cert-h">
         <img src="/logo.png" alt="شعار الجامعة الأردنية">
         <div class="uni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div style="font-size:11px;color:#6b7280">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
-        <div class="meta">الرقم المرجعي: ${r.ref_code}<br>${new Date().toLocaleDateString('ar-EG')}</div>
+        <div class="meta"><div class="ref">الرقم المرجعي: ${r.ref_code}</div><div class="date">${new Date().toLocaleDateString('ar-EG')}</div></div>
       </div>
       <div class="cert-title">شهادة تفوق رياضي — نموذج (${payload.model_number})</div>
       <div class="cert-sub">${CURRENT_MODEL.label}</div>
