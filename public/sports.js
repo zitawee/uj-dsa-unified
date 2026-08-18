@@ -161,6 +161,15 @@ async function loadSports() {
   </div>
 
   <div class="card">
+    <div style="font-weight:700;color:var(--g);margin-bottom:8px">الألعاب المتاحة للتقديم هذا العام</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">عطّلي أي لعبة غير متاحة هذا العام فتختفي فوراً من نموذج التقديم العام ومن صفحة تعبئة الشهادة، ويُرفَض أي طلب/شهادة لها من طرف الخادم مباشرة.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
+      ${SP_GAME_TYPES.map(g => `<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px"><input type="checkbox" class="sp-active-game" value="${g}" ${(settings?.active_games || SP_GAME_TYPES).includes(g) ? 'checked' : ''}> ${g}</label>`).join('')}
+    </div>
+    <button class="btn btn-sm" style="margin-top:10px" onclick="spSaveActiveGames()"><i class="ti ti-device-floppy"></i> حفظ الألعاب المتاحة</button>
+  </div>
+
+  <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">اللجنة العليا للتفوق الرياضي (5 أعضاء) — تختار الناجحين النهائيين من بين كل المتقدمين، عبر كل الألعاب</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">هذه اللجنة مستقلة تماماً عن لجان الاختبار الخاصة بكل لعبة. أسماؤها تظهر فقط في توقيع "كشف الطلبة الناجحين" النهائي أدناه.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
@@ -273,6 +282,16 @@ async function spSaveSettings() {
   SP_SETTINGS.close_date = close_date;
   const r = await api('/api/sports_excellence/settings', 'PUT', SP_SETTINGS);
   if (r.error) { alert(r.error); return; }
+  loadSports();
+}
+
+async function spSaveActiveGames() {
+  const active_games = Array.from(document.querySelectorAll('.sp-active-game:checked')).map(el => el.value);
+  if (!active_games.length) { alert('يجب إبقاء لعبة واحدة مفعَّلة على الأقل'); return; }
+  SP_SETTINGS.active_games = active_games;
+  const r = await api('/api/sports_excellence/settings', 'PUT', SP_SETTINGS);
+  if (r.error) { alert(r.error); return; }
+  alert('✅ تم حفظ الألعاب المتاحة للتقديم');
   loadSports();
 }
 

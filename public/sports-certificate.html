@@ -286,7 +286,14 @@ const MODELS = {
 };
 
 const gameSel = document.getElementById('f-game');
-GAME_TYPES.forEach(g => { const o = document.createElement('option'); o.textContent = g; gameSel.appendChild(o); });
+function renderGameOptions(games) {
+  gameSel.innerHTML = '<option value="">اختر...</option>';
+  games.forEach(g => { const o = document.createElement('option'); o.textContent = g; gameSel.appendChild(o); });
+}
+renderGameOptions(GAME_TYPES); // عرض مبدئي بكل الألعاب ريثما تصل قائمة الألعاب المفعَّلة فعلياً من الخادم
+fetch('/api/public/sports-excellence/status').then(r => r.json()).then(d => {
+  if (Array.isArray(d.active_games) && d.active_games.length) renderGameOptions(d.active_games);
+}).catch(() => {});
 
 let CURRENT_MODEL = null;
 function onModelChange() {
@@ -419,7 +426,7 @@ async function submitCert() {
         ]).then(() => document.fonts.ready).catch(() => {})
       : Promise.resolve();
 
-    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 3000));
+    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 2000));
   } catch (e) {
     showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
     btn.disabled = false; btn.textContent = '📨 حفظ وطباعة الشهادة';

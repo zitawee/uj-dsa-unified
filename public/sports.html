@@ -228,13 +228,17 @@ const TRACKS = [
   { id:'arabic', label:'الثانوية العربية (من دولة عربية أخرى)', sub:['الإمارات العربية المتحدة','البحرين','تونس','الجزائر','جزر القمر','جيبوتي','السعودية','السودان','سوريا','الصومال','العراق','سلطنة عُمان','فلسطين','قطر','الكويت','لبنان','ليبيا','مصر','المغرب','موريتانيا','اليمن'] }
 ];
 
-// ── نوع اللعبة (اختيار واحد فقط) ──
+// ── نوع اللعبة (اختيار واحد فقط) — تُبنى فعلياً بعد وصول قائمة الألعاب المفعَّلة من الخادم أدناه ──
 const actBox = document.getElementById('actTypesBox');
-GAME_TYPES.forEach(t => {
-  const lbl = document.createElement('label');
-  lbl.innerHTML = `<input type="radio" name="act-radio" class="act-cb" value="${t}"> ${t}`;
-  actBox.appendChild(lbl);
-});
+function renderGameOptions(games) {
+  actBox.innerHTML = '';
+  games.forEach(t => {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="radio" name="act-radio" class="act-cb" value="${t}"> ${t}`;
+    actBox.appendChild(lbl);
+  });
+}
+renderGameOptions(GAME_TYPES); // عرض مبدئي بكل الألعاب ريثما تصل قائمة الألعاب المفعَّلة فعلياً
 
 // ── المحافظة ← اللواء ──
 const govSel = document.getElementById('f-gov');
@@ -311,7 +315,7 @@ function handlePhotoFile(file) {
 document.getElementById('f-photo-camera').addEventListener('change', e => handlePhotoFile(e.target.files[0]));
 document.getElementById('f-photo-file').addEventListener('change', e => handlePhotoFile(e.target.files[0]));
 
-// ── حالة الرابط (مفتوح/مغلق) ──
+// ── حالة الرابط (مفتوح/مغلق) + الألعاب المتاحة للتقديم حالياً ──
 async function checkLinkStatus() {
   try {
     const res = await fetch('/api/public/sports-excellence/status');
@@ -319,6 +323,10 @@ async function checkLinkStatus() {
     if (!d.open) {
       document.getElementById('formArea').style.display = 'none';
       document.getElementById('closedArea').style.display = 'block';
+      return;
+    }
+    if (Array.isArray(d.active_games) && d.active_games.length) {
+      renderGameOptions(d.active_games);
     }
   } catch (e) {}
 }
