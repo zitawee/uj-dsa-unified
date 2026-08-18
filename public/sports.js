@@ -768,8 +768,20 @@ async function loadSportsCertificates() {
   </div>
 
   <div class="card">
+    <div class="fb" style="align-items:center">
+      <button class="btn btn-sm" onclick="spcToggleAll(true)"><i class="ti ti-checkbox"></i> تحديد كل النتائج الظاهرة</button>
+      <button class="btn btn-sm" onclick="spcToggleAll(false)">إلغاء التحديد</button>
+      <div style="flex:1"></div>
+      <span id="spc-sel-count" style="font-size:12px;color:var(--muted)">لم يُحدَّد شيء</span>
+      <button class="btn btn-sm" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="spcDeleteSelected()"><i class="ti ti-trash"></i> حذف المحدَّد</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">نصيحة: استخدمي فلتر "الحالة" أعلاه (مُستخدَمة / غير مُستخدَمة) أولاً، ثم "تحديد كل النتائج الظاهرة" — يتم تحديد المطابق للفلتر الحالي فقط، وليس كل الشهادات.</p>
+  </div>
+
+  <div class="card">
     <div class="tw"><table>
       <thead><tr>
+        <th style="width:36px"><input type="checkbox" id="spc-check-all" onchange="spcToggleAll(this.checked)"></th>
         <th>#</th><th>الرقم المرجعي</th><th>رقم النموذج</th><th>اسم اللاعب/ـة</th><th>اللعبة</th><th>الحالة</th><th>الطلب المرتبط</th><th>تاريخ التعبئة</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="spc-tbody"></tbody>
@@ -798,9 +810,10 @@ function spcRender() {
     return true;
   });
   const tb = document.getElementById('spc-tbody');
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="9" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="10" class="center">لا توجد نتائج مطابقة</td></tr>`; spcUpdateSelCount(); return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
+      <td style="text-align:center"><input type="checkbox" class="spc-row-chk" value="${r.id}" onchange="spcUpdateSelCount()"></td>
       <td>${i+1}</td>
       <td style="font-family:monospace">${spEsc(r.ref_code)}</td>
       <td>نموذج (${r.model_number})</td>
@@ -815,6 +828,29 @@ function spcRender() {
         <button class="btn btn-sm" style="color:#c0392b" onclick="spcDelete('${r.id}')" title="حذف"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`).join('');
+  spcUpdateSelCount();
+}
+
+function spcToggleAll(state) {
+  document.querySelectorAll('.spc-row-chk').forEach(cb => cb.checked = state);
+  const all = document.getElementById('spc-check-all'); if (all) all.checked = state;
+  spcUpdateSelCount();
+}
+
+function spcUpdateSelCount() {
+  const n = document.querySelectorAll('.spc-row-chk:checked').length;
+  const el = document.getElementById('spc-sel-count');
+  if (el) el.textContent = n ? `${n} شهادة محدَّدة` : 'لم يُحدَّد شيء';
+}
+
+async function spcDeleteSelected() {
+  const ids = Array.from(document.querySelectorAll('.spc-row-chk:checked')).map(cb => cb.value);
+  if (!ids.length) { alert('يرجى تحديد شهادة واحدة على الأقل'); return; }
+  if (!confirm(`هل تريدين حذف ${ids.length} شهادة محدَّدة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+  const results = await Promise.all(ids.map(id => api('/api/sports_certificate/'+id, 'DELETE')));
+  const failed = results.filter(r => r && r.error).length;
+  if (failed) alert(`تم الحذف مع فشل ${failed} عملية من أصل ${ids.length}`);
+  loadSportsCertificates();
 }
 
 function spcView(id) {
