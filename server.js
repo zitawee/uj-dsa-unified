@@ -1943,16 +1943,20 @@ const RESET_DATE_FIELD = {
   students: null, achievements: null,
   workshops: null, initiatives: null, external_acts: null, competitions: null,
   awareness: null, expert_acts: null, environment: null, dialogues: null, campaigns: null,
+  talent_excellence: 'createdAt', sports_excellence: 'createdAt',
 };
+// جدولا التفوق الفني/الرياضي مستقلان تماماً عن TABLES/models العام (لهما موديل ومسارات API خاصة) —
+// نُدرجهما هنا صراحةً لدعم أرشفتهما/حذفهما الانتقائي بنفس آلية بقية الجداول
+const RESET_EXTRA_MODELS = { talent_excellence: () => TalentApp, sports_excellence: () => SportsApp };
 
 app.post('/api/admin/reset-data', auth(['admin']), async (req, res) => {
   try {
     if (req.body.confirm !== 'نعم متأكد من الحذف')
       return res.status(400).json({ error: 'نص التأكيد غير مطابق' });
 
-    // الجداول المطلوب حذفها: إن أُرسلت قائمة محدَّدة نستخدمها (بعد التحقق أنها ضمن TABLES الفعلية)، وإلا كل الجداول (سلوك سابق)
+    // الجداول المطلوب حذفها: إن أُرسلت قائمة محدَّدة نستخدمها (بعد التحقق أنها ضمن TABLES الفعلية أو الجداول الخاصة المُضافة)، وإلا كل الجداول (سلوك سابق)
     const requested = Array.isArray(req.body.tables) && req.body.tables.length
-      ? req.body.tables.filter(t => TABLES.includes(t))
+      ? req.body.tables.filter(t => TABLES.includes(t) || RESET_EXTRA_MODELS[t])
       : TABLES;
 
     const dateFrom = req.body.date_from || null; // 'YYYY-MM-DD'
@@ -1969,9 +1973,10 @@ app.post('/api/admin/reset-data', auth(['admin']), async (req, res) => {
         if (!dateField) { skipped.push(t); continue; } // لا يوجد حقل تاريخ لهذا الجدول، يُتجاوَز عند وجود فلترة زمنية
         query[dateField] = {};
         if (dateFrom) query[dateField].$gte = dateFrom;
-        if (dateTo)   query[dateField].$lte = dateTo;
+        if (dateTo)   query[dateField].$lte = dateTo + 'T23:59:59.999Z'; // createdAt مخزَّن كطابع زمني كامل وليس تاريخاً فقط
       }
-      const r = await models[t].deleteMany(query);
+      const modelRef = RESET_EXTRA_MODELS[t] ? RESET_EXTRA_MODELS[t]() : models[t];
+      const r = await modelRef.deleteMany(query);
       counts[t] = r.deletedCount || 0;
       total += r.deletedCount || 0;
     }
