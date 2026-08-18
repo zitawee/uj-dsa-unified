@@ -1056,6 +1056,8 @@ const ARCHIVE_CATEGORIES = [
   { key:'staff_honors', label:'تكريم الموظفين' },
   { key:'uni_committees', label:'اللجان الجامعية' },
   { key:'community_svc', label:'الخدمات المجتمعية' },
+  { key:'talent_excellence', label:'طلبات التفوق الفني' },
+  { key:'sports_excellence', label:'طلبات التفوق الرياضي' },
 ];
 
 // يجلب سجلات فئة معيّنة (مع فلترة التاريخ) ويبني قائمة "أجسام" HTML جاهزة للطباعة (سجل واحد = عنصر واحد)
@@ -1100,6 +1102,14 @@ async function fetchAndBuildCategory(key, inRange, cache) {
   if (key === 'meeting_minutes') {
     const all = await api('/api/meeting_minutes');
     return (all||[]).filter(r => inRange(r.date)).map(r => buildMinutesBodyHTML(r));
+  }
+  if (key === 'talent_excellence') {
+    const all = await api('/api/talent_excellence');
+    return (all||[]).filter(r => inRange(String(r.createdAt||'').slice(0,10))).map(r => tePrintRecordHTML(r));
+  }
+  if (key === 'sports_excellence') {
+    const all = await api('/api/sports_excellence');
+    return (all||[]).filter(r => inRange(String(r.createdAt||'').slice(0,10))).map(r => spPrintRecordHTML(r));
   }
   // بقية جداول بيانات الجودة العامة (QCFG) — نفس القالب المولِّد العام
   const all = await api('/api/' + key);
@@ -1200,6 +1210,8 @@ const RESET_TABLES_CONFIG = [
   { key:'community_svc', label:'الخدمات المجتمعية', hasDate:true },
   { key:'students', label:'الطلبة المسجَّلون (بلا فلترة زمنية)', hasDate:false },
   { key:'achievements', label:'الإنجازات (بلا فلترة زمنية)', hasDate:false },
+  { key:'talent_excellence', label:'طلبات التفوق الفني', hasDate:true },
+  { key:'sports_excellence', label:'طلبات التفوق الرياضي', hasDate:true },
 ];
 
 function openResetModal() {
