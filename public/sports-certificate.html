@@ -390,8 +390,20 @@ async function submitCert() {
     document.getElementById('refCodeOut').textContent = r.ref_code;
 
     const allVals = { player_name, gender, game, ...dynValues };
-    const bodyText = CURRENT_MODEL.template(allVals);
-    document.getElementById('printArea').innerHTML = `
+    renderAndPrintCertificate({ model_number: payload.model_number, ref_code: r.ref_code, signer1, signer2, ...allVals });
+  } catch (e) {
+    showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
+    btn.disabled = false; btn.textContent = '📨 حفظ وطباعة الشهادة';
+  }
+}
+
+// تبني HTML الشهادة كاملاً وتفتح نافذة الطباعة تلقائياً بعد اكتمال تحميل الخط والشعارين —
+// دالة مشتركة تُستخدَم عند الحفظ الجديد، وأيضاً عند "إعادة طباعة" شهادة محفوظة سابقاً من لوحة الإدارة (وضع reprint)
+function renderAndPrintCertificate(cert) {
+  const model = MODELS[cert.model_number];
+  if (!model) return;
+  const bodyText = model.template(cert);
+  document.getElementById('printArea').innerHTML = `
       <div class="cert-h2-top">
         <img src="/logo.png" alt="شعار الجامعة الأردنية">
         <div class="uni">
@@ -401,37 +413,49 @@ async function submitCert() {
         </div>
         <img src="/logo-dsa.png" alt="شعار عمادة شؤون الطلبة">
       </div>
-      <div class="cert-h2-title">شهادة تفوق رياضي — نموذج (${payload.model_number})</div>
-      <div class="cert-h2-sub">(${CURRENT_MODEL.label})</div>
+      <div class="cert-h2-title">شهادة تفوق رياضي — نموذج (${cert.model_number})</div>
+      <div class="cert-h2-sub">(${model.label})</div>
       <div class="cert-h2-bar">
-        <div>الرقم المرجعي : ${r.ref_code}</div>
+        <div>الرقم المرجعي : ${cert.ref_code}</div>
         <div>التاريخ : ${new Date().toLocaleDateString('ar-EG')}</div>
       </div>
       <div class="cert-body">${bodyText}</div>
       <div class="cert-sign">
-        <div><div class="line">ختم وتوقيع<br><b>${signer1}</b></div></div>
-        <div><div class="line">ختم وتوقيع<br><b>${signer2}</b></div></div>
+        <div><div class="line">ختم وتوقيع<br><b>${cert.signer1}</b></div></div>
+        <div><div class="line">ختم وتوقيع<br><b>${cert.signer2}</b></div></div>
       </div>
       <div id="certFooter">تُسلَّم هذه الشهادة إلى دائرة النشاطات الرياضية في الجامعة الأردنية.</div>`;
 
-    // ننتظر اكتمال تحميل الخط (بطلب صريح للتنسيقات المستخدَمة فعلياً، أدق وأوثق من fonts.ready وحدها)
-    // وكل الصور (الشعارين) قبل فتح نافذة الطباعة تلقائياً
-    const imgEls = Array.from(document.getElementById('printArea').querySelectorAll('img'));
-    const imgReady = imgEls.map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; img.onerror = res; }));
-    const fontReady = (document.fonts && document.fonts.load)
-      ? Promise.all([
-          document.fonts.load('700 14pt "Scheherazade New"'),
-          document.fonts.load('400 14pt "Scheherazade New"'),
-          document.fonts.load('800 16px "Scheherazade New"'),
-        ]).then(() => document.fonts.ready).catch(() => {})
-      : Promise.resolve();
+  // ننتظر اكتمال تحميل الخط (بطلب صريح للتنسيقات المستخدَمة فعلياً، أدق وأوثق من fonts.ready وحدها)
+  // وكل الصور (الشعارين) قبل فتح نافذة الطباعة تلقائياً
+  const imgEls = Array.from(document.getElementById('printArea').querySelectorAll('img'));
+  const imgReady = imgEls.map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; img.onerror = res; }));
+  const fontReady = (document.fonts && document.fonts.load)
+    ? Promise.all([
+        document.fonts.load('700 14pt "Scheherazade New"'),
+        document.fonts.load('400 14pt "Scheherazade New"'),
+        document.fonts.load('800 16px "Scheherazade New"'),
+      ]).then(() => document.fonts.ready).catch(() => {})
+    : Promise.resolve();
 
-    Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 2000));
-  } catch (e) {
-    showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
-    btn.disabled = false; btn.textContent = '📨 حفظ وطباعة الشهادة';
-  }
+  Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 2000));
 }
+
+// وضع "إعادة الطباعة": تُفتح هذه الصفحة برابط ?reprint=1 من لوحة الإدارة، مع بيانات الشهادة
+// المحفوظة مسبقاً في localStorage (تخزين مؤقت لحظي، يُحذَف فوراً بعد القراءة) — بلا حاجة لتعبئة جديدة
+(function checkReprintMode() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('reprint') !== '1') return;
+  const raw = localStorage.getItem('sp_reprint_cert');
+  localStorage.removeItem('sp_reprint_cert');
+  if (!raw) return;
+  let cert;
+  try { cert = JSON.parse(raw); } catch (e) { return; }
+  document.getElementById('formArea').style.display = 'none';
+  document.getElementById('doneArea').style.display = 'block';
+  document.getElementById('refCodeOut').textContent = cert.ref_code;
+  renderAndPrintCertificate(cert);
+})();
 
 // توليد ملف PDF فعلي من الشهادة المطبوعة، وفتح قائمة المشاركة الأصلية بالجهاز (واتساب/بريد/أي تطبيق آخر)
 async function buildCertPDFBlob() {

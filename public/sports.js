@@ -811,6 +811,7 @@ function spcRender() {
       <td>${spDate(r.createdAt)}</td>
       <td>
         <button class="btn btn-sm" onclick="spcView('${r.id}')" title="عرض التفاصيل"><i class="ti ti-eye"></i></button>
+        <button class="btn btn-sm" onclick="spcReprint('${r.id}')" title="إعادة طباعة الشهادة"><i class="ti ti-printer"></i></button>
         <button class="btn btn-sm" style="color:#c0392b" onclick="spcDelete('${r.id}')" title="حذف"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`).join('');
@@ -834,6 +835,12 @@ function spcView(id) {
       <button class="btn" style="flex:1" onclick="spcCloseModal()">إغلاق</button>
     </div>`;
   document.getElementById('spc-modal').classList.add('open');
+}
+
+function spcReprint(id) {
+  const r = SP_CERT_ROWS.find(x => x.id === id); if (!r) return;
+  localStorage.setItem('sp_reprint_cert', JSON.stringify(r));
+  window.open('/sports-certificate.html?reprint=1', '_blank');
 }
 
 async function spcDelete(id) {
