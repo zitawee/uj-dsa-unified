@@ -445,7 +445,8 @@ app.get('/api/public/sports-excellence/status', async (req, res) => {
     const closeDate = s?.close_date || null;
     const todayStr = new Date().toISOString().slice(0,10);
     const open = !closeDate || closeDate >= todayStr;
-    res.json({ open, close_date: closeDate });
+    const activeGames = Array.isArray(s?.active_games) && s.active_games.length ? s.active_games : SPORTS_GAME_TYPES;
+    res.json({ open, close_date: closeDate, active_games: activeGames });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -480,6 +481,9 @@ app.post('/api/public/sports-excellence', async (req, res) => {
       return res.status(400).json({ error: 'صيغة رقم الهاتف البديل غير صحيحة' });
     if (!Array.isArray(data.game_types) || data.game_types.length !== 1 || !SPORTS_GAME_TYPES.includes(data.game_types[0]))
       return res.status(400).json({ error: 'يرجى اختيار نوع لعبة واحدة فقط' });
+    const activeGamesCheck = Array.isArray(s?.active_games) && s.active_games.length ? s.active_games : SPORTS_GAME_TYPES;
+    if (!activeGamesCheck.includes(data.game_types[0]))
+      return res.status(400).json({ error: 'عذراً، لعبة ' + data.game_types[0] + ' غير متاحة للتقديم حالياً' });
     if (!data.nomination_type || !(data.nomination_type in SPORTS_NOMINATION_NUM_BY_LABEL))
       return res.status(400).json({ error: 'يرجى اختيار نوع نموذج التفوق الرياضي' });
 
@@ -545,6 +549,10 @@ app.post('/api/public/sports-certificate', async (req, res) => {
     if (!playerName) return res.status(400).json({ error: 'يرجى إدخال الاسم' });
     if (!['ذكر','أنثى'].includes(data.gender)) return res.status(400).json({ error: 'يرجى اختيار الجنس' });
     if (!data.game || !SPORTS_GAME_TYPES.includes(data.game)) return res.status(400).json({ error: 'يرجى اختيار اللعبة' });
+    const certSettings = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
+    const activeGamesCert = Array.isArray(certSettings?.active_games) && certSettings.active_games.length ? certSettings.active_games : SPORTS_GAME_TYPES;
+    if (!activeGamesCert.includes(data.game))
+      return res.status(400).json({ error: 'عذراً، لعبة ' + data.game + ' غير متاحة حالياً' });
     if (!(data.signer1 || '').trim() || !(data.signer2 || '').trim())
       return res.status(400).json({ error: 'يرجى إدخال اسم الجهتين الموقّعتين' });
 
@@ -1096,15 +1104,17 @@ app.get('/api/sports_excellence', auth(['admin']), async (req, res) => {
 app.get('/api/sports_excellence/settings', auth(['admin']), async (req, res) => {
   try {
     const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
-    res.json({ close_date: s?.close_date || null, committee_members_by_game: s?.committee_members_by_game || {}, higher_committee: s?.higher_committee || [] });
+    const activeGames = Array.isArray(s?.active_games) && s.active_games.length ? s.active_games : SPORTS_GAME_TYPES;
+    res.json({ close_date: s?.close_date || null, committee_members_by_game: s?.committee_members_by_game || {}, higher_committee: s?.higher_committee || [], active_games: activeGames });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/sports_excellence/settings', auth(['admin']), async (req, res) => {
   try {
+    const activeGames = Array.isArray(req.body.active_games) ? req.body.active_games.filter(g => SPORTS_GAME_TYPES.includes(g)) : SPORTS_GAME_TYPES;
     await SportsSettings.findOneAndUpdate(
       { key: 'sports_excellence' },
-      { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members_by_game: (req.body.committee_members_by_game && typeof req.body.committee_members_by_game === 'object') ? req.body.committee_members_by_game : {}, higher_committee: Array.isArray(req.body.higher_committee) ? req.body.higher_committee : [] },
+      { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members_by_game: (req.body.committee_members_by_game && typeof req.body.committee_members_by_game === 'object') ? req.body.committee_members_by_game : {}, higher_committee: Array.isArray(req.body.higher_committee) ? req.body.higher_committee : [], active_games: activeGames },
       { upsert: true }
     );
     res.json({ message: 'تم الحفظ' });
