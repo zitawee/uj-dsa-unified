@@ -11,6 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>طلب الالتحاق على أساس التفوق الرياضي — عمادة شؤون الطلبة</title>
 <style>
@@ -62,6 +64,33 @@
   .req-box{background:#fff;border:2px solid var(--g);border-radius:12px;padding:26px 18px;text-align:center}
   .req-box .code{font-size:22px;font-weight:800;color:var(--g);letter-spacing:1px;margin:12px 0;word-break:break-all}
   .closed-box{background:#fff;border:2px solid #c0392b;border-radius:12px;padding:26px 18px;text-align:center;color:#791F1F}
+
+  /* طباعة/مشاركة إيصال الطلب — بنفس تصميم "طلب الالتحاق" المطبوع من لوحة الإدارة */
+  #printArea{display:none}
+  @page{ size:A4; margin:10mm 14mm; }
+  @media print{
+    body *{visibility:hidden}
+    body{margin:0}
+    #printArea, #printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;top:0;left:0;right:0;padding:6px 0}
+  }
+  #printArea{font-size:12pt}
+  .ph2{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1B6B3A;padding-bottom:7px;margin-bottom:9px}
+  .plogo{width:62px;height:62px;object-fit:contain}
+  .puni{text-align:center;flex:1}.puni .ar{font-size:14pt;font-weight:700;color:#1B6B3A}.puni .en{font-size:8.5pt;color:#555}.puni .dep{font-size:9pt;color:#333;font-weight:600;margin-top:2px}
+  .pmeta{font-size:7.5pt;color:#555;text-align:left;line-height:1.8;min-width:145px}
+  .ptitle{background:#1B6B3A;color:#fff;text-align:center;padding:5px;font-size:13pt;font-weight:700;margin-bottom:9px;border-radius:4px}
+  .psub{background:#E8F5E9;color:#1B6B3A;padding:3px 8px;font-size:9.5pt;font-weight:700;margin:6px 0 4px;border-right:4px solid #1B6B3A}
+  .fr{display:flex;border-bottom:1px solid #ccc;padding:3px 0;font-size:8.5pt;align-items:center;min-height:21px}
+  .fl{font-weight:700;color:#1B6B3A;min-width:120px;flex-shrink:0;font-size:8pt}
+  .fv{flex:1;border-bottom:1px dotted #aaa;padding:0 4px;min-height:14px;color:#000;font-weight:500}
+  .fg2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
+  .dbox{border:2px solid #1B6B3A;border-radius:5px;padding:7px;margin-top:8px;font-size:10.5pt}
+  .ptbl{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:6px}
+  .ptbl th{background:#1B6B3A;color:#fff;padding:4px 5px;text-align:right;border:1px solid #ccc}
+  .ptbl td{padding:3px 5px;border:1px solid #ccc;min-height:18px}
+  .ptbl tr:nth-child(even) td{background:#F0FAF4}
+  .sp-activity-title{text-align:center;font-size:16pt;font-weight:800;color:#1B6B3A;margin:2px 0 12px;padding-bottom:7px;border-bottom:2px solid #1B6B3A}
 </style>
 </head>
 <body>
@@ -197,9 +226,16 @@
       <div style="font-size:14px;color:var(--g);font-weight:700">✅ تم استلام طلبك بنجاح</div>
       <div style="font-size:12.5px;color:var(--muted);margin-top:6px">احتفظ بهذا الرقم المرجعي لمتابعة حالة طلبك لاحقاً:</div>
       <div class="code" id="refCodeOut"></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button style="flex:1" onclick="printApplication()">🖨️ طباعة الطلب</button>
+        <button id="appShareBtn" style="flex:1;background:#128C7E" onclick="shareApplicationPDF()">📤 إرسال الطلب</button>
+      </div>
+      <div id="appShareMsg" class="msg" style="margin-top:12px"></div>
     </div>
   </div>
 </div>
+
+<div id="printArea"></div>
 
 <script>
 const DISTRICTS = {"العاصمة": ["عمان", "الجامعة", "القويسمة", "ماركا", "الجيزة", "الموقر", "ناعور", "سحاب", "وادي السير"], "البلقاء": ["السلط", "الشونة الجنوبية", "دير علا", "عين الباشا", "ماحص والفحيص"], "الزرقاء": ["الزرقاء", "الرصيفة", "الهاشمية", "بيرين"], "مأدبا": ["مأدبا", "ذيبان"], "إربد": ["إربد", "الرمثا", "بني كنانة", "بني عبيد", "الكورة", "المزار الشمالي", "الطيبة"], "المفرق": ["المفرق", "البادية الشمالية", "البادية الشمالية الغربية", "الرويشد", "الخالدية"], "جرش": ["جرش"], "عجلون": ["عجلون", "كفرنجة"], "الكرك": ["الكرك", "القصر", "القطرانة", "المزار الجنوبي", "الأغوار الجنوبية", "عي", "فقوع"], "الطفيلة": ["الطفيلة", "الحسا", "بصيرا"], "معان": ["معان", "البتراء", "الحسينية", "الشوبك"], "العقبة": ["العقبة", "القويرة"]};
@@ -348,6 +384,8 @@ function showMsg(txt, err) {
   el.textContent = txt; el.className = 'msg ' + (err ? 'err' : 'ok'); el.style.display = 'block';
 }
 
+let LAST_APP = null; // بيانات آخر طلب أُرسل بنجاح — تُستخدَم لبناء إيصال الطباعة/الإرسال
+
 async function submitApp() {
   const name = v('f-name'), gender = v('f-gender'), seat = v('f-seat'), school = v('f-school'), gov = v('f-gov'), dist = v('f-dist');
   const gameTypes = Array.from(document.querySelectorAll('.act-cb:checked')).map(el => el.value);
@@ -405,9 +443,106 @@ async function submitApp() {
     document.getElementById('formArea').style.display = 'none';
     document.getElementById('doneArea').style.display = 'block';
     document.getElementById('refCodeOut').textContent = r.ref_code;
+    LAST_APP = { ...data, ref_code: r.ref_code, createdAt: new Date().toISOString() };
   } catch (e) {
     showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
     btn.disabled = false; btn.textContent = '📨 إرسال الطلب';
+  }
+}
+
+function esc(s) { return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function trackLabel(id) { return (TRACKS.find(t => t.id === id) || {}).label || id || ''; }
+function fmtDate(d) { try { return new Date(d).toLocaleDateString('ar-EG'); } catch(e) { return ''; } }
+
+function buildApplicationReceiptHTML() {
+  const a = LAST_APP;
+  const majorsRows = [0,1,2].map(i => `<tr><td>${['الأول','الثاني','الثالث'][i]}</td><td>${esc((a.majors||[])[i])}</td></tr>`).join('');
+  return `
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">الرقم المرجعي: ${esc(a.ref_code)}<br>${fmtDate(a.createdAt)}</div>
+    </div>
+    <div class="ptitle">طلب الالتحاق للدراسة على أساس التفوق الرياضي</div>
+    <div class="sp-activity-title">${esc((a.game_types||[]).join(' — '))}</div>
+    ${a.photo ? `<div style="text-align:left;margin-bottom:6px"><img src="${a.photo}" style="width:90px;height:90px;object-fit:contain;background:#F1F3F0;border-radius:6px;border:1px solid #ccc"></div>` : ''}
+    <div class="fg2">
+      <div class="fr"><div class="fl">اسم الطالب</div><div class="fv">${esc(a.full_name)}</div></div>
+      <div class="fr"><div class="fl">الجنس</div><div class="fv">${esc(a.gender)}</div></div>
+      <div class="fr"><div class="fl">رقم الجلوس</div><div class="fv">${esc(a.seat_number)}</div></div>
+      <div class="fr"><div class="fl">المدرسة</div><div class="fv">${esc(a.school)}</div></div>
+      <div class="fr"><div class="fl">المحافظة</div><div class="fv">${esc(a.governorate)}</div></div>
+      <div class="fr"><div class="fl">اللواء</div><div class="fv">${esc(a.district)}</div></div>
+    </div>
+    <div class="fg2">
+      <div class="fr"><div class="fl">فرع الشهادة</div><div class="fv">${esc(trackLabel(a.cert_track))}${a.cert_subfield?' — '+esc(a.cert_subfield):''}${a.arab_branch?' — الفرع الدراسي: '+esc(a.arab_branch):''}${a.equivalency_doc?' — وثيقة المعادلة: '+esc(a.equivalency_doc):''}</div></div>
+      <div class="fr"><div class="fl">سنة الشهادة</div><div class="fv">${esc(a.cert_year)}</div></div>
+      <div class="fr"><div class="fl">المعدل</div><div class="fv">${esc(a.gpa)}%</div></div>
+      <div class="fr"><div class="fl">الهاتف</div><div class="fv">${esc(a.phone)}</div></div>
+    </div>
+    ${a.phone_alt ? `<div class="fr"><div class="fl">هاتف بديل</div><div class="fv">${esc(a.phone_alt)}</div></div>` : ''}
+    <div class="fr"><div class="fl">العنوان</div><div class="fv">${esc(a.address)}</div></div>
+    <div class="psub">التخصصات المرغوبة (حسب الأولوية)</div>
+    <table class="ptbl"><thead><tr><th>الأولوية</th><th>التخصص</th></tr></thead><tbody>
+      ${majorsRows}
+    </tbody></table>
+    <div class="fr"><div class="fl">نوع نموذج التفوق الرياضي</div><div class="fv">${esc(a.nomination_type)}</div></div>
+    <div class="fr"><div class="fl">الرقم المرجعي لشهادة النموذج</div><div class="fv">${esc(a.cert_ref_code)}</div></div>
+    <div class="dbox">أتعهد بأن كافة البيانات الواردة في هذا الطلب صحيحة ودقيقة، وأتحمل وحدي المسؤولية الكاملة عن أي أخطاء أو معلومات غير صحيحة قد ترد فيه.</div>
+    <div style="margin-top:36px;font-size:11pt">توقيع مقدم الطلب</div>`;
+}
+
+function printApplication() {
+  if (!LAST_APP) return;
+  document.getElementById('printArea').innerHTML = buildApplicationReceiptHTML();
+  const imgs = Array.from(document.getElementById('printArea').querySelectorAll('img'));
+  const imgReady = imgs.map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; img.onerror = res; }));
+  const fontReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  Promise.all([fontReady, ...imgReady]).then(() => setTimeout(() => window.print(), 300));
+}
+
+async function shareApplicationPDF() {
+  if (!LAST_APP) return;
+  const btn = document.getElementById('appShareBtn');
+  const msgEl = document.getElementById('appShareMsg');
+  msgEl.style.display = 'none';
+  btn.disabled = true; const oldTxt = btn.textContent; btn.textContent = 'جارٍ التجهيز...';
+  try {
+    const clone = document.createElement('div');
+    clone.style.cssText = 'position:fixed;top:0;left:-4000px;width:793px;background:#fff;padding:30px 50px;font-family:"Tajawal",sans-serif;box-sizing:border-box';
+    clone.innerHTML = buildApplicationReceiptHTML();
+    document.body.appendChild(clone);
+    await document.fonts.ready;
+    await new Promise(r => setTimeout(r, 200));
+
+    const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff' });
+    document.body.removeChild(clone);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const imgH = (canvas.height * pageW) / canvas.width;
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageW, imgH);
+    const blob = pdf.output('blob');
+    const file = new File([blob], `طلب-تفوق-رياضي-${LAST_APP.ref_code}.pdf`, { type: 'application/pdf' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'طلب التفوق الرياضي', text: `الرقم المرجعي: ${LAST_APP.ref_code}` });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a2 = document.createElement('a');
+      a2.href = url; a2.download = file.name; document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+      URL.revokeObjectURL(url);
+      msgEl.textContent = 'تعذّرت المشاركة المباشرة على هذا الجهاز، فتم تنزيل ملف PDF بدلاً من ذلك — يمكنك إرفاقه يدوياً عبر واتساب أو البريد.';
+      msgEl.className = 'msg ok'; msgEl.style.display = 'block';
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      msgEl.textContent = 'تعذّر تجهيز الملف للمشاركة، يرجى المحاولة مجدداً أو استخدام زر الطباعة.';
+      msgEl.className = 'msg err'; msgEl.style.display = 'block';
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = oldTxt;
   }
 }
 </script>
