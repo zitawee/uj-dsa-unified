@@ -260,6 +260,7 @@ function buildSidebar() {
     <div class="ni" onclick="go('sports_certificate',this)"><i class="ti ti-certificate"></i>نماذج الطلبات</div>
   </div>` : ''}
 
+  ${ME?.role!=='sports_reviewer' ? `
   <!-- نظام الأنشطة -->
   <div class="folder-hdr sec-acts" onclick="toggleFolder('f-acts')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-acts"></i><i class="ti ti-users"></i>نظام الأنشطة</div>
   <div class="folder-body sec-acts" id="f-acts" style="display:none">
@@ -309,7 +310,7 @@ function buildSidebar() {
     <div class="ni" onclick="go('search',this)"><i class="ti ti-search"></i>البحث الشامل</div>
     <div class="ni" id="nav-users" onclick="go('users',this)"><i class="ti ti-shield"></i>إدارة المستخدمين</div>
     <div class="ni" id="nav-archive" onclick="go('archive',this)"><i class="ti ti-archive"></i>الأرشفة السنوية</div>
-  </div>`;
+  </div>` : ''}`;
 }
 
 function toggleFolder(id) {

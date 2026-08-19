@@ -149,9 +149,10 @@ async function loadSports() {
 
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      ${ME?.role==='admin' ? `
       <div class="fg" style="min-width:170px"><label>تاريخ إغلاق الرابط</label><input type="date" id="sp-close-date" value="${settings?.close_date || ''}"></div>
       <button class="btn btn-sm" onclick="spSaveSettings()"><i class="ti ti-device-floppy"></i> حفظ تاريخ الإغلاق</button>
-      <div style="font-size:11.5px;color:var(--muted)">${settings?.close_date ? `الرابط مفتوح حتى ${spDate(settings.close_date)}` : 'الرابط مفتوح حالياً بلا تاريخ إغلاق محدَّد'}</div>
+      <div style="font-size:11.5px;color:var(--muted)">${settings?.close_date ? `الرابط مفتوح حتى ${spDate(settings.close_date)}` : 'الرابط مفتوح حالياً بلا تاريخ إغلاق محدَّد'}</div>` : ''}
       <div style="flex:1"></div>
       <button class="btn btn-sm" id="sp-link-btn" onclick="spCopyLink()"><i class="ti ti-link"></i> رابط التقديم</button>
       <button class="btn btn-sm" onclick="spExportExcel()"><i class="ti ti-file-spreadsheet"></i> تصدير Excel</button>
@@ -160,6 +161,7 @@ async function loadSports() {
     </div>
   </div>
 
+  ${ME?.role==='admin' ? `
   <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">الألعاب المتاحة للتقديم هذا العام</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">عطّلي أي لعبة غير متاحة هذا العام فتختفي فوراً من نموذج التقديم العام ومن صفحة تعبئة الشهادة، ويُرفَض أي طلب/شهادة لها من طرف الخادم مباشرة.</div>
@@ -183,7 +185,7 @@ async function loadSports() {
       <button class="btn btn-sm" onclick="spSaveHigherCommittee()"><i class="ti ti-device-floppy"></i> حفظ أسماء اللجنة العليا</button>
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="spOpenPassedListPrintFields()"><i class="ti ti-printer"></i> طباعة كشف الطلبة الناجحين (المحدَّدين بـ "مقبول")</button>
     </div>
-  </div>
+  </div>` : ''}
 
   <div class="card">
     <div class="fb">
