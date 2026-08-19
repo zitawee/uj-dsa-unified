@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1B6B3A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الدورات التدريبية — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  .wrap{max-width:680px;margin:0 auto;padding:16px 14px 48px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:14px}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0;line-height:1.6}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:16px;margin-bottom:10px;font-family:inherit;-webkit-appearance:none;appearance:none;min-height:44px}
+  textarea{min-height:70px}
+  button{width:100%;padding:13px 18px;border:none;border-radius:var(--r);background:var(--g);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px}
+  button:disabled{opacity:.5;cursor:default}
+  .msg{margin-top:10px;font-size:12.5px;border-radius:var(--r);padding:10px 12px;display:none;line-height:1.6}
+  .ok{background:#EAF3DE;color:#27500A;border:1px solid #cfe3bd}
+  .err{background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5}
+  .course{border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px;cursor:pointer;transition:.12s}
+  .course:hover{border-color:var(--g)}
+  .course.full{opacity:.55;cursor:default}
+  .course-title{font-weight:700;font-size:14px;color:var(--g)}
+  .course-org{font-size:12px;color:#444;margin-top:2px}
+  .course-meta{font-size:11.5px;color:var(--muted);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+  .course-desc{font-size:12px;color:#444;margin-top:6px;line-height:1.6}
+  .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10.5px;font-weight:600}
+  .badge.open{background:#EAF3DE;color:#27500A}
+  .badge.full{background:#FCEBEB;color:#791F1F}
+  .ssel{position:relative}
+  .ssel-list{position:absolute;top:calc(100% + 3px);right:0;left:0;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:200px;overflow-y:auto;display:none;z-index:50}
+  .ssel-item{padding:10px 12px;font-size:14px;cursor:pointer}
+  .ssel-item:hover{background:#EAF3DE;color:var(--g)}
+  .back-link{font-size:12.5px;color:var(--g);cursor:pointer;margin-bottom:10px;display:inline-block}
+</style>
+</head>
+<body>
+<header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap">
+  <div class="card">
+    <h1>الدورات التدريبية المتاحة</h1>
+    <p class="sub">يمكنك التسجيل في أكثر من دورة، ولا يُسمح بالتسجيل في نفس الدورة أكثر من مرة، وفق الرقم الجامعي.</p>
+  </div>
+
+  <div id="listArea"></div>
+
+  <div id="formArea" style="display:none">
+    <span class="back-link" onclick="showList()">→ الرجوع لكل الدورات</span>
+    <div class="card">
+      <div class="ct" id="formTitle" style="font-weight:700;color:var(--g);margin-bottom:10px"></div>
+      <label>الاسم الكامل *</label><input id="f-name" type="text">
+      <label>الرقم الجامعي *</label><input id="f-id" type="text">
+      <label>رقم الهاتف</label><input id="f-phone" type="text">
+      <label>البريد الإلكتروني</label><input id="f-email" type="email">
+      <div style="font-size:11px;color:var(--muted);margin:-6px 0 10px">سيتم التواصل معك من خلال البريد الإلكتروني وليس رقم الهاتف</div>
+      <label>الجنس</label><select id="f-gender"><option value="">اختر...</option><option>ذكر</option><option>أنثى</option></select>
+      <label>الجنسية</label>
+      <div class="ssel" style="margin-bottom:10px">
+        <input type="text" id="f-nat-s" autocomplete="off" placeholder="اكتب للبحث...">
+        <input type="hidden" id="f-nat">
+        <div class="ssel-list" id="f-nat-list"></div>
+      </div>
+      <label>الكلية</label><select id="f-col"><option value="">اختر...</option></select>
+      <label>التخصص</label><select id="f-major"><option value="">اختر الكلية أولاً...</option></select>
+      <label>المستوى</label><select id="f-year"><option value="">اختر...</option></select>
+      <button onclick="submitReg()">تسجيل</button>
+      <div class="msg" id="regMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let COURSES = [];
+let SELECTED_ID = null;
+
+const COLS = ['كلية الآداب','كلية الأعمال','كلية الشريعة','كلية العلوم التربوية','كلية الحقوق','كلية علوم الرياضة','كلية الفنون والتصميم','كلية الأمير الحسين بن عبد الله الثاني للعلوم السياسية والدراسات الدولية','كلية اللغات الأجنبية','كلية الآثار والسياحة','كلية العلوم','كلية الزراعة','كلية الهندسة','كلية الملك عبد الله الثاني لتكنولوجيا المعلومات','كلية الطب','كلية التمريض','كلية طب الأسنان','كلية الصيدلة','كلية علوم التأهيل','معهد الصحة العامة','كلية الدراسات العليا'];
+const YEARS = ['الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة'];
+const NATIONALITIES_REST = ["Afghan","Albanian","Algerian","Andorran","Angolan","Antiguan and Barbudan","Argentine","Armenian","Australian","Austrian","Azerbaijani","Bahamian","Bahraini","Bangladeshi","Barbadian","Belarusian","Belgian","Belizean","Beninese","Bhutanese","Bolivian","Bosnian and Herzegovinian","Botswanan","Brazilian","Bruneian","Bulgarian","Burkinabe","Burundian","Cambodian","Cameroonian","Canadian","Cape Verdean","Central African","Chadian","Chilean","Chinese","Colombian","Comorian","Congolese","Congolese (Democratic Republic)","Costa Rican","Ivorian","Croatian","Cuban","Cypriot","Czech","Danish","Djiboutian","Dominican","Dominican (Republic)","Ecuadorian","Egyptian","Salvadoran","Equatoguinean","Eritrean","Estonian","Eswatini","Ethiopian","Fijian","Finnish","French","Gabonese","Gambian","Georgian","German","Ghanaian","Greek","Grenadian","Guatemalan","Guinean","Bissau-Guinean","Guyanese","Haitian","Honduran","Hungarian","Icelandic","Indian","Indonesian","Iranian","Iraqi","Irish","Israeli","Italian","Jamaican","Japanese","Kazakhstani","Kenyan","I-Kiribati","Kuwaiti","Kyrgyzstani","Laotian","Latvian","Lebanese","Basotho","Liberian","Libyan","Liechtensteiner","Lithuanian","Luxembourger","Malagasy","Malawian","Malaysian","Maldivian","Malian","Maltese","Marshallese","Mauritanian","Mauritian","Mexican","Micronesian","Moldovan","Monegasque","Mongolian","Montenegrin","Moroccan","Mozambican","Myanmar","Namibian","Nauruan","Nepalese","Dutch","New Zealander","Nicaraguan","Nigerien","Nigerian","North Korean","North Macedonian","Norwegian","Omani","Pakistani","Palauan","Palestinian","Panamanian","Papua New Guinean","Paraguayan","Peruvian","Filipino","Polish","Portuguese","Qatari","Romanian","Russian","Rwandan","Saint Kitts and Nevisian","Saint Lucian","Saint Vincentian","Samoan","Sammarinese","Sao Tomean","Saudi","Senegalese","Serbian","Seychellois","Sierra Leonean","Singaporean","Slovak","Slovenian","Solomon Islander","Somali","South African","South Korean","South Sudanese","Spanish","Sri Lankan","Sudanese","Surinamese","Swedish","Swiss","Syrian","Taiwanese","Tajik","Tanzanian","Thai","East Timonese","Togolese","Tongan","Trinidadian and Tobagonian","Tunisian","Turkish","Turkmen","Tuvaluan","Ugandan","Ukrainian","Emirati","British","American","Uruguayan","Uzbekistani","Vanuatuan","Vatican","Venezuelan","Vietnamese","Yemeni","Zambian","Zimbabwean"].sort((a,b)=>a.localeCompare(b,'en'));
+const NATIONALITIES = ['Jordanian', ...NATIONALITIES_REST];
+const MAJORS_BY_COLLEGE = {"كلية العلوم": ["الرياضيات", "العلوم الحياتية", "الاحصاء وعلم البيانات", "الفيزياء", "الجيولوجيا البيئية والتطبيقية", "الكيمياء الصناعية", "العلوم الطبية المخبرية", "الكيمياء"], "كلية الشريعة": ["الفقه وأصوله", "أصول الدين", "المصارف الاسلامية"], "كلية الزراعة": ["الإنتتاج الحيواني", "تغذية الإنسان والحميات", "علم وتكنولوجيا الغذاء", "الإقتصاد الزراعي وادارةالأعمال الزراعية", "الوقاية النباتية", "البستنة والمحاصيل", "تصميم وتنسيق المواقع", "الأراضي والمياه والبيئة"], "كلية التمريض": ["التمريض"], "كلية العلوم التربوية": ["التربية الخاصة", "علم المكتبات والمعلومات", "معلم الصف", "تربية الطفولة المبكره", "الإرشاد والصحة النفسية"], "كلية الهندسة": ["هندسة الحاسوب", "الهندسة المدنية", "هندسة العمارة", "الهندسة الميكانيكية", "هندسة الميكاترونكس", "هندسة الطيران", "الهندسة الصناعية", "الهندسة الكهربائية", "الهندسة الكيميائية"], "كلية الحقوق": ["القانون"], "كلية الصيدلة": ["الصيدلة", "دكتور في الصيدلة"], "كلية الأعمال": ["إدارة الأعمال", "المحاسبة", "نظم المعلومات الإدارية", "التسويق", "إقتصاد الأعمال", "التمويل", "الإدارة العامة"], "كلية علوم التأهيل": ["العلاج الوظيفي", "الاطراف الاصطناعية والاجهزة المساعدة", "علوم السمع والنطق", "العلاج الطبيعي"], "كلية الملك عبد الله الثاني لتكنولوجيا المعلومات": ["الأمن السيبراني", "تكنولوجيا معلومات الأعمال", "علم الحاسوب", "الذكاء الإصطناعي", "أنظمة المعلومات الحاسوبية", "علم البيانات"], "كلية اللغات الأجنبية": ["اللغتين الألمانية والإنجليزية", "اللغتين الصينية والإنجليزية", "اللغتين الكورية والإنجليزية", "اللغة الفرنسية وآدابها", "اللغتين الفرنسية والانجليزية", "اللغتين الإيطالية والإنجليزية", "اللغتين التركية والإنجليزية", "اللغة الإنجليزية التطبيقية", "اللغتين الإسبانية والإنجليزية", "اللغتين الروسية والإنجليزية", "اللغة الإنجليزية وآدابها"], "كلية الآداب": ["التاريخ", "علم النفس", "اللغة العربية وآدابها", "علم الإجتماع", "العمل الإجتماعي", "الفلسفة", "الجغرافيا"], "كلية الآثار والسياحة": ["إدارة الفعاليات", "الآثار", "الإدارة السياحية", "إدارة المصادر التراثية وصيانتها", "إدارة الضيافة"], "كلية الأمير الحسين بن عبد الله الثاني للعلوم السياسية والدراسات الدولية": ["العلوم السياسية"], "كلية الطب": ["دكتور في الطب"], "كلية طب الأسنان": ["دكتور في طب الأسنان"], "كلية علوم الرياضة": ["التربية البدنية", "علوم الحركة والتدريب الرياضي"], "كلية الفنون والتصميم": ["الفنون المسرحية", "التصميم الداخلي", "الفنون البصرية", "الموسيقى", "التصميم الجرافيكي والوسائط المتعددة"]};
+
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function v(id){ return document.getElementById(id).value.trim(); }
+function showMsg(txt, err){ const el=document.getElementById('regMsg'); el.textContent=txt; el.className='msg '+(err?'err':'ok'); el.style.display='block'; }
+
+async function loadCourses() {
+  const res = await fetch('/api/public/training-courses');
+  COURSES = await res.json();
+  renderList();
+}
+function renderList() {
+  const el = document.getElementById('listArea');
+  if (!COURSES.length) { el.innerHTML = '<div class="card">لا توجد دورات متاحة حالياً</div>'; return; }
+  el.innerHTML = COURSES.map(c => `
+    <div class="course ${c.open?'':'full'}" onclick="${c.open?`openForm('${c.id}')`:''}">
+      <div class="course-title">${esc(c.name)} <span class="badge ${c.open?'open':'full'}">${c.open?'متاحة':'مكتملة/مغلقة'}</span></div>
+      <div class="course-org">${esc(c.organizer)}</div>
+      <div class="course-meta">
+        ${c.hours?`<span>⏱ ${esc(c.hours)}</span>`:''}
+        ${c.quota_note?`<span>🎯 ${esc(c.quota_note)}</span>`:''}
+        <span>📌 المقاعد المتبقية: ${c.seats_left}</span>
+      </div>
+      ${c.description?`<div class="course-desc">${esc(c.description)}</div>`:''}
+    </div>`).join('');
+}
+function showList() { document.getElementById('formArea').style.display='none'; document.getElementById('listArea').style.display='block'; }
+function openForm(id) {
+  SELECTED_ID = id;
+  const c = COURSES.find(x=>x.id===id);
+  document.getElementById('formTitle').textContent = 'التسجيل في: ' + c.name;
+  document.getElementById('listArea').style.display='none';
+  document.getElementById('formArea').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function fillSelect(id, arr){ const el=document.getElementById(id); arr.forEach(v=>{ const o=document.createElement('option'); o.textContent=v; el.appendChild(o); }); }
+fillSelect('f-col', COLS);
+fillSelect('f-year', YEARS);
+document.getElementById('f-col').addEventListener('change', function(){
+  const majSel = document.getElementById('f-major');
+  const majors = MAJORS_BY_COLLEGE[this.value] || [];
+  majSel.innerHTML = majors.length
+    ? '<option value="">اختر...</option>' + majors.map(m => `<option>${m}</option>`).join('')
+    : '<option value="">' + (this.value ? 'لا توجد تخصصات مسجَّلة لهذه الكلية' : 'اختر الكلية أولاً...') + '</option>';
+});
+
+(function(){
+  const input=document.getElementById('f-nat-s'), hidden=document.getElementById('f-nat'), list=document.getElementById('f-nat-list');
+  function render(q){
+    const term=(q||'').trim();
+    const items = term ? NATIONALITIES.filter(o=>o.toLowerCase().includes(term.toLowerCase())) : NATIONALITIES;
+    list.innerHTML = items.length ? items.map(o=>`<div class="ssel-item" data-v="${o}">${o}</div>`).join('') : `<div class="ssel-item" style="color:#999">لا توجد نتائج</div>`;
+    list.style.display='block';
+  }
+  input.addEventListener('focus', ()=>render(''));
+  input.addEventListener('input', ()=>{ hidden.value=''; render(input.value); });
+  list.addEventListener('mousedown', e=>{
+    const item=e.target.closest('.ssel-item'); if(!item || !item.dataset.v) return;
+    e.preventDefault();
+    input.value=item.dataset.v; hidden.value=item.dataset.v; list.style.display='none';
+  });
+  input.addEventListener('blur', ()=>{ setTimeout(()=>{ list.style.display='none'; if(!hidden.value) input.value=''; }, 150); });
+})();
+
+async function submitReg() {
+  const name = v('f-name'), uniId = v('f-id');
+  if (!name || !uniId) { showMsg('يرجى إدخال الاسم الكامل والرقم الجامعي', true); return; }
+  const data = {
+    name, id: uniId, phone: v('f-phone'), email: v('f-email'), gender: v('f-gender'),
+    nationality: v('f-nat'), college: v('f-col'), major: v('f-major'), year: v('f-year'),
+  };
+  const res = await fetch('/api/public/training-courses/'+SELECTED_ID+'/register', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)
+  });
+  const result = await res.json();
+  if (!res.ok) { showMsg(result.error || 'حدث خطأ', true); return; }
+  document.querySelector('#formArea .card').innerHTML = `<div style="text-align:center;padding:20px 0"><div style="font-size:38px">✅</div><div style="font-weight:700;color:var(--g);margin-top:8px">تم تسجيلك بنجاح</div><div style="font-size:12.5px;color:var(--muted);margin-top:6px">${esc(result.message)}</div></div>`;
+}
+
+loadCourses();
+</script>
+</body>
+</html>

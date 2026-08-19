@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="حجز الغرف">
+<meta name="theme-color" content="#1B6B3A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حجز الغرف الفندقية — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  .wrap{max-width:640px;margin:0 auto;padding:16px 14px 48px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:14px}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0 0 4px;line-height:1.6}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:16px;margin-bottom:10px;font-family:inherit;-webkit-appearance:none;appearance:none;min-height:44px}
+  button{width:100%;padding:13px 18px;border:none;border-radius:var(--r);background:var(--g);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px}
+  button:disabled{opacity:.55;cursor:default}
+  button.outline{background:#fff;color:var(--g);border:1px solid var(--g)}
+  .msg{margin-top:10px;font-size:12.5px;border-radius:var(--r);padding:10px 12px;display:none;line-height:1.6}
+  .ok{background:#EAF3DE;color:#27500A;border:1px solid #cfe3bd}
+  .err{background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5}
+  .closed-box{background:#fff;border:2px solid #c0392b;border-radius:12px;padding:26px 18px;text-align:center;color:#791F1F}
+  .who-box{background:#EAF3DE;border:1px solid #cfe3bd;border-radius:var(--r);padding:10px 12px;font-size:13px;color:#27500A;margin-bottom:14px}
+  .room{border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px}
+  .room.mine{border-color:var(--g);background:#F7FBF8}
+  .room.full{opacity:.7}
+  .room-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .room-title{font-weight:700;font-size:13.5px;color:var(--g)}
+  .room-seats{font-size:11.5px;color:var(--muted)}
+  .occ{font-size:12px;border-top:1px dashed var(--border);padding:6px 0}
+  .occ b{color:#222}
+  .occ .d{color:var(--muted);font-size:11px}
+  .mine-tag{background:var(--g);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:12px}
+  @media(max-width:640px){.card{padding:14px;border-radius:10px}h1{font-size:15px}}
+</style>
+</head>
+<body>
+<header>🏨 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap">
+  <div class="card">
+    <h1 id="pageTitle">حجز الغرف الفندقية</h1>
+    <p class="sub" id="pageSub">أدخل رقمك الجامعي للتحقق من تسجيلك في النشاط، ثم اختر غرفتك.</p>
+  </div>
+
+  <div id="closedArea" style="display:none">
+    <div class="closed-box">
+      <div style="font-size:15px;font-weight:700">⛔ انتهت مهلة تسجيل الغرف لهذا الفندق</div>
+      <div style="font-size:12.5px;margin-top:8px">يرجى مراجعة الجهة المنظِّمة للنشاط لمزيد من المعلومات.</div>
+    </div>
+  </div>
+
+  <div id="invalidArea" style="display:none">
+    <div class="closed-box">
+      <div style="font-size:15px;font-weight:700">⚠️ الرابط غير صحيح</div>
+      <div style="font-size:12.5px;margin-top:8px">تأكد من الرابط الذي حصلت عليه من الجهة المنظِّمة.</div>
+    </div>
+  </div>
+
+  <div id="verifyArea">
+    <div class="card">
+      <label>الرقم الجامعي *</label>
+      <input id="f-uid" type="text" inputmode="numeric" placeholder="أدخل رقمك الجامعي...">
+      <button onclick="verify()">تحقق</button>
+      <div class="msg" id="verifyMsg"></div>
+    </div>
+  </div>
+
+  <div id="roomsArea" style="display:none">
+    <div class="who-box" id="whoBox"></div>
+    <div id="roomsList"></div>
+    <div class="msg" id="roomsMsg"></div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const HOTEL_ID = params.get('hotel') || '';
+let MY_UID = '', MY_NAME = '', MY_GENDER = '';
+
+function showMsg(id, txt, err) {
+  const el = document.getElementById(id);
+  el.textContent = txt; el.className = 'msg ' + (err ? 'err' : 'ok'); el.style.display = 'block';
+}
+
+async function loadStatus() {
+  if (!HOTEL_ID) { document.getElementById('invalidArea').style.display = 'block'; document.getElementById('verifyArea').style.display = 'none'; return; }
+  try {
+    const res = await fetch('/api/public/room-booking/' + HOTEL_ID + '/status');
+    if (!res.ok) { document.getElementById('invalidArea').style.display = 'block'; document.getElementById('verifyArea').style.display = 'none'; return; }
+    const s = await res.json();
+    document.getElementById('pageTitle').textContent = 'حجز الغرف — ' + (s.hotel_name || '');
+    document.getElementById('pageSub').textContent = (s.activity_name ? 'النشاط: ' + s.activity_name + ' — ' : '') + 'أدخل رقمك الجامعي للتحقق من تسجيلك، ثم اختر غرفتك.';
+    if (!s.open) {
+      document.getElementById('closedArea').style.display = 'block';
+      document.getElementById('verifyArea').style.display = 'none';
+    }
+  } catch (e) {
+    document.getElementById('invalidArea').style.display = 'block';
+    document.getElementById('verifyArea').style.display = 'none';
+  }
+}
+loadStatus();
+
+async function verify() {
+  const uid = document.getElementById('f-uid').value.trim();
+  if (!uid) { showMsg('verifyMsg', 'يرجى إدخال الرقم الجامعي', true); return; }
+  const res = await fetch('/api/public/room-booking/' + HOTEL_ID + '/verify', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uni_id: uid })
+  });
+  const data = await res.json();
+  if (!res.ok) { showMsg('verifyMsg', data.error || 'حدث خطأ', true); return; }
+  MY_UID = uid; MY_NAME = data.name; MY_GENDER = data.gender;
+  document.getElementById('verifyArea').style.display = 'none';
+  document.getElementById('roomsArea').style.display = 'block';
+  document.getElementById('whoBox').innerHTML = `أهلاً <b>${esc(MY_NAME)}</b> — ${MY_GENDER === 'ذكر' || MY_GENDER === 'male' ? 'الغرف الرجالية' : 'الغرف النسائية'} المتاحة أدناه. يمكنك تغيير اختيارك لاحقاً طالما التسجيل ما زال مفتوحاً.`;
+  loadRooms();
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadRooms() {
+  const res = await fetch('/api/public/room-booking/' + HOTEL_ID + '/rooms?uni_id=' + encodeURIComponent(MY_UID));
+  const data = await res.json();
+  if (!res.ok) { showMsg('roomsMsg', data.error || 'تعذّر تحميل الغرف', true); return; }
+  const list = document.getElementById('roomsList');
+  if (!data.rooms.length) { list.innerHTML = '<div class="card">لا توجد غرف متاحة حالياً لهذا الفندق.</div>'; return; }
+  const ROOM_TYPES = { single:'فردية', double:'ثنائية', triple:'ثلاثية', quad:'رباعية', king:'King Size (ثنائية)' };
+  const CAP_LABEL = { 1: 'فردية', 2: 'ثنائية', 3: 'ثلاثية' }; // احتياطي للغرف القديمة بلا حقل type
+  list.innerHTML = data.rooms.map((r, i) => {
+    const seatsLeft = r.capacity - r.occupants.length;
+    const full = seatsLeft <= 0 && !r.mine;
+    return `<div class="room ${r.mine?'mine':''} ${full?'full':''}">
+      <div class="room-hd">
+        <div class="room-title">غرفة ${i+1} <span style="font-weight:400;color:var(--muted);font-size:11.5px">(${ROOM_TYPES[r.type] || CAP_LABEL[r.capacity] || r.capacity})</span> ${r.mine?'<span class="mine-tag">غرفتك الحالية</span>':''}</div>
+        <div class="room-seats">${r.occupants.length} / ${r.capacity} ${full?'— ممتلئة':''}</div>
+      </div>
+      ${r.occupants.map(o => `<div class="occ"><b>${esc(o.name)}</b>${o.uni_id===MY_UID?' (أنت)':''}<div class="d">${esc(o.uni_id)} — ${esc(o.nationality)||'—'} — ${esc(o.phone)||'—'}</div></div>`).join('') || '<div class="occ d">لا يوجد أحد بعد في هذه الغرفة</div>'}
+      <button style="margin-top:10px" class="${r.mine?'outline':''}" ${full?'disabled':''} onclick="joinRoom('${r.id}')">${r.mine ? 'أنت في هذه الغرفة' : (full ? 'الغرفة ممتلئة' : 'انضمام لهذه الغرفة')}</button>
+    </div>`;
+  }).join('');
+}
+
+async function joinRoom(roomId) {
+  const res = await fetch('/api/public/room-booking/' + HOTEL_ID + '/join', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uni_id: MY_UID, room_id: roomId })
+  });
+  const data = await res.json();
+  if (!res.ok) { showMsg('roomsMsg', data.error || 'حدث خطأ', true); return; }
+  showMsg('roomsMsg', 'تم تحديث اختيارك بنجاح ✓');
+  loadRooms();
+}
+</script>
+</body>
+</html>
