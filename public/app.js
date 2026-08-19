@@ -69,8 +69,8 @@ const EVAL_QUESTIONS = [
   'أنا راضٍ عن الفعالية بشكل عام',
 ];
 const ACOLORS = {'المرسم الجامعي':['#EEEDFE','#3C3489'],'الموسيقى':['#E1F5EE','#085041'],'الخط العربي':['#FAEEDA','#633806'],'الحرف اليدوية':['#FAECE7','#712B13'],'المسرح الجامعي':['#FBE8F5','#5D1A4A'],'الأداء الحركي':['#EAF3DE','#27500A'],'المناظرات':['#E8F4FD','#0A4A6B'],'الأنشطة الحزبية':['#FBEAF0','#72243E']};
-const RLABELS = {admin:'مدير النظام',editor:'مدخل بيانات',viewer:'عرض فقط',coordinator:'رئيس شعبة',manager:'مدير الدائرة',dean:'العميد'};
-const RCLS = {admin:'r-admin',editor:'r-editor',viewer:'r-viewer',coordinator:'r-editor',manager:'r-admin',dean:'r-admin'};
+const RLABELS = {admin:'مدير النظام',editor:'مدخل بيانات',viewer:'عرض فقط',coordinator:'رئيس شعبة',manager:'مدير الدائرة',dean:'العميد',sports_reviewer:'مدقق بيانات التفوق الرياضي'};
+const RCLS = {admin:'r-admin',editor:'r-editor',viewer:'r-viewer',coordinator:'r-editor',manager:'r-admin',dean:'r-admin',sports_reviewer:'r-editor'};
 // التصنيفات التسعة للأنشطة (يختارها مدير النظام عند الاعتماد) — قابلة للإضافة عليها لاحقاً
 const ACTIVITY_CATEGORIES = [
   'الدورات وورش العمل والمحاضرات والبرامج',
@@ -252,11 +252,11 @@ function buildSidebar() {
     <div class="ni" onclick="go('talent_excellence',this)"><i class="ti ti-list-details"></i>طلبات التفوق الفني<span class="cnt" id="c-talent_excellence">0</span></div>
     <div class="ni" onclick="go('talent_committee',this)"><i class="ti ti-users-group"></i>علامات لجنة التحكيم</div>
   </div>` : ''}
-  ${ME?.role==='admin' ? `
+  ${(ME?.role==='admin' || ME?.role==='sports_reviewer') ? `
   <div class="folder-hdr sec-sports" onclick="toggleFolder('f-sports')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-sports"></i><i class="ti ti-ball-volleyball" style="color:#1B4D8A"></i>التفوق الرياضي</div>
   <div class="folder-body sec-sports" id="f-sports" style="display:none">
     <div class="ni" onclick="go('sports_excellence',this)"><i class="ti ti-list-details"></i>طلبات التفوق الرياضي<span class="cnt" id="c-sports_excellence">0</span></div>
-    <div class="ni" onclick="go('sports_committee',this)"><i class="ti ti-users-group"></i>علامات لجنة التحكيم</div>
+    ${ME?.role==='admin' ? `<div class="ni" onclick="go('sports_committee',this)"><i class="ti ti-users-group"></i>علامات لجنة التحكيم</div>` : ''}
     <div class="ni" onclick="go('sports_certificate',this)"><i class="ti ti-certificate"></i>نماذج الطلبات</div>
   </div>` : ''}
 

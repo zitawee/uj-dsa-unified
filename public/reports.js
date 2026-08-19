@@ -1283,7 +1283,7 @@ async function loadUsers() {
       <div class="fg"><label>اسم المستخدم *</label><input id="u-un" type="text" placeholder="username"></div>
       <div class="fg"><label>الاسم الكامل *</label><input id="u-fn" type="text"></div>
       <div class="fg"><label>كلمة المرور *</label><input id="u-pw" type="password"></div>
-      <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">رئيس شعبة</option><option value="manager">مدير الدائرة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option></select></div>
+      <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">رئيس شعبة</option><option value="manager">مدير الدائرة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option><option value="sports_reviewer">مدقق بيانات التفوق الرياضي</option></select></div>
       <div class="fg full" id="u-dept-wrap" style="display:none">
         <label>الجهة المنظمة المرتبطة (للمنسّق أو المدير)</label>
         <select id="u-dept"><option value="">— بدون تقييد (يرى كل الطلبات) —</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select>

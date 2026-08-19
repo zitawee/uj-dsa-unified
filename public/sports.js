@@ -889,6 +889,7 @@ async function spcDelete(id) {
 async function loadSportsCommittee() {
   const panel = document.getElementById('panel-sports_committee');
   if (!panel) return;
+  if (ME?.role !== 'admin') { panel.innerHTML = `<div class="card"><div class="center" style="padding:24px;color:#c0392b">ليست لديك صلاحية الوصول لهذه الشاشة</div></div>`; return; }
   panel.innerHTML = `<div class="ph"><div><div class="pt">علامات لجنة التحكيم</div><div class="ps">لكل لعبة لجنة تحكيم مستقلة بأعضائها الخاصين</div></div></div>
     <div class="card"><div class="center" style="padding:24px">جارٍ التحميل...</div></div>`;
 
