@@ -1085,7 +1085,7 @@ app.delete('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
 });
 
 // ══ بند مؤقت: التفوق الرياضي — إدارة داخلية (admin فقط) ══
-app.get('/api/sports_excellence', auth(['admin']), async (req, res) => {
+app.get('/api/sports_excellence', auth(['admin','sports_reviewer']), async (req, res) => {
   try {
     let query = {};
     const { q, status, activity, governorate } = req.query;
@@ -1101,7 +1101,7 @@ app.get('/api/sports_excellence', auth(['admin']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/sports_excellence/settings', auth(['admin']), async (req, res) => {
+app.get('/api/sports_excellence/settings', auth(['admin','sports_reviewer']), async (req, res) => {
   try {
     const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
     const activeGames = Array.isArray(s?.active_games) && s.active_games.length ? s.active_games : SPORTS_GAME_TYPES;
@@ -1121,7 +1121,7 @@ app.put('/api/sports_excellence/settings', auth(['admin']), async (req, res) => 
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
+app.get('/api/sports_excellence/:id', auth(['admin','sports_reviewer']), async (req, res) => {
   try {
     const doc = await SportsApp.findById(req.params.id).lean();
     if (!doc) return res.status(404).json({ error: 'غير موجود' });
@@ -1129,7 +1129,7 @@ app.get('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
+app.put('/api/sports_excellence/:id', auth(['admin','sports_reviewer']), async (req, res) => {
   try {
     const update = { ...req.body, updated_by: req.user.username, updatedAt: new Date() };
     // إعادة احتساب علامة نوع النموذج تلقائياً إن تغيّر التصنيف أو الرقم المرجعي من شاشة التعديل —
@@ -1162,7 +1162,7 @@ app.delete('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
 });
 
 // ══ نماذج شهادات التفوق الرياضي — إدارة داخلية (admin فقط) ══
-app.get('/api/sports_certificate', auth(['admin']), async (req, res) => {
+app.get('/api/sports_certificate', auth(['admin','sports_reviewer']), async (req, res) => {
   try {
     const docs = await SportsCertificate.find({}).sort({ createdAt: -1 }).lean();
     res.json(docs.map(d => ({ ...d, id: String(d._id), _id: String(d._id) })));
