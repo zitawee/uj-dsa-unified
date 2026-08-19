@@ -224,7 +224,7 @@ function rbFindStudent(participantsDoc, cycle, uniId) {
 
 // ══ الدورات التدريبية — كتالوج دورات مقدَّمة من جهات خارجية (TAG.Global وغيرها)
 // كل دورة لها حد أقصى للتسجيل (يحدّده admin يدوياً حسب الحصة الرسمية الواردة من
-// الجهة المنظِّمة)، والطالب يُسمح له بالتسجيل في دورة واحدة فقط من كل الكتالوج ══
+// الجهة المنظِّمة)، ويمكن للطالب التسجيل في أكثر من دورة (لا يُسمح بالتكرار في نفس الدورة) ══
 const TrainingCourse = mongoose.model('training_courses', new mongoose.Schema({}, { strict:false, timestamps:true }));
 function genCourseId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -669,10 +669,6 @@ app.post('/api/public/training-courses/:id/register', async (req, res) => {
     const name = (req.body.name || '').trim();
     if (!uniId || !name) return res.status(400).json({ error: 'يرجى إدخال الاسم والرقم الجامعي' });
     if (regs.some(s => (s.id||'').trim() === uniId)) return res.status(400).json({ error: 'أنت مسجَّل بالفعل في هذه الدورة' });
-
-    // منع التسجيل في أكثر من دورة واحدة عبر كل الكتالوج
-    const others = await TrainingCourse.find({ 'registrants.id': uniId }).lean();
-    if (others.length) return res.status(400).json({ error: 'أنت مسجَّل بالفعل في دورة أخرى — يُسمح بالتسجيل في دورة واحدة فقط' });
 
     regs.push({
       name, id: uniId,
