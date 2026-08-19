@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0F5132">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دليل تقديم طلب التفوق الرياضي — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--g2:#128C7E;--border:#e3e6e0;--muted:#6b7280;--r:12px;--amber:#a15c00}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px;position:sticky;top:0;z-index:10}
+  .wrap{max-width:760px;margin:0 auto;padding:16px 14px 60px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:16px}
+  h1{font-size:18px;margin:0 0 6px;color:var(--g)}
+  p.sub{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
+
+  /* شريط التقدّم */
+  .stepper{display:flex;justify-content:space-between;align-items:flex-start;margin:22px 0 8px;position:relative}
+  .stepper::before{content:'';position:absolute;top:15px;right:5%;left:5%;height:3px;background:var(--border);z-index:0}
+  .step-dot-wrap{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;cursor:pointer}
+  .step-dot{width:32px;height:32px;border-radius:50%;background:#fff;border:3px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--muted);transition:.2s}
+  .step-dot-wrap.done .step-dot{background:var(--g);border-color:var(--g);color:#fff}
+  .step-dot-wrap.active .step-dot{border-color:var(--g);color:var(--g);box-shadow:0 0 0 4px #E8F5E9}
+  .step-label{font-size:9.5px;color:var(--muted);margin-top:5px;text-align:center;max-width:60px;line-height:1.3}
+  .step-dot-wrap.active .step-label{color:var(--g);font-weight:700}
+  @media(max-width:640px){ .step-label{display:none} .stepper::before{top:13px} .step-dot{width:26px;height:26px;font-size:11px} }
+
+  /* بطاقة الخطوة التفصيلية */
+  .step-panel{display:none}
+  .step-panel.active{display:block}
+  .step-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .step-icon{width:46px;height:46px;border-radius:12px;background:#E8F5E9;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .step-title{font-size:16px;font-weight:800;color:var(--g)}
+  .step-num-tag{font-size:11px;color:var(--muted);font-weight:600}
+  .step-body{font-size:13.5px;line-height:1.9;color:#333}
+  .step-body ul{margin:8px 0;padding-inline-start:20px}
+  .step-body li{margin-bottom:5px}
+  .tip{background:#FFF8E8;border:1px solid #F0DDA8;border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--amber);margin-top:12px;line-height:1.7}
+  .tip b{display:block;margin-bottom:3px}
+  .mock{background:#F7F9F6;border:1px dashed var(--border);border-radius:var(--r);padding:12px;margin-top:12px;font-size:12px;color:var(--muted)}
+  .mock .fld{background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12.5px;color:#444}
+  .mock .fld b{color:var(--g)}
+
+  .nav-btns{display:flex;gap:10px;margin-top:20px}
+  button{padding:12px 16px;border:none;border-radius:var(--r);font-size:13.5px;font-weight:700;cursor:pointer;min-height:44px}
+  .btn-prev{background:#F1F3F0;color:#333;flex:1}
+  .btn-next{background:var(--g);color:#fff;flex:2}
+  .btn-cta{background:var(--g2);color:#fff;width:100%;text-decoration:none;display:block;text-align:center;padding:14px;border-radius:var(--r);font-weight:700;font-size:14px;margin-top:8px}
+  .btn-cta.outline{background:#fff;color:var(--g);border:2px solid var(--g)}
+  a.btn-cta{box-sizing:border-box}
+
+  .quick-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .quick-links a{flex:1;min-width:150px}
+</style>
+</head>
+<body>
+<header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap">
+  <div class="card">
+    <h1>دليل تقديم طلب التفوق الرياضي</h1>
+    <p class="sub">دليل تفاعلي يشرح خطوات التقديم بالكامل، من تعبئة شهادة النموذج وحتى إرسال الطلب النهائي. اضغطي على أي رقم بالأعلى للانتقال مباشرة لتلك الخطوة، أو استخدمي زر "التالي".</p>
+  </div>
+
+  <div class="card">
+    <div class="stepper" id="stepper"></div>
+
+    <div id="panels">
+      <div class="step-panel" data-step="1">
+        <div class="step-head"><div class="step-icon">📋</div><div><div class="step-num-tag">الخطوة 1 من 7</div><div class="step-title">اقرئي الإرشادات واختاري رقم النموذج المناسب</div></div></div>
+        <div class="step-body">
+          قبل أي شيء، حدّدي أي نموذج من النماذج الثمانية يطابق إنجازك الرياضي الفعلي (منتخب وطني، منتخب مدرسي، نادٍ، منتخب مديرية، فريق مدرسي...).
+          <ul>
+            <li>افتحي صفحة تعبئة الشهادة، ثم اضغطي زر <b>"إرشادات اختيار نموذج شهادة التفوق الرياضي"</b> أعلى الصفحة.</li>
+            <li>اقرئي جدول "اسأل نفسك / يناسبك إذا" لتحديد رقم النموذج الصحيح بدقة.</li>
+          </ul>
+        </div>
+        <div class="tip"><b>⚠️ الأكثر شيوعاً كخطأ</b>اختيار نموذج غير مطابق لمستوى الإنجاز الفعلي (مثلاً اختيار "منتخب وطني" وأنت لاعب نادٍ) يؤدي لرفض الطلب لاحقاً من اللجنة.</div>
+      </div>
+
+      <div class="step-panel" data-step="2">
+        <div class="step-head"><div class="step-icon">📝</div><div><div class="step-num-tag">الخطوة 2 من 7</div><div class="step-title">عبّئي شهادة النموذج إلكترونياً</div></div></div>
+        <div class="step-body">
+          عبر صفحة "تعبئة وطباعة شهادة تفوق رياضي" — عادة تُعبَّأ من قِبل الاتحاد/النادي/المدرسة/مديرية التربية (الجهة المانحة)، لا الطالب بالضرورة.
+          <ul>
+            <li>اختاري رقم النموذج (من الخطوة السابقة)، ثم عبّئي الاسم، الجنس، اللعبة، والحقول الخاصة بذلك النموذج (اسم الاتحاد، النادي، المركز، اسم البطولة، السنة...).</li>
+            <li>أدخلي إجابة سؤال التحقق (الكابتشا) واضغطي "حفظ وطباعة الشهادة".</li>
+          </ul>
+        </div>
+        <div class="mock">
+          <div class="fld"><b>رقم نموذج شهادة التفوق الرياضي *</b> — نموذج رقم (4)</div>
+          <div class="fld"><b>الاسم *</b> / <b>الجنس *</b> / <b>اللعبة *</b></div>
+        </div>
+        <div class="tip"><b>⚠️ مهم جداً</b>سنة الإنجاز المُدخَلة يجب أن تكون ضمن آخر 3 سنوات فقط، وإلا سيُرفَض الطلب لاحقاً تلقائياً.</div>
+      </div>
+
+      <div class="step-panel" data-step="3">
+        <div class="step-head"><div class="step-icon">🔑</div><div><div class="step-num-tag">الخطوة 3 من 7</div><div class="step-title">احتفظي بالرقم المرجعي للشهادة</div></div></div>
+        <div class="step-body">
+          فور الحفظ، تُطبَع الشهادة تلقائياً ويظهر لك <b>رقم مرجعي فريد</b> (مثل <code>CERT-A7K92X</code>).
+          <ul>
+            <li>هذا الرقم <b>إلزامي لاحقاً</b> عند تقديم طلب الطالب — احتفظي به جيداً.</li>
+            <li>يمكنك أيضاً الضغط على "📤 إرسال الطلب" لإرسال نسخة PDF من الشهادة لنفسك عبر واتساب أو البريد كنسخة احتياطية.</li>
+            <li>وقّعي الشهادة الورقية المطبوعة (ختم وتوقيع الجهة المانحة + الجهة الثانية) لتُسلَّم لاحقاً للعمادة.</li>
+          </ul>
+        </div>
+        <div class="tip"><b>⚠️ تنبيه</b>كل رقم مرجعي يُستخدَم <b>مرة واحدة فقط</b> — لا يمكن ربطه بأكثر من طلب طالب.</div>
+      </div>
+
+      <div class="step-panel" data-step="4">
+        <div class="step-head"><div class="step-icon">🧍</div><div><div class="step-num-tag">الخطوة 4 من 7</div><div class="step-title">افتحي نموذج تقديم الطالب وعبّئي بياناتك</div></div></div>
+        <div class="step-body">
+          هذه المرة الطالب نفسه من يملأ النموذج، عبر صفحة "طلب الالتحاق للدراسة على أساس التفوق الرياضي".
+          <ul>
+            <li>الاسم الكامل، الجنس، رقم الجلوس، المدرسة، المحافظة/اللواء.</li>
+            <li>فرع الشهادة الثانوية وحقولها الفرعية، المعدل، سنة الشهادة.</li>
+            <li>بيانات التواصل (الهاتف، العنوان)، و3 تخصصات جامعية مرغوبة حسب الأولوية.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step-panel" data-step="5">
+        <div class="step-head"><div class="step-icon">🏅</div><div><div class="step-num-tag">الخطوة 5 من 7</div><div class="step-title">اختاري اللعبة وأرفقي صورتك الشخصية</div></div></div>
+        <div class="step-body">
+          <ul>
+            <li><b>نوع اللعبة:</b> اختيار واحد فقط (لا يمكن اختيار أكثر من لعبة).</li>
+            <li><b>الصورة الشخصية:</b> إلزامية — يمكن رفعها من الكاميرا مباشرة أو من الاستوديو.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="step-panel" data-step="6">
+        <div class="step-head"><div class="step-icon">🔗</div><div><div class="step-num-tag">الخطوة 6 من 7</div><div class="step-title">اربطي شهادتك بالطلب</div></div></div>
+        <div class="step-body">
+          هنا يأتي دور الرقم المرجعي من الخطوة 3:
+          <ul>
+            <li>اختاري "نوع نموذج التفوق الرياضي" (رقم النموذج نفسه المُختار عند تعبئة الشهادة).</li>
+            <li>أدخلي <b>الرقم المرجعي لشهادة النموذج</b> (إلزامي).</li>
+          </ul>
+        </div>
+        <div class="mock">
+          <div class="fld"><b>رقم نموذج شهادة التفوق الرياضي *</b> — نموذج رقم (4)</div>
+          <div class="fld"><b>الرقم المرجعي لشهادة النموذج *</b> — CERT-A7K92X</div>
+        </div>
+        <div class="tip"><b>⚠️ سبب رفض شائع</b>إن كان الرقم المرجعي غير صحيح، أو لا يطابق رقم النموذج المُختار، أو مُستخدَماً سابقاً — سيُرفَض الطلب فوراً برسالة توضيحية.</div>
+      </div>
+
+      <div class="step-panel" data-step="7">
+        <div class="step-head"><div class="step-icon">✅</div><div><div class="step-num-tag">الخطوة 7 من 7</div><div class="step-title">أرسلي الطلب واحتفظي بالإيصال</div></div></div>
+        <div class="step-body">
+          بعد الموافقة على الإقرار والإجابة على سؤال التحقق، اضغطي "إرسال الطلب".
+          <ul>
+            <li>ستحصلين على <b>رقم مرجعي للطلب</b> (مختلف عن رقم الشهادة).</li>
+            <li>يمكنك <b>طباعة إيصال الطلب</b> فوراً، أو <b>إرساله PDF</b> لنفسك عبر واتساب/البريد.</li>
+          </ul>
+        </div>
+        <div class="tip"><b>🎉 انتهى التقديم</b>تابعي مع عمادة شؤون الطلبة لتسليم النسخة الورقية الموقَّعة من شهادة النموذج عند الطلب منك.</div>
+      </div>
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn-prev" id="btnPrev" onclick="goStep(current-1)">→ السابقة</button>
+      <button class="btn-next" id="btnNext" onclick="goStep(current+1)">التالية ←</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;color:var(--g);margin-bottom:10px;font-size:13.5px">روابط سريعة للبدء</div>
+    <div class="quick-links">
+      <a class="btn-cta outline" href="/sports-certificate.html" target="_blank">📄 تعبئة شهادة النموذج</a>
+      <a class="btn-cta" href="/sports.html" target="_blank">📨 تقديم طلب الطالب</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOTAL = 7;
+let current = 1;
+const stepper = document.getElementById('stepper');
+for (let i = 1; i <= TOTAL; i++) {
+  const d = document.createElement('div');
+  d.className = 'step-dot-wrap';
+  d.dataset.step = i;
+  d.onclick = () => goStep(i);
+  d.innerHTML = `<div class="step-dot">${i}</div><div class="step-label">${['اختيار النموذج','تعبئة الشهادة','الرقم المرجعي','بيانات الطالب','اللعبة والصورة','ربط الشهادة','إرسال الطلب'][i-1]}</div>`;
+  stepper.appendChild(d);
+}
+
+function goStep(n) {
+  if (n < 1 || n > TOTAL) return;
+  current = n;
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.toggle('active', +p.dataset.step === n));
+  document.querySelectorAll('.step-dot-wrap').forEach(d => {
+    const s = +d.dataset.step;
+    d.classList.toggle('active', s === n);
+    d.classList.toggle('done', s < n);
+  });
+  document.getElementById('btnPrev').style.visibility = n === 1 ? 'hidden' : 'visible';
+  document.getElementById('btnNext').textContent = n === TOTAL ? 'إلى روابط البدء ↓' : 'التالية ←';
+  document.getElementById('btnNext').onclick = n === TOTAL
+    ? () => document.querySelector('.quick-links').scrollIntoView({behavior:'smooth', block:'center'})
+    : () => goStep(current+1);
+  window.scrollTo({top: document.getElementById('panels').offsetTop - 80, behavior:'smooth'});
+}
+goStep(1);
+</script>
+</body>
+</html>
