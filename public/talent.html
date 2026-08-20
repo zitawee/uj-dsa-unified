@@ -32,6 +32,14 @@
   }
   input[type=checkbox],input[type=radio]{width:18px;height:18px;min-height:auto;padding:0;margin:0;flex-shrink:0;-webkit-appearance:auto;appearance:auto;accent-color:var(--g)}
   textarea{resize:vertical;min-height:70px}
+  .major-combo{position:relative}
+  .major-combo input{margin-bottom:0}
+  .major-dd{position:absolute;top:calc(100% + 2px);right:0;left:0;background:#fff;border:1px solid var(--border);border-radius:var(--r);max-height:260px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.12);z-index:30;display:none}
+  .major-dd.open{display:block}
+  .major-dd .grp-lbl{font-size:11px;font-weight:700;color:var(--g);background:#F7F9F6;padding:6px 10px;position:sticky;top:0}
+  .major-dd .opt{padding:9px 12px;font-size:13.5px;cursor:pointer}
+  .major-dd .opt:hover,.major-dd .opt.hi{background:#EAF3DE}
+  .major-dd .none{padding:12px;text-align:center;font-size:12.5px;color:var(--muted)}
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
   .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px}
   .full{grid-column:1/-1}
@@ -132,18 +140,17 @@
 
     <div class="card">
       <div class="ct">التخصصات التي يرغب الطالب في دراستها</div>
-      <div><label>الخيار الأول *</label><select id="f-major1"></select></div>
-      <div><label>الخيار الثاني *</label><select id="f-major2"></select></div>
-      <div><label>الخيار الثالث *</label><select id="f-major3"></select></div>
+      <div><label>الخيار الأول *</label><div class="major-combo"><input type="text" id="f-major1" autocomplete="off" placeholder="اكتب/ي للبحث عن التخصص..."><div class="major-dd" id="f-major1-dd"></div></div></div>
+      <div><label>الخيار الثاني *</label><div class="major-combo"><input type="text" id="f-major2" autocomplete="off" placeholder="اكتب/ي للبحث عن التخصص..."><div class="major-dd" id="f-major2-dd"></div></div></div>
+      <div><label>الخيار الثالث *</label><div class="major-combo"><input type="text" id="f-major3" autocomplete="off" placeholder="اكتب/ي للبحث عن التخصص..."><div class="major-dd" id="f-major3-dd"></div></div></div>
     </div>
 
     <div class="card">
       <div class="ct">الصورة الشخصية</div>
-      <p class="sub" style="margin-top:-6px">الصورة إلزامية. يمكن التقاطها مباشرة عبر كاميرا الهاتف (سيلفي) أو رفعها من المعرض.</p>
+      <p class="sub" style="margin-top:-6px">الصورة إلزامية. عند الضغط على الزر، يمكن التقاطها مباشرة بالكاميرا أو اختيارها من المعرض (حسب خيارات جهازك).</p>
       <div class="photo-box">
         <div class="photo-preview" id="photoPreview">لا توجد صورة</div>
         <div class="photo-actions">
-          <input id="f-photo-camera" type="file" accept="image/*" capture="user">
           <input id="f-photo-file" type="file" accept="image/*">
         </div>
       </div>
@@ -195,7 +202,7 @@
 
 <script>
 const DISTRICTS = {"العاصمة": ["عمان", "الجامعة", "القويسمة", "ماركا", "الجيزة", "الموقر", "ناعور", "سحاب", "وادي السير"], "البلقاء": ["السلط", "الشونة الجنوبية", "دير علا", "عين الباشا", "ماحص والفحيص"], "الزرقاء": ["الزرقاء", "الرصيفة", "الهاشمية", "بيرين"], "مأدبا": ["مأدبا", "ذيبان"], "إربد": ["إربد", "الرمثا", "بني كنانة", "بني عبيد", "الكورة", "المزار الشمالي", "الطيبة"], "المفرق": ["المفرق", "البادية الشمالية", "البادية الشمالية الغربية", "الرويشد", "الخالدية"], "جرش": ["جرش"], "عجلون": ["عجلون", "كفرنجة"], "الكرك": ["الكرك", "القصر", "القطرانة", "المزار الجنوبي", "الأغوار الجنوبية", "عي", "فقوع"], "الطفيلة": ["الطفيلة", "الحسا", "بصيرا"], "معان": ["معان", "البتراء", "الحسينية", "الشوبك"], "العقبة": ["العقبة", "القويرة"]};
-const MAJORS = {"كلية العلوم": ["الرياضيات", "العلوم الحياتية", "الاحصاء وعلم البيانات", "الفيزياء", "الجيولوجيا البيئية والتطبيقية", "الكيمياء الصناعية", "العلوم الطبية المخبرية", "الكيمياء"], "كلية الشريعة": ["الفقه وأصوله", "أصول الدين", "المصارف الاسلامية"], "كلية الزراعة": ["الإنتتاج الحيواني", "تغذية الإنسان والحميات", "علم وتكنولوجيا الغذاء", "الإقتصاد الزراعي وادارةالأعمال الزراعية", "الوقاية النباتية", "البستنة والمحاصيل", "تصميم وتنسيق المواقع", "الأراضي والمياه والبيئة"], "كلية التمريض": ["التمريض"], "كلية العلوم التربوية": ["التربية الخاصة", "علم المكتبات والمعلومات", "معلم الصف", "تربية الطفولة المبكره", "الإرشاد والصحة النفسية"], "كلية الهندسة": ["هندسة الحاسوب", "الهندسة المدنية", "هندسة العمارة", "الهندسة الميكانيكية", "هندسة الميكاترونكس", "هندسة الطيران", "الهندسة الصناعية", "الهندسة الكهربائية", "الهندسة الكيميائية", "هندسة أشباه موصلات"], "كلية الحقوق": ["القانون"], "كلية الصيدلة": ["الصيدلة", "دكتور في الصيدلة"], "كلية الأعمال": ["إدارة الأعمال", "المحاسبة", "نظم المعلومات الإدارية", "التسويق", "إقتصاد الأعمال", "التمويل", "الإدارة العامة"], "كلية علوم التأهيل": ["العلاج الوظيفي", "الاطراف الاصطناعية والاجهزة المساعدة", "علوم السمع والنطق", "العلاج الطبيعي"], "كلية الملك عبد الله الثاني لتكنولوجيا المعلومات": ["الأمن السيبراني", "تكنولوجيا معلومات الأعمال", "علم الحاسوب", "الذكاء الإصطناعي", "أنظمة المعلومات الحاسوبية", "علم البيانات", "تحليل بيانات وذكاء الأعمال - تقني", "هندسة طاقة متجددة وتقنيات خضراء - تقني", "هندسة نظم ذكية - تقني", "تطوير ألعاب رقمي - تقني"], "كلية اللغات الأجنبية": ["اللغتين الألمانية والإنجليزية", "اللغتين الصينية والإنجليزية", "اللغتين الكورية والإنجليزية", "اللغة الفرنسية وآدابها", "اللغتين الفرنسية والانجليزية", "اللغتين الإيطالية والإنجليزية", "اللغتين التركية والإنجليزية", "اللغة الإنجليزية التطبيقية", "اللغتين الإسبانية والإنجليزية", "اللغتين الروسية والإنجليزية", "اللغة الإنجليزية وآدابها"], "كلية الآداب": ["التاريخ", "علم النفس", "اللغة العربية وآدابها", "علم الإجتماع", "العمل الإجتماعي", "الفلسفة", "الجغرافيا"], "كلية الآثار والسياحة": ["إدارة الفعاليات", "الآثار", "الإدارة السياحية", "إدارة المصادر التراثية وصيانتها", "إدارة الضيافة"], "كلية الأمير الحسين بن عبد الله الثاني للعلوم السياسية والدراسات الدولية": ["العلوم السياسية"], "كلية الطب": ["دكتور في الطب"], "كلية طب الأسنان": ["دكتور في طب الأسنان"], "كلية علوم الرياضة": ["التربية البدنية", "علوم الحركة والتدريب الرياضي"], "كلية الفنون والتصميم": ["الفنون المسرحية", "التصميم الداخلي", "الفنون البصرية", "الموسيقى", "التصميم الجرافيكي والوسائط المتعددة"]};
+const MAJORS = {"كلية العلوم": ["الرياضيات", "العلوم الحياتية", "الاحصاء وعلم البيانات", "الفيزياء", "الجيولوجيا البيئية والتطبيقية", "الكيمياء الصناعية", "العلوم الطبية المخبرية", "الكيمياء"], "كلية الشريعة": ["الفقه وأصوله", "أصول الدين", "المصارف الاسلامية"], "كلية الزراعة": ["الإنتتاج الحيواني", "تغذية الإنسان والحميات", "علم وتكنولوجيا الغذاء", "الإقتصاد الزراعي وادارةالأعمال الزراعية", "الوقاية النباتية", "البستنة والمحاصيل", "تصميم وتنسيق المواقع", "الأراضي والمياه والبيئة"], "كلية التمريض": ["التمريض"], "كلية العلوم التربوية": ["التربية الخاصة", "علم المكتبات والمعلومات", "معلم الصف", "تربية الطفولة المبكره", "الإرشاد والصحة النفسية"], "كلية الهندسة": ["هندسة الحاسوب", "الهندسة المدنية", "هندسة العمارة", "الهندسة الميكانيكية", "هندسة الميكاترونكس", "هندسة الطيران", "الهندسة الصناعية", "الهندسة الكهربائية", "الهندسة الكيميائية", "هندسة أشباه الموصلات"], "كلية الحقوق": ["القانون"], "كلية الصيدلة": ["الصيدلة", "دكتور في الصيدلة"], "كلية الأعمال": ["إدارة الأعمال", "المحاسبة", "نظم المعلومات الإدارية", "التسويق", "إقتصاد الأعمال", "التمويل", "الإدارة العامة", "التسويق الرَّقْميّ"], "كلية علوم التأهيل": ["العلاج الوظيفي", "الاطراف الاصطناعية والاجهزة المساعدة", "علوم السمع والنطق", "العلاج الطبيعي"], "كلية الملك عبد الله الثاني لتكنولوجيا المعلومات": ["الأمن السيبراني", "تكنولوجيا معلومات الأعمال", "علم الحاسوب", "الذكاء الإصطناعي", "أنظمة المعلومات الحاسوبية", "علم البيانات"], "كلية التقنية": ["تحليل البيانات وذكاء الأعمال", "التسويق الرَّقْميّ والتجارة الإلكترونيّة", "سلاسل الإمداد واللوجستيّات المستدامة", "هندسة الطاقة المتجدّدة والتقنيات الخضراء", "هندسة النظم الذكيّة", "إدارة الضيافة وخدمة العملاء", "تطوير الألعاب الرَّقْميّة"], "كلية اللغات الأجنبية": ["اللغتين الألمانية والإنجليزية", "اللغتين الصينية والإنجليزية", "اللغتين الكورية والإنجليزية", "اللغة الفرنسية وآدابها", "اللغتين الفرنسية والانجليزية", "اللغتين الإيطالية والإنجليزية", "اللغتين التركية والإنجليزية", "اللغة الإنجليزية التطبيقية", "اللغتين الإسبانية والإنجليزية", "اللغتين الروسية والإنجليزية", "اللغة الإنجليزية وآدابها"], "كلية الآداب": ["التاريخ", "علم النفس", "اللغة العربية وآدابها", "علم الإجتماع", "العمل الإجتماعي", "الفلسفة", "الجغرافيا"], "كلية الآثار والسياحة": ["إدارة الفعاليات", "الآثار", "الإدارة السياحية", "إدارة المصادر التراثية وصيانتها", "إدارة الضيافة"], "كلية الأمير الحسين بن عبد الله الثاني للعلوم السياسية والدراسات الدولية": ["العلوم السياسية"], "كلية الطب": ["دكتور في الطب"], "كلية طب الأسنان": ["دكتور في طب الأسنان"], "كلية علوم الرياضة": ["التربية البدنية", "علوم الحركة والتدريب الرياضي"], "كلية الفنون والتصميم": ["الفنون المسرحية", "التصميم الداخلي", "الفنون البصرية", "الموسيقى", "التصميم الجرافيكي والوسائط المتعددة"]};
 const ACTIVITY_TYPES = ['الغناء','العزف','الخط العربي','الرسم','التمثيل','الأداء الحركي'];
 const INSTRUMENTS = ['الأورغ','العود','القانون','الكمان','آلات نفخية','آلات إيقاعية','جيتار'];
 const TRACKS = [
@@ -275,22 +282,47 @@ document.querySelectorAll('.track-rb').forEach(rb => rb.addEventListener('change
   document.getElementById('arabBranchBox').style.display = (t && t.id === 'arabic') ? 'block' : 'none';
 }));
 
-// ── التخصصات الثلاثة (مجمّعة حسب الكلية، الكلية غير قابلة للاختيار) ──
-function buildMajorSelect(id) {
-  const sel = document.getElementById(id);
-  sel.innerHTML = '<option value="">اختر...</option>';
-  Object.keys(MAJORS).forEach(college => {
-    const grp = document.createElement('optgroup');
-    grp.label = college;
-    MAJORS[college].forEach(m => {
-      const o = document.createElement('option');
-      o.textContent = m; o.value = m;
-      grp.appendChild(o);
+// ── التخصصات الثلاثة (حقل بحث تفاعلي مجمّع حسب الكلية) ──
+function buildMajorCombo(id) {
+  const input = document.getElementById(id);
+  const dd = document.getElementById(id + '-dd');
+
+  function renderList(filter) {
+    const q = (filter || '').trim();
+    let html = '';
+    let hasAny = false;
+    Object.keys(MAJORS).forEach(college => {
+      const matches = MAJORS[college].filter(m => !q || m.includes(q));
+      if (!matches.length) return;
+      hasAny = true;
+      html += `<div class="grp-lbl">${college}</div>`;
+      matches.forEach(m => { html += `<div class="opt" data-val="${m}">${m}</div>`; });
     });
-    sel.appendChild(grp);
+    dd.innerHTML = hasAny ? html : `<div class="none">لا يوجد تخصص مطابق</div>`;
+    dd.querySelectorAll('.opt').forEach(el => {
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        input.value = el.dataset.val;
+        closeDD();
+      });
+    });
+  }
+  function openDD() { renderList(input.value); dd.classList.add('open'); }
+  function closeDD() { dd.classList.remove('open'); }
+
+  input.addEventListener('focus', openDD);
+  input.addEventListener('input', () => { renderList(input.value); dd.classList.add('open'); });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      closeDD();
+      const val = input.value.trim();
+      const allMajors = Object.values(MAJORS).flat();
+      if (val && !allMajors.includes(val)) input.value = '';
+    }, 150);
   });
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDD(); input.blur(); } });
 }
-['f-major1','f-major2','f-major3'].forEach(buildMajorSelect);
+['f-major1','f-major2','f-major3'].forEach(buildMajorCombo);
 
 // ── الصورة الشخصية: ضغط وتصغير داخل المتصفح قبل الإرسال ──
 let PHOTO_DATA = null;
@@ -312,7 +344,6 @@ function handlePhotoFile(file) {
   }; img.src = e.target.result; };
   reader.readAsDataURL(file);
 }
-document.getElementById('f-photo-camera').addEventListener('change', e => handlePhotoFile(e.target.files[0]));
 document.getElementById('f-photo-file').addEventListener('change', e => handlePhotoFile(e.target.files[0]));
 
 // ── حالة الرابط (مفتوح/مغلق) ──
