@@ -147,11 +147,14 @@
 
     <div class="card">
       <div class="ct">الصورة الشخصية</div>
-      <p class="sub" style="margin-top:-6px">الصورة إلزامية. عند الضغط على الزر سيعرض جهازك خيار التقاطها بالكاميرا أو اختيارها من المعرض.</p>
+      <p class="sub" style="margin-top:-6px">الصورة إلزامية. اختاري التقاطها بالكاميرا مباشرة أو رفعها من الملفات.</p>
       <div class="photo-box">
         <div class="photo-preview" id="photoPreview">لا توجد صورة</div>
         <div class="photo-actions">
-          <input id="f-photo-file" type="file" accept="image/*" capture="user">
+          <input id="f-photo-camera" type="file" accept="image/*" capture="user" style="display:none">
+          <input id="f-photo-file" type="file" accept="image/*" style="display:none">
+          <button type="button" style="margin-bottom:8px" onclick="document.getElementById('f-photo-camera').click()">📷 التقاط بالكاميرا</button>
+          <button type="button" style="background:#F1F3F0;color:#333" onclick="document.getElementById('f-photo-file').click()">🖼️ اختيار من الملفات</button>
         </div>
       </div>
     </div>
@@ -344,6 +347,7 @@ function handlePhotoFile(file) {
   }; img.src = e.target.result; };
   reader.readAsDataURL(file);
 }
+document.getElementById('f-photo-camera').addEventListener('change', e => handlePhotoFile(e.target.files[0]));
 document.getElementById('f-photo-file').addEventListener('change', e => handlePhotoFile(e.target.files[0]));
 
 // ── حالة الرابط (مفتوح/مغلق) ──
