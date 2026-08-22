@@ -270,7 +270,7 @@ const MODELS = {
        signMode: 'schoolsports_directorate', // توقيع ثابت: الاتحاد الأردني للرياضات المدرسية يمين / مديرية التربية والتعليم يسار
        fields: [
          {key:'directorate_name', label:'اسم المديرية *', required:true},
-         {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث']},
+         {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث','الرابع فما فوق']},
          {key:'tournament_name', label:'اسم البطولة *', required:true},
          {key:'year', label:'العام الدراسي *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
@@ -280,7 +280,7 @@ const MODELS = {
        fields: [
          {key:'directorate_name', label:'اسم مديرية التربية والتعليم *', required:true},
          {key:'school_name', label:'اسم المدرسة *', required:true},
-         {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث']},
+         {key:'rank', label:'حائز على المركز *', required:true, type:'select', options:['الأول','الثاني','الثالث','الرابع فما فوق']},
          {key:'year', label:'العام الدراسي *', required:true, type:'select', options:YEAR_OPTIONS},
        ],
        template: v => `تشهد مديرية التربية والتعليم ${v.directorate_name} بأنّ ${M(v,'اللاعب','اللاعبة')} ${v.player_name} ${M(v,'أحد لاعبي','إحدى لاعبات')} فريق مدرسة ${v.school_name} في لعبة ${v.game}، و${M(v,'كان هذا اللاعب','كانت هذه اللاعبة')} ضمن الفريق الحائز على المركز ${v.rank} في البطولة التي أقامتها مديرية التربية والتعليم للعام الدراسي ${v.year}.` },
