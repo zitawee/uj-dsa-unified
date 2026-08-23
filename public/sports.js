@@ -631,6 +631,7 @@ function spPrintRecordHTML(r) {
       ${majorsRows}
     </tbody></table>
     <div class="fr"><div class="fl">نوع نموذج التفوق الرياضي</div><div class="fv">${spEsc(r.nomination_type)}</div></div>
+    <div class="fr"><div class="fl">الرقم المرجعي لشهادة النموذج</div><div class="fv">${spEsc(r.cert_ref_code) || '—'}</div></div>
     <div style="font-size:10.5pt;color:#555;margin-top:4px">ملاحظة: يُستلَم النموذج الورقي الأصلي المطابق لهذا التصنيف بشكل منفصل.</div>
     <div class="dbox">أتعهد بأن كافة البيانات الواردة في هذا الطلب صحيحة ودقيقة، وأتحمل وحدي المسؤولية الكاملة عن أي أخطاء أو معلومات غير صحيحة قد ترد فيه.</div>
     <div style="margin-top:36px;font-size:11pt">توقيع مقدم الطلب</div>`;
@@ -1079,6 +1080,7 @@ function spReadOnlyHTML(r) {
     <div class="fr"><div class="fl">الهاتف</div><div class="fv">${spEsc(r.phone)}${r.phone_alt?' / بديل: '+spEsc(r.phone_alt):''}</div></div>
     <div class="fr"><div class="fl">التخصصات المرغوبة</div><div class="fv">${(r.majors||[]).map(spEsc).join(' ← ')}</div></div>
     <div class="fr"><div class="fl">نوع نموذج التفوق الرياضي</div><div class="fv">${spEsc(r.nomination_type)}</div></div>
+    <div class="fr"><div class="fl">الرقم المرجعي لشهادة النموذج</div><div class="fv">${spEsc(r.cert_ref_code) || '—'}</div></div>
     <div class="fr" style="margin-top:6px"><div class="fl">تاريخ التقديم</div><div class="fv">${spDate(r.createdAt)}</div></div>`;
 }
 
