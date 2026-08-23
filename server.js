@@ -530,6 +530,109 @@ app.post('/api/public/sports-excellence', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ══ تعديل طلب التفوق الرياضي من قِبل الطالب نفسه (بدون تسجيل دخول) —
+// يُسمح بالتعديل ما دام الطلب "قيد المراجعة" فقط (لم تبدأ لجنة الاختبار بوضع علاماتها بعد) ══
+app.post('/api/public/sports-excellence/lookup', async (req, res) => {
+  try {
+    const refCode = String(req.body.ref_code || '').trim().toUpperCase();
+    const phone = String(req.body.phone || '').trim();
+    if (!refCode || !phone) return res.status(400).json({ error: 'يرجى إدخال الرقم المرجعي ورقم الهاتف' });
+
+    const doc = await SportsApp.findOne({ ref_code: refCode }).lean();
+    if (!doc || (doc.phone !== phone && doc.phone_alt !== phone))
+      return res.status(400).json({ error: 'الرقم المرجعي أو رقم الهاتف غير صحيح' });
+    if (doc.status !== 'pending')
+      return res.status(400).json({ error: 'لا يمكن تعديل هذا الطلب لأن التقييم قد بدأ بالفعل أو صدر قرار بشأنه — يرجى مراجعة عمادة شؤون الطلبة' });
+
+    res.json({ ...doc, id: String(doc._id), _id: String(doc._id) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/public/sports-excellence/edit', async (req, res) => {
+  try {
+    const authRef = String(req.body._auth_ref || '').trim().toUpperCase();
+    const authPhone = String(req.body._auth_phone || '').trim();
+    if (!authRef || !authPhone) return res.status(400).json({ error: 'انتهت صلاحية جلسة التعديل، يرجى إعادة فتح الطلب من جديد' });
+
+    const existing = await SportsApp.findOne({ ref_code: authRef }).lean();
+    if (!existing || (existing.phone !== authPhone && existing.phone_alt !== authPhone))
+      return res.status(400).json({ error: 'انتهت صلاحية جلسة التعديل، يرجى إعادة فتح الطلب من جديد' });
+    if (existing.status !== 'pending')
+      return res.status(400).json({ error: 'لا يمكن تعديل هذا الطلب لأن التقييم قد بدأ بالفعل أو صدر قرار بشأنه' });
+
+    const data = { ...req.body };
+    delete data._auth_ref; delete data._auth_phone;
+
+    const fullName = (data.full_name || '').trim();
+    const phone = (data.phone || '').trim();
+    const gender = (data.gender || '').trim();
+    const seatNumber = (data.seat_number || '').trim();
+    if (!fullName || !phone) return res.status(400).json({ error: 'يرجى إدخال الاسم الكامل ورقم الهاتف' });
+    if (!['ذكر','أنثى'].includes(gender)) return res.status(400).json({ error: 'يرجى اختيار الجنس' });
+    if (!seatNumber) return res.status(400).json({ error: 'يرجى إدخال رقم الجلوس' });
+    if (!/^07\d{8}$/.test(phone)) return res.status(400).json({ error: 'صيغة رقم الهاتف غير صحيحة (يجب أن يبدأ بـ 07 ويتكون من 10 خانات)' });
+    if (data.phone_alt && !/^07\d{8}$/.test(String(data.phone_alt).trim()))
+      return res.status(400).json({ error: 'صيغة رقم الهاتف البديل غير صحيحة' });
+    if (!Array.isArray(data.game_types) || data.game_types.length !== 1 || !SPORTS_GAME_TYPES.includes(data.game_types[0]))
+      return res.status(400).json({ error: 'يرجى اختيار نوع لعبة واحدة فقط' });
+
+    const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
+    const activeGamesCheck = Array.isArray(s?.active_games) && s.active_games.length ? s.active_games : SPORTS_GAME_TYPES;
+    if (!activeGamesCheck.includes(data.game_types[0]))
+      return res.status(400).json({ error: 'عذراً، لعبة ' + data.game_types[0] + ' غير متاحة للتقديم حالياً' });
+    if (!data.nomination_type || !(data.nomination_type in SPORTS_NOMINATION_NUM_BY_LABEL))
+      return res.status(400).json({ error: 'يرجى اختيار نوع نموذج التفوق الرياضي' });
+
+    const certRefCode = (data.cert_ref_code || '').trim().toUpperCase();
+    if (!certRefCode) return res.status(400).json({ error: 'يرجى إدخال الرقم المرجعي لشهادة النموذج — ربط الشهادة إلزامي' });
+    const certDoc = await SportsCertificate.findOne({ ref_code: certRefCode }).lean();
+    if (!certDoc) return res.status(400).json({ error: 'الرقم المرجعي لشهادة النموذج غير صحيح' });
+    const oldCertRef = (existing.cert_ref_code || '').trim().toUpperCase();
+    const certChanged = certRefCode !== oldCertRef;
+    if (certChanged && certDoc.used) return res.status(400).json({ error: 'هذا الرقم المرجعي مُستخدَم مسبقاً في طلب آخر' });
+    const expectedNum = SPORTS_NOMINATION_NUM_BY_LABEL[data.nomination_type];
+    if (certDoc.model_number !== expectedNum)
+      return res.status(400).json({ error: `الرقم المرجعي المُدخَل يخص نموذج رقم (${certDoc.model_number})، وهذا لا يطابق نوع النموذج المُختار أعلاه` });
+
+    const yearMatch = String(certDoc.year || '').match(/\d{4}/);
+    if (!yearMatch) return res.status(400).json({ error: 'تعذّر التحقق من سنة الإنجاز في الشهادة المرتبطة، يرجى مراجعة العمادة' });
+    const certYear = parseInt(yearMatch[0]);
+    const nowYear = new Date().getFullYear();
+    if (nowYear - certYear > 3)
+      return res.status(400).json({ error: `عذراً، يُشترط أن يكون الإنجاز المذكور في الشهادة خلال آخر 3 سنوات من تاريخ تقديم الطلب — سنة الإنجاز المسجَّلة (${certYear}) تتجاوز هذه المدة` });
+
+    const nomScore = computeSportsNominationScore(certDoc.model_number, certDoc.rank);
+    if (nomScore == null) return res.status(400).json({ error: 'تعذّر احتساب علامة نوع النموذج من بيانات الشهادة المرتبطة، يرجى مراجعة العمادة' });
+
+    if (data.photo && !String(data.photo).startsWith('data:image/'))
+      return res.status(400).json({ error: 'صيغة الصورة غير صحيحة' });
+    if (!data.photo) data.photo = existing.photo; // إبقاء الصورة القديمة إن لم تُرفَع صورة جديدة
+    if (!data.photo) return res.status(400).json({ error: 'يرجى إرفاق الصورة الشخصية (إلزامية)' });
+    if (!data.agree) return res.status(400).json({ error: 'يرجى الموافقة على إقرار صحة البيانات' });
+
+    const dup = await SportsApp.findOne({
+      _id: { $ne: existing._id },
+      $or: [{ phone }, ...(data.phone_alt ? [{ phone: data.phone_alt }] : [])]
+    }).lean();
+    if (dup) return res.status(400).json({ error: 'يوجد طلب آخر مسجَّل بنفس رقم الهاتف' });
+
+    data.nomination_score = nomScore;
+    data.cert_ref_code = certRefCode;
+    delete data.ref_code; delete data.status; delete data.submitted_ip; // حقول لا يجوز للطالب تعديلها مباشرة
+
+    await SportsApp.findByIdAndUpdate(existing._id, data);
+
+    if (certChanged) {
+      if (oldCertRef) {
+        await SportsCertificate.findOneAndUpdate({ ref_code: oldCertRef }, { used: false, used_in_application_ref: null, used_at: null });
+      }
+      await SportsCertificate.findByIdAndUpdate(certDoc._id, { used: true, used_in_application_ref: existing.ref_code, used_at: new Date() });
+    }
+
+    res.json({ ref_code: existing.ref_code, message: 'تم حفظ التعديلات بنجاح' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══ نماذج شهادات التفوق الرياضي — تعبئة وطباعة عامة بدون تسجيل دخول (بحماية كابتشا)، قبل تقديم الطلب الرئيسي ══
 app.post('/api/public/sports-certificate', async (req, res) => {
   try {
