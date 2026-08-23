@@ -28,15 +28,27 @@ function tcrRenderList() {
   <div class="ph"><div><div class="pt">الدورات التدريبية</div><div class="ps">كتالوج الدورات المقدَّمة من جهات خارجية، وتسجيل الطلبة فيها</div></div></div>
   <div class="card"><button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="tcrOpenCourseForm()"><i class="ti ti-plus"></i> إضافة دورة جديدة</button>
   <button class="btn btn-sm" onclick="tcrCopyCatalogLink()"><i class="ti ti-link"></i> نسخ رابط الدورات العام</button></div>
+
+  <div class="card">
+    <div class="fb" style="align-items:center">
+      <button class="btn btn-sm" onclick="tcrToggleAllCourses(true)"><i class="ti ti-checkbox"></i> تحديد الكل</button>
+      <button class="btn btn-sm" onclick="tcrToggleAllCourses(false)">إلغاء التحديد</button>
+      <div style="flex:1"></div>
+      <span id="tcr-sel-count" style="font-size:12px;color:var(--muted)">لم يُحدَّد شيء</span>
+      <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="tcrPrintSelectedCourses()"><i class="ti ti-printer"></i> طباعة أسماء متقدمي الدورات المحدَّدة (PDF واحد)</button>
+    </div>
+  </div>
+
   <div class="card">
     <div class="tw"><table>
-      <thead><tr><th>#</th><th>اسم الدورة</th><th>الجهة المنظِّمة</th><th>الساعات</th><th>الحصة الرسمية</th><th>المسجَّلون / الحد الأقصى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+      <thead><tr><th style="width:36px"><input type="checkbox" id="tcr-check-all" onchange="tcrToggleAllCourses(this.checked)"></th><th>#</th><th>اسم الدورة</th><th>الجهة المنظِّمة</th><th>الساعات</th><th>الحصة الرسمية</th><th>المسجَّلون / الحد الأقصى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
       <tbody>${TC_COURSES.length ? TC_COURSES.map((c,i) => {
         const regs = (c.registrants||[]).length;
         const cap = c.cap || 0;
         const todayStr = new Date().toISOString().slice(0,10);
         const closed = (c.close_date && c.close_date < todayStr) || regs >= cap;
         return `<tr>
+          <td style="text-align:center"><input type="checkbox" class="tcr-course-chk" value="${c.id}" onchange="tcrUpdateSelCount()"></td>
           <td>${i+1}</td><td><strong>${tcrEsc(c.name)}</strong></td><td>${tcrEsc(c.organizer)}</td><td>${tcrEsc(c.hours)}</td><td>${tcrEsc(c.quota_note)}</td>
           <td>${regs} / ${cap}</td>
           <td>${closed ? '<span class="st st-r">مغلقة</span>' : '<span class="st st-a">مفتوحة</span>'}</td>
@@ -46,7 +58,7 @@ function tcrRenderList() {
             <button class="btn btn-sm" style="color:#c0392b" onclick="tcrDeleteCourse('${c.id}')"><i class="ti ti-trash"></i></button>
           </td>
         </tr>`;
-      }).join('') : `<tr><td colspan="8" class="center">لا توجد دورات مضافة بعد</td></tr>`}</tbody>
+      }).join('') : `<tr><td colspan="9" class="center">لا توجد دورات مضافة بعد</td></tr>`}</tbody>
     </table></div>
   </div>
   <div class="modal-ov" id="tcr-modal" onclick="if(event.target===this) tcrCloseModal()"><div class="modal" style="max-width:600px;max-height:88vh;overflow-y:auto" id="tcr-modal-body"></div></div>`;
@@ -55,6 +67,40 @@ function tcrRenderList() {
     window.__tcrEscBound = true;
     document.addEventListener('keydown', e => { if (e.key === 'Escape') tcrCloseModal(); });
   }
+  tcrUpdateSelCount();
+}
+
+function tcrToggleAllCourses(state) {
+  document.querySelectorAll('.tcr-course-chk').forEach(cb => cb.checked = state);
+  const all = document.getElementById('tcr-check-all'); if (all) all.checked = state;
+  tcrUpdateSelCount();
+}
+
+function tcrUpdateSelCount() {
+  const n = document.querySelectorAll('.tcr-course-chk:checked').length;
+  const el = document.getElementById('tcr-sel-count');
+  if (el) el.textContent = n ? `${n} دورة محدَّدة` : 'لم يُحدَّد شيء';
+}
+
+function tcrPrintSelectedCourses() {
+  const ids = Array.from(document.querySelectorAll('.tcr-course-chk:checked')).map(cb => cb.value);
+  if (!ids.length) { alert('يرجى تحديد دورة واحدة على الأقل'); return; }
+  const courses = ids.map(id => TC_COURSES.find(c => c.id === id)).filter(Boolean);
+  const html = courses.map((c,i) => {
+    const regs = c.registrants || [];
+    return `${i>0 ? '<div style="page-break-before:always"></div>' : ''}
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">${tcrDate(new Date())}</div>
+    </div>
+    <div class="ptitle">قائمة المتقدمين — ${tcrEsc(c.name)}</div>
+    <div class="psub">${tcrEsc(c.organizer)}${c.hours?' — '+tcrEsc(c.hours):''}${c.quota_note?' — '+tcrEsc(c.quota_note):''} — ${regs.length} متقدم</div>
+    <table class="ptbl"><thead><tr><th>#</th><th>الاسم</th><th>الرقم الجامعي</th><th>الكلية</th><th>التخصص</th><th>الهاتف</th><th>مختار</th></tr></thead><tbody>
+      ${regs.length ? regs.map((r,i2)=>`<tr><td>${i2+1}</td><td>${tcrEsc(r.name)}</td><td>${tcrEsc(r.id)}</td><td>${tcrEsc(r.college)}</td><td>${tcrEsc(r.major)}</td><td>${tcrEsc(r.phone)}</td><td>${r.selected?'✓':''}</td></tr>`).join('') : `<tr><td colspan="7" class="center">لا يوجد متقدمون</td></tr>`}
+    </tbody></table>`;
+  }).join('');
+  openPrint(html);
 }
 function tcrCloseModal() { document.getElementById('tcr-modal')?.classList.remove('open'); }
 

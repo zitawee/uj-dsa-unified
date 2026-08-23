@@ -827,6 +827,7 @@ function spcRender() {
       <td>
         <button class="btn btn-sm" onclick="spcView('${r.id}')" title="عرض التفاصيل"><i class="ti ti-eye"></i></button>
         <button class="btn btn-sm" onclick="spcReprint('${r.id}')" title="إعادة طباعة الشهادة"><i class="ti ti-printer"></i></button>
+        ${r.used ? `<button class="btn btn-sm" style="color:#a15c00" onclick="spcRelease('${r.id}')" title="إعادة تحرير (لإتاحة استخدامها في طلب جديد)"><i class="ti ti-lock-open"></i></button>` : ''}
         <button class="btn btn-sm" style="color:#c0392b" onclick="spcDelete('${r.id}')" title="حذف"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`).join('');
@@ -879,6 +880,13 @@ function spcReprint(id) {
   const r = SP_CERT_ROWS.find(x => x.id === id); if (!r) return;
   localStorage.setItem('sp_reprint_cert', JSON.stringify(r));
   window.open('/sports-certificate.html?reprint=1', '_blank');
+}
+
+async function spcRelease(id) {
+  if (!confirm('هل تريدين إعادة تحرير هذه الشهادة لتصبح "غير مُستخدَمة" وقابلة للربط بطلب جديد؟')) return;
+  const r = await api('/api/sports_certificate/'+id+'/release', 'PUT');
+  if (r.error) { alert(r.error); return; }
+  loadSportsCertificates();
 }
 
 async function spcDelete(id) {
