@@ -1152,7 +1152,15 @@ app.put('/api/sports_excellence/:id', auth(['admin','sports_reviewer']), async (
 
 app.delete('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
   try {
-    await SportsApp.findByIdAndDelete(req.params.id);
+    const doc = await SportsApp.findByIdAndDelete(req.params.id);
+    // عند حذف الطلب، تُعاد الشهادة المرتبطة به (إن وُجدت) إلى حالة "غير مُستخدَمة" تلقائياً
+    // حتى يمكن استخدام نفس الرقم المرجعي في طلب جديد لاحقاً
+    if (doc?.cert_ref_code) {
+      await SportsCertificate.findOneAndUpdate(
+        { ref_code: String(doc.cert_ref_code).toUpperCase() },
+        { used: false, used_in_application_ref: null, used_at: null }
+      );
+    }
     res.json({ message: 'تم الحذف' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1169,6 +1177,13 @@ app.delete('/api/sports_certificate/:id', auth(['admin']), async (req, res) => {
   try {
     await SportsCertificate.findByIdAndDelete(req.params.id);
     res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/sports_certificate/:id/release', auth(['admin']), async (req, res) => {
+  try {
+    await SportsCertificate.findByIdAndUpdate(req.params.id, { used: false, used_in_application_ref: null, used_at: null });
+    res.json({ message: 'تم تحرير الشهادة، يمكن استخدامها في طلب جديد الآن' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
