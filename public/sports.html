@@ -105,10 +105,21 @@
 <header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
 <div class="wrap">
   <div class="card">
-    <h1>طلب الالتحاق للدراسة على أساس التفوق الرياضي</h1>
-    <p class="sub">يرجى تعبئة كل الحقول المطلوبة (*) بدقة. سيصلك رقم مرجعي لمتابعة حالة طلبك بعد الإرسال.</p>
+    <h1 id="formTitle">طلب الالتحاق للدراسة على أساس التفوق الرياضي</h1>
+    <p class="sub" id="formSub">يرجى تعبئة كل الحقول المطلوبة (*) بدقة. سيصلك رقم مرجعي لمتابعة حالة طلبك بعد الإرسال.</p>
     <a href="/sports-certificate.html" target="_blank" style="display:block;text-align:center;margin-top:10px;background:#F7F9F6;border:1px dashed var(--g);border-radius:var(--r);padding:10px 12px;color:var(--g);font-weight:700;font-size:12.5px;text-decoration:none;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif">📄 لم تُعبّئ شهادة النموذج بعد؟ اضغط هنا لتعبئتها وطباعتها أولاً</a>
     <a href="/sports-guide.html" target="_blank" style="display:block;text-align:center;margin-top:8px;color:var(--g);font-weight:600;font-size:12px;text-decoration:underline;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif">🧭 غير متأكد من الخطوات؟ شاهد الدليل التفاعلي الكامل</a>
+  </div>
+
+  <div class="card" id="editUnlockCard">
+    <div class="ct">لديك طلب مُقدَّم سابقاً وتريد تعديله؟</div>
+    <p class="sub" style="margin-top:-6px">أدخل الرقم المرجعي للطلب ورقم الهاتف المُستخدَم فيه. التعديل متاح فقط ما دام الطلب "قيد المراجعة" (لم تبدأ لجنة الاختبار بعد).</p>
+    <div class="g2">
+      <div><label>الرقم المرجعي للطلب</label><input id="unlock-ref" type="text" placeholder="مثال: SP-A7K92X" style="text-transform:uppercase"></div>
+      <div><label>رقم الهاتف المُستخدَم في الطلب</label><input id="unlock-phone" type="text" inputmode="numeric" maxlength="10" placeholder="07XXXXXXXX"></div>
+    </div>
+    <button type="button" style="background:#128C7E" onclick="unlockForEdit()">🔓 فتح الطلب للتعديل</button>
+    <div id="unlockMsg" class="msg"></div>
   </div>
 
   <div id="closedArea" style="display:none">
@@ -222,11 +233,11 @@
     </div>
 
     <div class="card">
-      <div class="ct">تحقق سريع</div>
+      <div class="ct" id="captchaSectionTitle">تحقق سريع</div>
       <label id="captchaLbl">كم يساوي <span id="captchaQ">...</span> ؟ *</label>
       <input id="f-captcha" type="number" style="max-width:140px">
       <div style="display:flex;justify-content:flex-end;margin-top:6px">
-        <button id="submitBtn" onclick="submitApp()">📨 إرسال الطلب</button>
+        <button id="submitBtn" onclick="handleSubmitClick()">📨 إرسال الطلب</button>
       </div>
       <div id="msg" class="msg"></div>
     </div>
@@ -427,7 +438,12 @@ function showMsg(txt, err) {
 
 let LAST_APP = null; // بيانات آخر طلب أُرسل بنجاح — تُستخدَم لبناء إيصال الطباعة/الإرسال
 
-async function submitApp() {
+let EDIT_MODE = false;
+let EDIT_AUTH = null; // { ref_code, phone } — بيانات إثبات الملكية المُستخدَمة لفتح الطلب للتعديل
+
+function handleSubmitClick() { EDIT_MODE ? submitEditApp() : submitApp(); }
+
+function validateAndBuildData() {
   const name = v('f-name'), gender = v('f-gender'), seat = v('f-seat'), school = v('f-school'), gov = v('f-gov'), dist = v('f-dist');
   const gameTypes = Array.from(document.querySelectorAll('.act-cb:checked')).map(el => el.value);
   const trackEl = document.querySelector('.track-rb:checked');
@@ -438,30 +454,30 @@ async function submitApp() {
   const nomination = nominationEntry ? nominationEntry.label : '';
   const agree = document.getElementById('f-agree').checked;
 
-  if (!name || !school) { showMsg('يرجى إدخال اسم الطالب والمدرسة', true); return; }
-  if (!gender) { showMsg('يرجى اختيار الجنس', true); return; }
-  if (!seat) { showMsg('يرجى إدخال رقم الجلوس', true); return; }
-  if (!gov || !dist) { showMsg('يرجى اختيار المحافظة واللواء', true); return; }
-  if (!gameTypes.length) { showMsg('يرجى اختيار نوع اللعبة', true); return; }
-  if (!trackEl) { showMsg('يرجى اختيار فرع الشهادة', true); return; }
+  if (!name || !school) { showMsg('يرجى إدخال اسم الطالب والمدرسة', true); return null; }
+  if (!gender) { showMsg('يرجى اختيار الجنس', true); return null; }
+  if (!seat) { showMsg('يرجى إدخال رقم الجلوس', true); return null; }
+  if (!gov || !dist) { showMsg('يرجى اختيار المحافظة واللواء', true); return null; }
+  if (!gameTypes.length) { showMsg('يرجى اختيار نوع اللعبة', true); return null; }
+  if (!trackEl) { showMsg('يرجى اختيار فرع الشهادة', true); return null; }
   const track = TRACKS.find(t => t.id === trackEl.value);
   const subfield = v('f-subfield');
-  if (track.sub.length && !subfield) { showMsg('يرجى اختيار الحقل الفرعي', true); return; }
+  if (track.sub.length && !subfield) { showMsg('يرجى اختيار الحقل الفرعي', true); return null; }
   const equivDoc = v('f-equiv');
-  if ((track.id === 'international' || track.id === 'arabic') && !equivDoc) { showMsg('يرجى تحديد حالة وثيقة معادلة الشهادة', true); return; }
+  if ((track.id === 'international' || track.id === 'arabic') && !equivDoc) { showMsg('يرجى تحديد حالة وثيقة معادلة الشهادة', true); return null; }
   const arabBranch = v('f-arab-branch');
-  if (!/^\d{4}$/.test(certYear)) { showMsg('سنة الحصول على الشهادة يجب أن تكون 4 أرقام', true); return; }
-  if (!gpa) { showMsg('يرجى إدخال معدل الثانوية العامة', true); return; }
-  if (!address) { showMsg('يرجى إدخال العنوان', true); return; }
-  if (!/^07\d{8}$/.test(phone)) { showMsg('رقم الهاتف يجب أن يبدأ بـ 07 ويتكون من 10 خانات', true); return; }
-  if (phoneAlt && !/^07\d{8}$/.test(phoneAlt)) { showMsg('صيغة رقم الهاتف البديل غير صحيحة', true); return; }
-  if (!major1 || !major2 || !major3) { showMsg('يرجى اختيار التخصصات الثلاثة', true); return; }
-  if (new Set([major1, major2, major3]).size < 3) { showMsg('لا يمكن تكرار نفس التخصص في أكثر من خيار', true); return; }
-  if (!PHOTO_DATA) { showMsg('يرجى إرفاق الصورة الشخصية (إلزامية)', true); return; }
-  if (!nomination) { showMsg('يرجى اختيار نوع نموذج التفوق الرياضي', true); return; }
-  if (!v('f-cert-ref')) { showMsg('يرجى إدخال الرقم المرجعي لشهادة النموذج — ربط الشهادة إلزامي لتقديم الطلب', true); return; }
-  if (!agree) { showMsg('يرجى الموافقة على إقرار صحة البيانات', true); return; }
-  if (!v('f-captcha')) { showMsg('يرجى الإجابة على سؤال التحقق', true); return; }
+  if (!/^\d{4}$/.test(certYear)) { showMsg('سنة الحصول على الشهادة يجب أن تكون 4 أرقام', true); return null; }
+  if (!gpa) { showMsg('يرجى إدخال معدل الثانوية العامة', true); return null; }
+  if (!address) { showMsg('يرجى إدخال العنوان', true); return null; }
+  if (!/^07\d{8}$/.test(phone)) { showMsg('رقم الهاتف يجب أن يبدأ بـ 07 ويتكون من 10 خانات', true); return null; }
+  if (phoneAlt && !/^07\d{8}$/.test(phoneAlt)) { showMsg('صيغة رقم الهاتف البديل غير صحيحة', true); return null; }
+  if (!major1 || !major2 || !major3) { showMsg('يرجى اختيار التخصصات الثلاثة', true); return null; }
+  if (new Set([major1, major2, major3]).size < 3) { showMsg('لا يمكن تكرار نفس التخصص في أكثر من خيار', true); return null; }
+  if (!PHOTO_DATA && !EDIT_MODE) { showMsg('يرجى إرفاق الصورة الشخصية (إلزامية)', true); return null; }
+  if (!nomination) { showMsg('يرجى اختيار نوع نموذج التفوق الرياضي', true); return null; }
+  if (!v('f-cert-ref')) { showMsg('يرجى إدخال الرقم المرجعي لشهادة النموذج — ربط الشهادة إلزامي لتقديم الطلب', true); return null; }
+  if (!agree) { showMsg('يرجى الموافقة على إقرار صحة البيانات', true); return null; }
+  if (!EDIT_MODE && !v('f-captcha')) { showMsg('يرجى الإجابة على سؤال التحقق', true); return null; }
 
   const data = {
     full_name: name, gender, seat_number: seat, school, governorate: gov, district: dist,
@@ -470,9 +486,16 @@ async function submitApp() {
     equivalency_doc: equivDoc, arab_branch: arabBranch,
     address, phone, phone_alt: phoneAlt,
     majors: [major1, major2, major3],
-    nomination_type: nomination, cert_ref_code: v('f-cert-ref').toUpperCase(), photo: PHOTO_DATA, agree,
-    captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
+    nomination_type: nomination, cert_ref_code: v('f-cert-ref').toUpperCase(), agree,
   };
+  if (PHOTO_DATA) data.photo = PHOTO_DATA; // في وضع التعديل بلا صورة جديدة، يُبقي الخادم الصورة القديمة تلقائياً
+  if (!EDIT_MODE) { data.captcha_token = CAPTCHA_TOKEN; data.captcha_answer = v('f-captcha'); }
+  return data;
+}
+
+async function submitApp() {
+  const data = validateAndBuildData();
+  if (!data) return;
 
   const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.textContent = 'جارٍ الإرسال...';
   try {
@@ -482,6 +505,7 @@ async function submitApp() {
     const r = await res.json();
     if (!res.ok) { showMsg(r.error || 'تعذر إرسال الطلب', true); btn.disabled = false; btn.textContent = '📨 إرسال الطلب'; loadCaptcha(); return; }
     document.getElementById('formArea').style.display = 'none';
+    document.getElementById('editUnlockCard').style.display = 'none';
     document.getElementById('doneArea').style.display = 'block';
     document.getElementById('refCodeOut').textContent = r.ref_code;
     LAST_APP = { ...data, ref_code: r.ref_code, createdAt: new Date().toISOString() };
@@ -490,6 +514,108 @@ async function submitApp() {
     btn.disabled = false; btn.textContent = '📨 إرسال الطلب';
   }
 }
+
+async function submitEditApp() {
+  const data = validateAndBuildData();
+  if (!data) return;
+  data._auth_ref = EDIT_AUTH.ref_code;
+  data._auth_phone = EDIT_AUTH.phone;
+
+  const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
+  try {
+    const res = await fetch('/api/public/sports-excellence/edit', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    btn.disabled = false; btn.textContent = '💾 حفظ التعديلات';
+    if (!res.ok) { showMsg(r.error || 'تعذر حفظ التعديلات', true); return; }
+    showMsg('✅ تم حفظ التعديلات بنجاح', false);
+    EDIT_AUTH.phone = data.phone; // في حال غيّر رقم هاتفه، يبقى مسموحاً له بالتعديل مجدداً بنفس الجلسة
+    LAST_APP = { ...data, ref_code: EDIT_AUTH.ref_code, createdAt: (LAST_APP && LAST_APP.createdAt) || new Date().toISOString() };
+  } catch (e) {
+    showMsg('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', true);
+    btn.disabled = false; btn.textContent = '💾 حفظ التعديلات';
+  }
+}
+
+// ── فتح طلب سابق للتعديل ──
+async function unlockForEdit() {
+  const refCode = document.getElementById('unlock-ref').value.trim().toUpperCase();
+  const phone = document.getElementById('unlock-phone').value.trim();
+  const msgEl = document.getElementById('unlockMsg');
+  msgEl.style.display = 'none';
+  if (!refCode || !phone) { msgEl.textContent = 'يرجى إدخال الرقم المرجعي ورقم الهاتف'; msgEl.className = 'msg err'; msgEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/public/sports-excellence/lookup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref_code: refCode, phone })
+    });
+    const r = await res.json();
+    if (!res.ok) { msgEl.textContent = r.error || 'تعذر فتح الطلب'; msgEl.className = 'msg err'; msgEl.style.display = 'block'; return; }
+    enterEditMode(r, refCode, phone);
+  } catch (e) {
+    msgEl.textContent = 'تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً'; msgEl.className = 'msg err'; msgEl.style.display = 'block';
+  }
+}
+
+function enterEditMode(doc, refCode, phone) {
+  EDIT_MODE = true;
+  EDIT_AUTH = { ref_code: refCode, phone };
+
+  document.getElementById('editUnlockCard').style.display = 'none';
+  document.getElementById('formTitle').textContent = 'تعديل طلب الالتحاق على أساس التفوق الرياضي';
+  document.getElementById('formSub').textContent = `يمكنك الآن تعديل بيانات الطلب رقم ${refCode} وإعادة حفظه. عدّلي ما تريدين ثم اضغطي "حفظ التعديلات".`;
+  document.getElementById('captchaSectionTitle').style.display = 'none';
+  document.getElementById('captchaLbl').style.display = 'none';
+  document.getElementById('f-captcha').style.display = 'none';
+  const btn = document.getElementById('submitBtn'); btn.textContent = '💾 حفظ التعديلات';
+
+  v_set('f-name', doc.full_name);
+  v_set('f-gender', doc.gender);
+  v_set('f-seat', doc.seat_number);
+  v_set('f-school', doc.school);
+
+  govSel.value = doc.governorate || '';
+  govSel.dispatchEvent(new Event('change'));
+  setTimeout(() => { distSel.value = doc.district || ''; }, 0);
+
+  (doc.game_types || []).forEach(g => {
+    const rb = document.querySelector(`.act-cb[value="${CSS.escape(g)}"]`);
+    if (rb) rb.checked = true;
+  });
+
+  const trackRb = document.querySelector(`.track-rb[value="${doc.cert_track || ''}"]`);
+  if (trackRb) { trackRb.checked = true; trackRb.dispatchEvent(new Event('change')); }
+  setTimeout(() => {
+    v_set('f-subfield', doc.cert_subfield);
+    v_set('f-arab-branch', doc.arab_branch);
+    v_set('f-equiv', doc.equivalency_doc);
+  }, 0);
+
+  v_set('f-certyear', doc.cert_year);
+  v_set('f-gpa', doc.gpa);
+  v_set('f-address', doc.address);
+  v_set('f-phone', doc.phone);
+  v_set('f-phone-alt', doc.phone_alt);
+
+  v_set('f-major1', (doc.majors || [])[0]);
+  v_set('f-major2', (doc.majors || [])[1]);
+  v_set('f-major3', (doc.majors || [])[2]);
+
+  if (doc.photo) {
+    document.getElementById('photoPreview').style.backgroundImage = `url(${doc.photo})`;
+    document.getElementById('photoPreview').textContent = '';
+  }
+
+  const nomEntry = NOMINATION_MODELS.find(m => m.label === doc.nomination_type);
+  if (nomEntry) { v_set('f-nomination-num', String(nomEntry.num)); updateNominationDesc(); }
+  v_set('f-cert-ref', doc.cert_ref_code);
+
+  document.getElementById('f-agree').checked = !!doc.agree;
+
+  document.getElementById('formArea').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function v_set(id, val) { const el = document.getElementById(id); if (el) el.value = val || ''; }
 
 function esc(s) { return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function trackLabel(id) { return (TRACKS.find(t => t.id === id) || {}).label || id || ''; }
