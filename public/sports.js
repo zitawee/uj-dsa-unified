@@ -257,7 +257,7 @@ function spRender() {
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${spEsc(SP_TRACKS[r.cert_track]||r.cert_track||'')}</td>
       <td>${spEsc(r.gpa)}%</td>
-      <td>${r.cert_ref_code ? `<span style="font-family:monospace">${spEsc(r.cert_ref_code)}</span>` : `<span style="background:#FCEBEB;color:#791F1F;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px">⚠️ بلا شهادة مرتبطة</span>`}</td>
+      <td>${r.cert_ref_code ? `<a href="#" onclick="spViewCertByRef('${spEsc(r.cert_ref_code)}');return false" style="font-family:monospace;color:var(--g);font-weight:700;text-decoration:underline">${spEsc(r.cert_ref_code)}</a>` : `<span style="background:#FCEBEB;color:#791F1F;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px">⚠️ بلا شهادة مرتبطة</span>`}</td>
       <td style="font-weight:700">${r.final_score!=null ? spPct(r.final_score) : '—'}</td>
       <td class="sp-status-cell">${spBadge(r.status)}</td>
       <td>${spDate(r.createdAt)}</td>
@@ -418,6 +418,31 @@ function spView(id) {
   });
 }
 function spCloseModal() { document.getElementById('sp-modal')?.classList.remove('open'); }
+
+// عرض تفاصيل شهادة النموذج مباشرة من جدول "طلبات التفوق الرياضي" — بالضغط على الرقم المرجعي نفسه
+async function spViewCertByRef(refCode) {
+  const rows = await api('/api/sports_certificate');
+  if (!Array.isArray(rows)) { alert('تعذّر تحميل بيانات الشهادة'); return; }
+  const r = rows.find(x => (x.ref_code || '').toUpperCase() === (refCode || '').toUpperCase());
+  if (!r) { alert('تعذّر إيجاد شهادة بهذا الرقم المرجعي — ربما حُذفت'); return; }
+
+  const skipKeys = ['id','_id','__v','ref_code','player_name','game','model_number','model_label','used','used_in_application_ref','used_at','createdAt','updatedAt'];
+  const extraRows = Object.keys(r).filter(k => !skipKeys.includes(k) && r[k]).map(k => `<div class="fr"><div class="fl">${spEsc(k)}</div><div class="fv">${spEsc(r[k])}</div></div>`).join('');
+  document.getElementById('sp-modal-body').innerHTML = `
+    <h3>تفاصيل الشهادة</h3>
+    <div class="fr"><div class="fl">الرقم المرجعي</div><div class="fv" style="font-family:monospace">${spEsc(r.ref_code)}</div></div>
+    <div class="fr"><div class="fl">رقم النموذج</div><div class="fv">نموذج (${r.model_number})</div></div>
+    <div class="fr"><div class="fl">الوصف</div><div class="fv">${spEsc(r.model_label)}</div></div>
+    <div class="fr"><div class="fl">اسم اللاعب/ـة</div><div class="fv">${spEsc(r.player_name)}</div></div>
+    <div class="fr"><div class="fl">اللعبة</div><div class="fv">${spEsc(r.game)}</div></div>
+    ${extraRows}
+    <div class="fr"><div class="fl">الحالة</div><div class="fv">${r.used ? 'مُستخدَمة في طلب رقم '+spEsc(r.used_in_application_ref) : 'غير مُستخدَمة بعد'}</div></div>
+    <div class="fr"><div class="fl">تاريخ التعبئة</div><div class="fv">${spDate(r.createdAt)}</div></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" style="flex:1" onclick="spCloseModal()">إغلاق</button>
+    </div>`;
+  document.getElementById('sp-modal').classList.add('open');
+}
 
 function spUpdateNominationDesc() {
   const sel = document.getElementById('sp-e-nomination');
