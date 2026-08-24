@@ -420,6 +420,15 @@ async function checkLinkStatus() {
 }
 checkLinkStatus();
 
+// تعبئة الرقم المرجعي تلقائياً إن جاء الطالب مباشرة من صفحة تعبئة الشهادة (زر "المتابعة لتقديم الطلب الآن")
+(function prefillCertRefFromCertificatePage() {
+  const refCode = localStorage.getItem('sp_prefill_cert_ref');
+  if (!refCode) return;
+  localStorage.removeItem('sp_prefill_cert_ref');
+  const field = document.getElementById('f-cert-ref');
+  if (field) field.value = refCode;
+})();
+
 // ── الكابتشا ──
 let CAPTCHA_TOKEN = null;
 async function loadCaptcha() {

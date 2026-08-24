@@ -126,10 +126,12 @@
       <div style="font-size:14px;color:var(--g);font-weight:700">✅ تم حفظ الشهادة بنجاح</div>
       <div style="font-size:12.5px;color:var(--muted);margin-top:6px">احتفظ بهذا الرقم المرجعي — سيُطلَب إدخاله لاحقاً عند تقديم طلب التفوق الرياضي:</div>
       <div class="code" id="refCodeOut"></div>
-      <div style="display:flex;gap:10px;margin-top:14px">
+      <div style="display:flex;gap:10px;margin-top:10px">
         <button style="flex:1" onclick="window.print()">🖨️ طباعة الشهادة</button>
         <button id="shareBtn" style="flex:1;background:#128C7E" onclick="shareCertPDF()">📤 إرسال الطلب</button>
       </div>
+      <div style="font-size:11.5px;color:var(--muted);margin:10px 0 -2px">ننصح بطباعة الشهادة أو إرسالها لنفسك أولاً، ثم المتابعة للتقديم — ستبقى هذه الصفحة مفتوحة ويمكنك العودة إليها لاحقاً.</div>
+      <button style="margin-top:10px;background:#128C7E" onclick="continueToApplication()">➡️ المتابعة لتقديم الطلب (في تبويب جديد)</button>
       <div id="shareMsg" class="msg" style="margin-top:12px"></div>
     </div>
   </div>
@@ -457,6 +459,14 @@ function renderAndPrintCertificate(cert) {
   document.getElementById('refCodeOut').textContent = cert.ref_code;
   renderAndPrintCertificate(cert);
 })();
+
+// نقل الرقم المرجعي تلقائياً لنموذج تقديم الطالب — بلا أي كتابة يدوية، لتفادي الأخطاء الإملائية والتكرار
+function continueToApplication() {
+  const refCode = document.getElementById('refCodeOut').textContent.trim();
+  if (!refCode) return;
+  localStorage.setItem('sp_prefill_cert_ref', refCode);
+  window.open('/sports.html', '_blank'); // تبويب جديد — تبقى هذه الصفحة مفتوحة بأزرار طباعة/إرسال الشهادة متاحة دائماً
+}
 
 // توليد ملف PDF فعلي من الشهادة المطبوعة، وفتح قائمة المشاركة الأصلية بالجهاز (واتساب/بريد/أي تطبيق آخر)
 async function buildCertPDFBlob() {
