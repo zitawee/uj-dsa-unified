@@ -194,6 +194,7 @@ async function loadSports() {
       <select id="sp-f-gov" onchange="spRender()"><option value="">كل المحافظات</option>${[...new Set(rows.map(r=>r.governorate).filter(Boolean))].map(g=>`<option>${g}</option>`).join('')}</select>
       <select id="sp-f-game" onchange="spRender()"><option value="">كل الألعاب</option>${SP_GAME_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
       <select id="sp-sort" onchange="spRender()"><option value="date_desc">الأحدث</option><option value="score_desc">الأعلى علامة</option><option value="score_asc">الأدنى علامة</option></select>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;white-space:nowrap;background:#FCEBEB;color:#791F1F;padding:0 10px;border-radius:var(--r)"><input type="checkbox" id="sp-f-nocert" onchange="spRender()"> ⚠️ إظهار غير المرتبطة بشهادة فقط</label>
     </div>
   </div>
 
@@ -201,7 +202,7 @@ async function loadSports() {
     <div class="tw"><table>
       <thead><tr>
         <th style="width:40px">مقبول</th>
-        <th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>الهاتف</th><th>المحافظة / اللواء</th><th>نوع اللعبة</th><th>فرع الشهادة</th><th>المعدل</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
+        <th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>الهاتف</th><th>المحافظة / اللواء</th><th>نوع اللعبة</th><th>فرع الشهادة</th><th>المعدل</th><th>الرقم المرجعي للشهادة</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="tbl-sports-body"></tbody>
     </table></div>
@@ -224,11 +225,13 @@ function spRender() {
   const fStatus = document.getElementById('sp-f-status')?.value || '';
   const fGov = document.getElementById('sp-f-gov')?.value || '';
   const fAct = document.getElementById('sp-f-game')?.value || '';
+  const fNoCert = document.getElementById('sp-f-nocert')?.checked || false;
   const sort = document.getElementById('sp-sort')?.value || 'date_desc';
   let rows = SP_ROWS.filter(r => {
     if (fStatus && (r.status || 'pending') !== fStatus) return false;
     if (fGov && r.governorate !== fGov) return false;
     if (fAct && !(r.game_types||[]).includes(fAct)) return false;
+    if (fNoCert && r.cert_ref_code) return false;
     if (q) {
       const hay = [r.full_name, r.phone, r.phone_alt, r.school, r.ref_code].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -241,7 +244,7 @@ function spRender() {
     return new Date(b.createdAt||0) - new Date(a.createdAt||0);
   });
   const tb = document.getElementById('tbl-sports-body');
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="13" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="14" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
       <td style="text-align:center"><input type="checkbox" value="${r.id}" ${r.status==='passed'?'checked':''} onchange="spToggleAccept('${r.id}', this)" title="وضع إشارة القبول (تُحفظ تلقائياً)"></td>
@@ -254,6 +257,7 @@ function spRender() {
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${spEsc(SP_TRACKS[r.cert_track]||r.cert_track||'')}</td>
       <td>${spEsc(r.gpa)}%</td>
+      <td>${r.cert_ref_code ? `<span style="font-family:monospace">${spEsc(r.cert_ref_code)}</span>` : `<span style="background:#FCEBEB;color:#791F1F;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px">⚠️ بلا شهادة مرتبطة</span>`}</td>
       <td style="font-weight:700">${r.final_score!=null ? spPct(r.final_score) : '—'}</td>
       <td class="sp-status-cell">${spBadge(r.status)}</td>
       <td>${spDate(r.createdAt)}</td>
