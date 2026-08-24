@@ -1068,8 +1068,8 @@ function scRenderTable() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   const tbody = document.getElementById('sc-tbody');
   if (!tbody) return;
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME));
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد متقدمون للعبة "${spEsc(SC_CURRENT_GAME)}"</td></tr>`; return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && r.status !== 'pending');
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة "مقبول للاختبار" للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
   const per = 60;
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];
@@ -1170,8 +1170,8 @@ function spSignatureBlockHTML() {
 function scPrintGradingSheet() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME));
-  if (!rows.length) { alert('لا يوجد متقدمون لهذه اللعبة'); return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && r.status !== 'pending');
+  if (!rows.length) { alert('لا يوجد طلبة (مقبول للاختبار) لهذه اللعبة بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = '60';
@@ -1199,8 +1199,8 @@ function scPrintGradingSheet() {
 function scPrintFinalReport() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME));
-  if (!rows.length) { alert('لا يوجد متقدمون لهذه اللعبة'); return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && r.status !== 'pending');
+  if (!rows.length) { alert('لا يوجد طلبة (مقبول للاختبار) لهذه اللعبة بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = '60';
