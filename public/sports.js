@@ -425,6 +425,7 @@ async function spViewCertByRef(refCode) {
   if (!Array.isArray(rows)) { alert('تعذّر تحميل بيانات الشهادة'); return; }
   const r = rows.find(x => (x.ref_code || '').toUpperCase() === (refCode || '').toUpperCase());
   if (!r) { alert('تعذّر إيجاد شهادة بهذا الرقم المرجعي — ربما حُذفت'); return; }
+  SP_CERT_DETAIL_CACHE = r; // تخزين مؤقت آمن يستخدمه زر "طباعة الشهادة" أدناه، بدل تضمين JSON مباشرة داخل onclick
 
   const skipKeys = ['id','_id','__v','ref_code','player_name','game','model_number','model_label','used','used_in_application_ref','used_at','createdAt','updatedAt'];
   const extraRows = Object.keys(r).filter(k => !skipKeys.includes(k) && r[k]).map(k => `<div class="fr"><div class="fl">${spEsc(k)}</div><div class="fv">${spEsc(r[k])}</div></div>`).join('');
@@ -439,9 +440,18 @@ async function spViewCertByRef(refCode) {
     <div class="fr"><div class="fl">الحالة</div><div class="fv">${r.used ? 'مُستخدَمة في طلب رقم '+spEsc(r.used_in_application_ref) : 'غير مُستخدَمة بعد'}</div></div>
     <div class="fr"><div class="fl">تاريخ التعبئة</div><div class="fv">${spDate(r.createdAt)}</div></div>
     <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="spReprintCertObj()"><i class="ti ti-printer"></i> طباعة الشهادة</button>
       <button class="btn" style="flex:1" onclick="spCloseModal()">إغلاق</button>
     </div>`;
   document.getElementById('sp-modal').classList.add('open');
+}
+
+let SP_CERT_DETAIL_CACHE = null;
+// إعادة طباعة شهادة (تُستخدَم من نافذة "تفاصيل الشهادة") — بفتح صفحة الشهادة بوضع "إعادة طباعة" بنفس التصميم الأصلي
+function spReprintCertObj() {
+  if (!SP_CERT_DETAIL_CACHE) return;
+  localStorage.setItem('sp_reprint_cert', JSON.stringify(SP_CERT_DETAIL_CACHE));
+  window.open('/sports-certificate.html?reprint=1', '_blank');
 }
 
 function spUpdateNominationDesc() {
