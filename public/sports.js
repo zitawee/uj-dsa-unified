@@ -214,7 +214,7 @@ async function loadSports() {
       <thead><tr>
         <th style="width:36px"><input type="checkbox" id="sp-check-all" onchange="spToggleAllRows(this.checked)"></th>
         <th style="width:40px">مقبول</th>
-        <th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>الهاتف</th><th>المحافظة / اللواء</th><th>نوع اللعبة</th><th>فرع الشهادة</th><th>المعدل</th><th>الرقم المرجعي للشهادة</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
+        <th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th>فرع الشهادة</th><th>المعدل</th><th>الرقم المرجعي للشهادة</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="tbl-sports-body"></tbody>
     </table></div>
@@ -256,7 +256,7 @@ function spRender() {
     return new Date(b.createdAt||0) - new Date(a.createdAt||0);
   });
   const tb = document.getElementById('tbl-sports-body');
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="17" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="14" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
       <td style="text-align:center"><input type="checkbox" class="sp-row-chk" value="${r.id}" onchange="spUpdateSelCount()"></td>
@@ -264,9 +264,6 @@ function spRender() {
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)}</td>
       <td>${spEsc(r.gender)}</td>
-      <td>${spEsc(r.seat_number)}</td>
-      <td>${spEsc(r.phone)}</td>
-      <td>${spEsc(r.governorate)} / ${spEsc(r.district)}</td>
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${spEsc(SP_TRACKS[r.cert_track]||r.cert_track||'')}</td>
       <td>${spEsc(r.gpa)}%</td>
