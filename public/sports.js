@@ -991,6 +991,106 @@ async function spcDelete(id) {
   loadSportsCertificates();
 }
 
+// ══════════════════════════════════════════════════════════════
+// شاشة "اختبار فحص القدرات" — عرض الطلبة بحالة "مقبول للاختبار" فقط (لم يخضعوا بعد لاختبار القدرات)،
+// طباعة كشف ورقي لإجراء الاختبار، ثم ترحيل النتيجة (اجتاز/لم يجتز) — من يجتاز يظهر تلقائياً لاحقاً في شاشة لجنة التحكيم
+// ══════════════════════════════════════════════════════════════
+let SP_ABILITY_CANDIDATES = [];
+
+async function loadSportsAbilityTest() {
+  const panel = document.getElementById('panel-sports_ability_test');
+  if (!panel) return;
+  panel.innerHTML = `<div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات قبل الانتقال للاختبار العملي (لجنة التحكيم)</div></div></div>
+    <div class="card"><div class="center" style="padding:24px">جارٍ التحميل...</div></div>`;
+
+  const rows = await api('/api/sports_excellence');
+  if (!Array.isArray(rows)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
+  SP_ROWS = rows; // تحديث الكاش العام أيضاً، تستفيد منه شاشات أخرى (لجنة التحكيم) دون إعادة تحميل منفصلة
+  SP_ABILITY_CANDIDATES = rows.filter(r => r.status === 'accepted_exam');
+
+  panel.innerHTML = `
+  <div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات قبل الانتقال للاختبار العملي — ${SP_ABILITY_CANDIDATES.length} طالب/ة</div></div></div>
+
+  <div class="card">
+    <div class="fb" style="align-items:center">
+      <select id="sat-f-game" onchange="satRender()"><option value="">كل الألعاب</option>${SP_GAME_TYPES.map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+      <input type="text" id="sat-q" placeholder="بحث بالاسم أو رقم الجلوس..." style="flex:1;min-width:180px" oninput="satRender()">
+      <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">اطبعي هذا الكشف واستخدميه يوم إجراء اختبار القدرات، ثم عودي هنا بعد الاختبار لتسجيل النتيجة لكل طالب (اجتاز/لم يجتاز).</p>
+  </div>
+
+  <div class="card">
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>المدرسة</th><th>نوع اللعبة</th><th>نتيجة اختبار القدرات</th></tr></thead>
+      <tbody id="sat-tbody"></tbody>
+    </table></div>
+  </div>`;
+  satRender();
+}
+
+function satRender() {
+  const q = (document.getElementById('sat-q')?.value || '').trim().toLowerCase();
+  const fGame = document.getElementById('sat-f-game')?.value || '';
+  let rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
+    if (fGame && !(r.game_types||[]).includes(fGame)) return false;
+    if (q) {
+      const hay = [r.full_name, r.seat_number].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const tb = document.getElementById('sat-tbody');
+  if (!tb) return;
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="7" class="center">لا يوجد طلبة "مقبول للاختبار" مطابقون حالياً</td></tr>`; return; }
+  tb.innerHTML = rows.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${spEsc(r.full_name)}</td>
+      <td>${spEsc(r.gender)}</td>
+      <td>${spEsc(r.seat_number)}</td>
+      <td>${spEsc(r.school)}</td>
+      <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSetResult('${r.id}','ability_test_passed')">✅ اجتاز</button>
+        <button class="btn btn-sm" style="background:#8A1F1F;color:#fff" onclick="satSetResult('${r.id}','rejected')">❌ لم يجتز</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function satSetResult(id, newStatus) {
+  const label = newStatus === 'ability_test_passed' ? 'تسجيل "اجتاز اختبار القدرات"' : 'تسجيل "لم يجتز" (مرفوض)';
+  if (!confirm(`${label} لهذا الطالب؟`)) return;
+  const r = await api('/api/sports_excellence/'+id, 'PUT', { status: newStatus });
+  if (r.error) { alert(r.error); return; }
+  loadSportsAbilityTest();
+}
+
+function satPrintRoster() {
+  const q = (document.getElementById('sat-q')?.value || '').trim().toLowerCase();
+  const fGame = document.getElementById('sat-f-game')?.value || '';
+  const rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
+    if (fGame && !(r.game_types||[]).includes(fGame)) return false;
+    if (q) {
+      const hay = [r.full_name, r.seat_number].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  if (!rows.length) { alert('لا يوجد طلبة لطباعتهم وفق الفلتر الحالي'); return; }
+  const html = `
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">${spDate(new Date())}</div>
+    </div>
+    <div class="ptitle">كشف أسماء المرشَّحين لاختبار القدرات${fGame ? ' — ' + spEsc(fGame) : ''}</div>
+    <table class="ptbl"><thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>نوع اللعبة</th><th>التوقيع/الحضور</th></tr></thead><tbody>
+      ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${spEsc(r.full_name)}</td><td>${spEsc(r.gender)}</td><td>${spEsc(r.seat_number)}</td><td>${(r.game_types||[]).map(spEsc).join('، ')}</td><td></td></tr>`).join('')}
+    </tbody></table>`;
+  openPrint(html);
+}
+
 async function loadSportsCommittee() {
   const panel = document.getElementById('panel-sports_committee');
   if (!panel) return;
@@ -1123,8 +1223,8 @@ function scRenderTable() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   const tbody = document.getElementById('sc-tbody');
   if (!tbody) return;
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && r.status !== 'pending');
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة "مقبول للاختبار" للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة اجتازوا اختبار القدرات للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
   const per = 60;
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];
@@ -1225,8 +1325,8 @@ function spSignatureBlockHTML() {
 function scPrintGradingSheet() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && r.status !== 'pending');
-  if (!rows.length) { alert('لا يوجد طلبة (مقبول للاختبار) لهذه اللعبة بعد'); return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
+  if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = '60';
@@ -1254,8 +1354,8 @@ function scPrintGradingSheet() {
 function scPrintFinalReport() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && r.status !== 'pending');
-  if (!rows.length) { alert('لا يوجد طلبة (مقبول للاختبار) لهذه اللعبة بعد'); return; }
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
+  if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = '60';
