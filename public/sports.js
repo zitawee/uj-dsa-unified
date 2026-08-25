@@ -199,8 +199,20 @@ async function loadSports() {
   </div>
 
   <div class="card">
+    <div class="fb" style="align-items:center">
+      <button class="btn btn-sm" onclick="spToggleAllRows(true)"><i class="ti ti-checkbox"></i> تحديد كل النتائج الظاهرة</button>
+      <button class="btn btn-sm" onclick="spToggleAllRows(false)">إلغاء التحديد</button>
+      <div style="flex:1"></div>
+      <span id="sp-sel-count" style="font-size:12px;color:var(--muted)">لم يُحدَّد شيء</span>
+      <button class="btn btn-sm" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="spDeleteSelected()"><i class="ti ti-trash"></i> حذف المحدَّد</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">نصيحة: صفّي الجدول أولاً (مثلاً حسب الحالة "قيد المراجعة")، ثم "تحديد كل النتائج الظاهرة" — يتم تحديد المطابق للفلتر الحالي فقط.</p>
+  </div>
+
+  <div class="card">
     <div class="tw"><table>
       <thead><tr>
+        <th style="width:36px"><input type="checkbox" id="sp-check-all" onchange="spToggleAllRows(this.checked)"></th>
         <th style="width:40px">مقبول</th>
         <th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>الهاتف</th><th>المحافظة / اللواء</th><th>نوع اللعبة</th><th>فرع الشهادة</th><th>المعدل</th><th>الرقم المرجعي للشهادة</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
       </tr></thead>
@@ -244,9 +256,10 @@ function spRender() {
     return new Date(b.createdAt||0) - new Date(a.createdAt||0);
   });
   const tb = document.getElementById('tbl-sports-body');
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="14" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="17" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
+      <td style="text-align:center"><input type="checkbox" class="sp-row-chk" value="${r.id}" onchange="spUpdateSelCount()"></td>
       <td style="text-align:center"><input type="checkbox" value="${r.id}" ${r.status==='passed'?'checked':''} onchange="spToggleAccept('${r.id}', this)" title="وضع إشارة القبول (تُحفظ تلقائياً)"></td>
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)}</td>
@@ -267,6 +280,29 @@ function spRender() {
         <button class="btn btn-sm" style="color:#c0392b" onclick="spDelete('${r.id}')"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`).join('');
+  spUpdateSelCount();
+}
+
+function spToggleAllRows(state) {
+  document.querySelectorAll('.sp-row-chk').forEach(cb => cb.checked = state);
+  const all = document.getElementById('sp-check-all'); if (all) all.checked = state;
+  spUpdateSelCount();
+}
+
+function spUpdateSelCount() {
+  const n = document.querySelectorAll('.sp-row-chk:checked').length;
+  const el = document.getElementById('sp-sel-count');
+  if (el) el.textContent = n ? `${n} طلب محدَّد` : 'لم يُحدَّد شيء';
+}
+
+async function spDeleteSelected() {
+  const ids = Array.from(document.querySelectorAll('.sp-row-chk:checked')).map(cb => cb.value);
+  if (!ids.length) { alert('يرجى تحديد طلب واحد على الأقل'); return; }
+  if (!confirm(`هل تريدين حذف ${ids.length} طلب محدَّد نهائياً؟ لا يمكن التراجع عن هذا الإجراء.\nملاحظة: أي شهادة مرتبطة بأحد هذه الطلبات ستُحرَّر تلقائياً لتصبح قابلة للاستخدام مجدداً.`)) return;
+  const results = await Promise.all(ids.map(id => api('/api/sports_excellence/'+id, 'DELETE')));
+  const failed = results.filter(r => r && r.error).length;
+  if (failed) alert(`تم الحذف مع فشل ${failed} عملية من أصل ${ids.length}`);
+  loadSports();
 }
 
 // وضع/إزالة إشارة "مقبول" مباشرة من الجدول — تُحفظ فوراً في قاعدة البيانات
