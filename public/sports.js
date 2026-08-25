@@ -361,6 +361,25 @@ function spEditFormHTML(r) {
     </div>`;
 }
 
+// فتح لوحة "تعديل الطلب" مباشرة عبر رقمه المرجعي (وليس معرّفه الداخلي) — تُستخدَم من أي شاشة أخرى
+// تعرض فقط الرقم المرجعي للطلب (مثل شاشة "نماذج الطلبات")، مع تحميل بيانات الطلبات تلقائياً إن لم تكن محمَّلة أصلاً
+async function spViewByRefCode(refCode) {
+  if (!refCode) return;
+  // ننتقل فعلياً لشاشة "طلبات التفوق الرياضي" أولاً — النافذة المنبثقة sp-modal جزء من هذه اللوحة تحديداً،
+  // ولا تظهر بصرياً إن كانت اللوحة غير نشطة حالياً حتى لو بُنيت في الخلفية (اللوحات المخفية display:none)
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  const panel = document.getElementById('panel-sports_excellence');
+  if (panel) panel.classList.add('active');
+  const navItem = document.querySelector(`.ni[onclick*="'sports_excellence'"]`);
+  if (navItem) navItem.classList.add('active');
+
+  await loadSports();
+  const row = (SP_ROWS || []).find(x => x.ref_code === refCode);
+  if (!row) { alert('تعذّر إيجاد الطلب بهذا الرقم المرجعي — ربما حُذف'); return; }
+  spView(row.id);
+}
+
 function spView(id) {
   const r = SP_ROWS.find(x => x.id === id); if (!r) return;
   SP_EDIT_PHOTO = null;
@@ -437,7 +456,7 @@ async function spViewCertByRef(refCode) {
     <div class="fr"><div class="fl">اسم اللاعب/ـة</div><div class="fv">${spEsc(r.player_name)}</div></div>
     <div class="fr"><div class="fl">اللعبة</div><div class="fv">${spEsc(r.game)}</div></div>
     ${extraRows}
-    <div class="fr"><div class="fl">الحالة</div><div class="fv">${r.used ? 'مُستخدَمة في طلب رقم '+spEsc(r.used_in_application_ref) : 'غير مُستخدَمة بعد'}</div></div>
+    <div class="fr"><div class="fl">الحالة</div><div class="fv">${r.used ? 'مُستخدَمة في طلب رقم ' + `<a href="#" onclick="spViewByRefCode('${spEsc(r.used_in_application_ref)}');return false" style="color:var(--g);font-weight:700;text-decoration:underline">${spEsc(r.used_in_application_ref)}</a>` : 'غير مُستخدَمة بعد'}</div></div>
     <div class="fr"><div class="fl">تاريخ التعبئة</div><div class="fv">${spDate(r.createdAt)}</div></div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="spReprintCertObj()"><i class="ti ti-printer"></i> طباعة الشهادة</button>
@@ -862,7 +881,7 @@ function spcRender() {
       <td>${spEsc(r.player_name)}</td>
       <td>${spEsc(r.game)}</td>
       <td>${r.used ? '<span style="color:#c0392b;font-weight:700">مُستخدَمة</span>' : '<span style="color:var(--g);font-weight:700">غير مُستخدَمة</span>'}</td>
-      <td>${r.used_in_application_ref ? spEsc(r.used_in_application_ref) : '—'}</td>
+      <td>${r.used_in_application_ref ? `<a href="#" onclick="spViewByRefCode('${spEsc(r.used_in_application_ref)}');return false" style="font-family:monospace;color:var(--g);font-weight:700;text-decoration:underline">${spEsc(r.used_in_application_ref)}</a>` : '—'}</td>
       <td>${spDate(r.createdAt)}</td>
       <td>
         <button class="btn btn-sm" onclick="spcView('${r.id}')" title="عرض التفاصيل"><i class="ti ti-eye"></i></button>
@@ -908,7 +927,7 @@ function spcView(id) {
     <div class="fr"><div class="fl">اسم اللاعب/ـة</div><div class="fv">${spEsc(r.player_name)}</div></div>
     <div class="fr"><div class="fl">اللعبة</div><div class="fv">${spEsc(r.game)}</div></div>
     ${extraRows}
-    <div class="fr"><div class="fl">الحالة</div><div class="fv">${r.used ? 'مُستخدَمة في طلب رقم '+spEsc(r.used_in_application_ref) : 'غير مُستخدَمة بعد'}</div></div>
+    <div class="fr"><div class="fl">الحالة</div><div class="fv">${r.used ? 'مُستخدَمة في طلب رقم ' + `<a href="#" onclick="spViewByRefCode('${spEsc(r.used_in_application_ref)}');return false" style="color:var(--g);font-weight:700;text-decoration:underline">${spEsc(r.used_in_application_ref)}</a>` : 'غير مُستخدَمة بعد'}</div></div>
     <div class="fr"><div class="fl">تاريخ التعبئة</div><div class="fv">${spDate(r.createdAt)}</div></div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn" style="flex:1" onclick="spcCloseModal()">إغلاق</button>
