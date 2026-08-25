@@ -37,6 +37,7 @@ const SP_MAJORS = MAJORS_BY_COLLEGE; // مصدر مشترك مع كشف المش
 const SP_STATUS = {
   pending:       { label: '🟡 قيد المراجعة',     cls: 'st-p' },
   accepted_exam: { label: '🔵 مقبول للاختبار',   cls: 'st-d' },
+  ability_test_passed: { label: '🟣 اجتاز اختبار القدرات', cls: 'st-d' },
   passed:        { label: '✅ ناجح',              cls: 'st-a' },
   rejected:      { label: '❌ مرفوض',             cls: 'st-r' },
 };
@@ -198,6 +199,7 @@ async function loadSports() {
     </div>
   </div>
 
+  ${ME?.role==='admin' ? `
   <div class="card">
     <div class="fb" style="align-items:center">
       <button class="btn btn-sm" onclick="spToggleAllRows(true)"><i class="ti ti-checkbox"></i> تحديد كل النتائج الظاهرة</button>
@@ -207,13 +209,13 @@ async function loadSports() {
       <button class="btn btn-sm" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="spDeleteSelected()"><i class="ti ti-trash"></i> حذف المحدَّد</button>
     </div>
     <p style="font-size:11px;color:var(--muted);margin:6px 0 0">نصيحة: صفّي الجدول أولاً (مثلاً حسب الحالة "قيد المراجعة")، ثم "تحديد كل النتائج الظاهرة" — يتم تحديد المطابق للفلتر الحالي فقط.</p>
-  </div>
+  </div>` : ''}
 
   <div class="card">
     <div class="tw"><table>
       <thead><tr>
-        <th style="width:36px"><input type="checkbox" id="sp-check-all" onchange="spToggleAllRows(this.checked)"></th>
-        <th style="width:40px">مقبول</th>
+        ${ME?.role==='admin' ? `<th style="width:36px"><input type="checkbox" id="sp-check-all" onchange="spToggleAllRows(this.checked)"></th>` : ''}
+        ${ME?.role==='admin' ? `<th style="width:40px">مقبول</th>` : ''}
         <th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th>فرع الشهادة</th><th>المعدل</th><th>الرقم المرجعي للشهادة</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="tbl-sports-body"></tbody>
@@ -259,8 +261,8 @@ function spRender() {
   if (!rows.length) { tb.innerHTML = `<tr><td colspan="14" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
-      <td style="text-align:center"><input type="checkbox" class="sp-row-chk" value="${r.id}" onchange="spUpdateSelCount()"></td>
-      <td style="text-align:center"><input type="checkbox" value="${r.id}" ${r.status==='passed'?'checked':''} onchange="spToggleAccept('${r.id}', this)" title="وضع إشارة القبول (تُحفظ تلقائياً)"></td>
+      ${ME?.role==='admin' ? `<td style="text-align:center"><input type="checkbox" class="sp-row-chk" value="${r.id}" onchange="spUpdateSelCount()"></td>` : ''}
+      ${ME?.role==='admin' ? `<td style="text-align:center"><input type="checkbox" value="${r.id}" ${r.status==='passed'?'checked':''} onchange="spToggleAccept('${r.id}', this)" title="وضع إشارة القبول (تُحفظ تلقائياً)"></td>` : ''}
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)}</td>
       <td>${spEsc(r.gender)}</td>
@@ -274,7 +276,7 @@ function spRender() {
       <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="spView('${r.id}')"><i class="ti ti-eye"></i></button>
         <button class="btn btn-sm" onclick="spPrintOne('${r.id}')"><i class="ti ti-printer"></i></button>
-        <button class="btn btn-sm" style="color:#c0392b" onclick="spDelete('${r.id}')"><i class="ti ti-trash"></i></button>
+        ${ME?.role==='admin' ? `<button class="btn btn-sm" style="color:#c0392b" onclick="spDelete('${r.id}')"><i class="ti ti-trash"></i></button>` : ''}
       </td>
     </tr>`).join('');
   spUpdateSelCount();
@@ -861,6 +863,7 @@ async function loadSportsCertificates() {
     </div>
   </div>
 
+  ${ME?.role==='admin' ? `
   <div class="card">
     <div class="fb" style="align-items:center">
       <button class="btn btn-sm" onclick="spcToggleAll(true)"><i class="ti ti-checkbox"></i> تحديد كل النتائج الظاهرة</button>
@@ -870,12 +873,12 @@ async function loadSportsCertificates() {
       <button class="btn btn-sm" style="background:#8A1F1F;color:#fff;border-color:#8A1F1F" onclick="spcDeleteSelected()"><i class="ti ti-trash"></i> حذف المحدَّد</button>
     </div>
     <p style="font-size:11px;color:var(--muted);margin:6px 0 0">نصيحة: استخدمي فلتر "الحالة" أعلاه (مُستخدَمة / غير مُستخدَمة) أولاً، ثم "تحديد كل النتائج الظاهرة" — يتم تحديد المطابق للفلتر الحالي فقط، وليس كل الشهادات.</p>
-  </div>
+  </div>` : ''}
 
   <div class="card">
     <div class="tw"><table>
       <thead><tr>
-        <th style="width:36px"><input type="checkbox" id="spc-check-all" onchange="spcToggleAll(this.checked)"></th>
+        ${ME?.role==='admin' ? `<th style="width:36px"><input type="checkbox" id="spc-check-all" onchange="spcToggleAll(this.checked)"></th>` : ''}
         <th>#</th><th>الرقم المرجعي</th><th>رقم النموذج</th><th>اسم اللاعب/ـة</th><th>اللعبة</th><th>الحالة</th><th>الطلب المرتبط</th><th>تاريخ التعبئة</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="spc-tbody"></tbody>
@@ -907,7 +910,7 @@ function spcRender() {
   if (!rows.length) { tb.innerHTML = `<tr><td colspan="10" class="center">لا توجد نتائج مطابقة</td></tr>`; spcUpdateSelCount(); return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
-      <td style="text-align:center"><input type="checkbox" class="spc-row-chk" value="${r.id}" onchange="spcUpdateSelCount()"></td>
+      ${ME?.role==='admin' ? `<td style="text-align:center"><input type="checkbox" class="spc-row-chk" value="${r.id}" onchange="spcUpdateSelCount()"></td>` : ''}
       <td>${i+1}</td>
       <td style="font-family:monospace">${spEsc(r.ref_code)}</td>
       <td>نموذج (${r.model_number})</td>
@@ -920,7 +923,7 @@ function spcRender() {
         <button class="btn btn-sm" onclick="spcView('${r.id}')" title="عرض التفاصيل"><i class="ti ti-eye"></i></button>
         <button class="btn btn-sm" onclick="spcReprint('${r.id}')" title="إعادة طباعة الشهادة"><i class="ti ti-printer"></i></button>
         ${r.used ? `<button class="btn btn-sm" style="color:#a15c00" onclick="spcRelease('${r.id}')" title="إعادة تحرير (لإتاحة استخدامها في طلب جديد)"><i class="ti ti-lock-open"></i></button>` : ''}
-        <button class="btn btn-sm" style="color:#c0392b" onclick="spcDelete('${r.id}')" title="حذف"><i class="ti ti-trash"></i></button>
+        ${ME?.role==='admin' ? `<button class="btn btn-sm" style="color:#c0392b" onclick="spcDelete('${r.id}')" title="حذف"><i class="ti ti-trash"></i></button>` : ''}
       </td>
     </tr>`).join('');
   spcUpdateSelCount();
