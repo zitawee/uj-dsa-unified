@@ -1085,8 +1085,13 @@ function satPrintRoster() {
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
     <div class="ptitle">كشف أسماء المرشَّحين لاختبار القدرات${fGame ? ' — ' + spEsc(fGame) : ''}</div>
-    <table class="ptbl"><thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>نوع اللعبة</th><th>التوقيع/الحضور</th></tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${spEsc(r.full_name)}</td><td>${spEsc(r.gender)}</td><td>${spEsc(r.seat_number)}</td><td>${(r.game_types||[]).map(spEsc).join('، ')}</td><td></td></tr>`).join('')}
+    <table class="ptbl"><thead><tr>
+      <th style="width:4%">#</th>
+      <th style="width:22%">الاسم</th>
+      <th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th>
+      <th style="width:17%">ملاحظات</th>
+    </tr></thead><tbody>
+      ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${spEsc(r.full_name)}</td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td></tr>`).join('')}
     </tbody></table>`;
   openPrint(html);
 }
