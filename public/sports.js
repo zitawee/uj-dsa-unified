@@ -389,6 +389,10 @@ function spEditFormHTML(r) {
       <div style="font-size:11px;color:var(--muted);margin:6px 0 2px">وصف النموذج</div>
       <div id="sp-e-nomination-desc" style="border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:12.5px;background:#F7F9F6;min-height:20px">${spEsc(r.nomination_type)||'—'}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">العلامة المقابلة (من 20): <b id="sp-e-nomination-score">${r.nomination_score!=null ? r.nomination_score : (r.nomination_type && spNominationScore(r.nomination_type)!=null ? spNominationScore(r.nomination_type) : 'تعتمد على المركز في الشهادة')}</b></div>
+      <label style="display:block;margin-top:10px">الرقم المرجعي لشهادة النموذج</label>
+      <input type="text" id="sp-e-cert-ref" value="${spEsc(r.cert_ref_code||'')}" style="text-transform:uppercase" placeholder="مثال: CERT-A7K92X">
+      <button type="button" class="btn btn-sm" onclick="spOpenCertSearch()"><i class="ti ti-search"></i> بحث عن شهادة بالاسم لاختيارها</button>
+      <div id="sp-e-cert-search-box" style="display:none;margin-top:8px"></div>
     </div>
 
     <div class="fg" style="margin-top:8px"><label>الحالة</label>
@@ -508,6 +512,46 @@ function spReprintCertObj() {
   window.open('/sports-certificate.html?reprint=1', '_blank');
 }
 
+let SP_CERT_SEARCH_CACHE = null;
+
+async function spOpenCertSearch() {
+  const box = document.getElementById('sp-e-cert-search-box');
+  if (!box) return;
+  if (box.style.display === 'block') { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = 'جارٍ التحميل...';
+  if (!SP_CERT_SEARCH_CACHE) {
+    const rows = await api('/api/sports_certificate');
+    if (!Array.isArray(rows)) { box.innerHTML = 'تعذّر تحميل الشهادات'; return; }
+    SP_CERT_SEARCH_CACHE = rows;
+  }
+  box.innerHTML = `
+    <input type="text" id="sp-e-cert-search-q" placeholder="اكتبي اسم اللاعب/ـة أو الرقم المرجعي للبحث..." oninput="spRenderCertSearchResults()">
+    <div id="sp-e-cert-search-results" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r)"></div>`;
+  spRenderCertSearchResults();
+}
+
+function spRenderCertSearchResults() {
+  const q = (document.getElementById('sp-e-cert-search-q')?.value || '').trim().toLowerCase();
+  const results = document.getElementById('sp-e-cert-search-results');
+  if (!results) return;
+  let rows = SP_CERT_SEARCH_CACHE || [];
+  if (q) rows = rows.filter(r => (r.player_name||'').toLowerCase().includes(q) || (r.ref_code||'').toLowerCase().includes(q));
+  rows = rows.slice(0, 30);
+  if (!rows.length) { results.innerHTML = `<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px">لا توجد نتائج</div>`; return; }
+  results.innerHTML = rows.map(r => `
+    <div onclick="spPickCertRef('${spEsc(r.ref_code)}')" style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <span>${spEsc(r.player_name)} — نموذج (${r.model_number}) — ${spEsc(r.game)}</span>
+      <span style="font-family:monospace;white-space:nowrap;color:${r.used?'#c0392b':'var(--g)'}">${spEsc(r.ref_code)}${r.used?' (مُستخدَمة)':''}</span>
+    </div>`).join('');
+}
+
+function spPickCertRef(refCode) {
+  const field = document.getElementById('sp-e-cert-ref');
+  if (field) field.value = refCode;
+  document.getElementById('sp-e-cert-search-box').style.display = 'none';
+}
+
 function spUpdateNominationDesc() {
   const sel = document.getElementById('sp-e-nomination');
   const num = parseInt(sel.value) || null;
@@ -551,10 +595,11 @@ async function spSaveEdit(id) {
   if (new Set([major1, major2, major3]).size < 3) return spMsg('لا يمكن تكرار نفس التخصص في أكثر من خيار');
   if (!nomination_type) return spMsg('يرجى اختيار نوع نموذج التفوق الرياضي');
 
+  const cert_ref_code = gv('sp-e-cert-ref').toUpperCase();
   const payload = {
     full_name, gender, seat_number, school, governorate, district, game_types,
     cert_track, cert_subfield, cert_year, gpa, address, phone, phone_alt, equivalency_doc, arab_branch,
-    majors: [major1, major2, major3], nomination_type, status
+    majors: [major1, major2, major3], nomination_type, cert_ref_code, status
   };
   if (SP_EDIT_PHOTO) payload.photo = SP_EDIT_PHOTO;
 
