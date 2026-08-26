@@ -1231,22 +1231,37 @@ app.get('/api/sports_excellence/:id', auth(['admin','sports_reviewer']), async (
 app.put('/api/sports_excellence/:id', auth(['admin','sports_reviewer']), async (req, res) => {
   try {
     const update = { ...req.body, updated_by: req.user.username, updatedAt: new Date() };
-    // إعادة احتساب علامة نوع النموذج تلقائياً إن تغيّر التصنيف أو الرقم المرجعي من شاشة التعديل —
-    // العلامة تُشتق دائماً من رقم النموذج والمركز المُسجَّلين في الشهادة المرتبطة نفسها
+    const existing = await SportsApp.findById(req.params.id).lean();
+    if (!existing) return res.status(404).json({ error: 'الطلب غير موجود' });
+
+    // إعادة احتساب علامة نوع النموذج، ومعالجة تغيير الرقم المرجعي للشهادة (إن حدث) بأمان كامل:
+    // تحقق من صحة الشهادة الجديدة ومطابقتها لرقم النموذج، ثم تحرير القديمة واستهلاك الجديدة تلقائياً
     if (update.nomination_type && SPORTS_NOMINATION_NUM_BY_LABEL[update.nomination_type] != null) {
       const num = SPORTS_NOMINATION_NUM_BY_LABEL[update.nomination_type];
+      const oldCertRef = (existing.cert_ref_code || '').trim().toUpperCase();
       let refCode = (update.cert_ref_code || '').trim().toUpperCase();
-      if (!refCode) {
-        const existing = await SportsApp.findById(req.params.id).lean();
-        refCode = (existing?.cert_ref_code || '').trim().toUpperCase();
-      }
-      let rank = null;
+      if (!refCode) refCode = oldCertRef; // لم يُرسَل رقم مرجعي جديد من شاشة التعديل، فيبقى المُخزَّن أصلاً كما هو
+
+      let cert = null;
       if (refCode) {
-        const cert = await SportsCertificate.findOne({ ref_code: refCode }).lean();
-        rank = cert?.rank || null;
+        cert = await SportsCertificate.findOne({ ref_code: refCode }).lean();
+        if (!cert) return res.status(400).json({ error: 'الرقم المرجعي لشهادة النموذج غير صحيح' });
+        if (cert.model_number !== num)
+          return res.status(400).json({ error: `الرقم المرجعي المُدخَل يخص نموذج رقم (${cert.model_number})، وهذا لا يطابق نوع النموذج المُختار` });
+
+        const certChanged = refCode !== oldCertRef;
+        if (certChanged) {
+          if (cert.used) return res.status(400).json({ error: 'هذا الرقم المرجعي مُستخدَم مسبقاً في طلب آخر' });
+          if (oldCertRef) {
+            await SportsCertificate.findOneAndUpdate({ ref_code: oldCertRef }, { used: false, used_in_application_ref: null, used_at: null });
+          }
+          await SportsCertificate.findByIdAndUpdate(cert._id, { used: true, used_in_application_ref: existing.ref_code, used_at: new Date() });
+        }
       }
+      const rank = cert?.rank || null;
       const score = computeSportsNominationScore(num, rank);
       if (score != null) update.nomination_score = score;
+      update.cert_ref_code = refCode;
     }
     await SportsApp.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ message: 'تم التحديث' });
