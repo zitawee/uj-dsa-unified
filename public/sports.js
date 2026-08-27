@@ -1059,6 +1059,7 @@ async function loadSportsAbilityTest() {
   <div class="card">
     <div class="fb" style="align-items:center">
       <select id="sat-f-game" onchange="satRender()"><option value="">كل الألعاب</option>${SP_GAME_TYPES.map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+      <select id="sat-f-gender" onchange="satRender()"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select>
       <input type="text" id="sat-q" placeholder="بحث بالاسم أو رقم الجلوس..." style="flex:1;min-width:180px" oninput="satRender()">
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
     </div>
@@ -1077,8 +1078,10 @@ async function loadSportsAbilityTest() {
 function satRender() {
   const q = (document.getElementById('sat-q')?.value || '').trim().toLowerCase();
   const fGame = document.getElementById('sat-f-game')?.value || '';
+  const fGender = document.getElementById('sat-f-gender')?.value || '';
   let rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
     if (fGame && !(r.game_types||[]).includes(fGame)) return false;
+    if (fGender && r.gender !== fGender) return false;
     if (q) {
       const hay = [r.full_name, r.seat_number].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -1114,8 +1117,10 @@ async function satSetResult(id, newStatus) {
 function satPrintRoster() {
   const q = (document.getElementById('sat-q')?.value || '').trim().toLowerCase();
   const fGame = document.getElementById('sat-f-game')?.value || '';
+  const fGender = document.getElementById('sat-f-gender')?.value || '';
   const rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
     if (fGame && !(r.game_types||[]).includes(fGame)) return false;
+    if (fGender && r.gender !== fGender) return false;
     if (q) {
       const hay = [r.full_name, r.seat_number].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -1123,20 +1128,25 @@ function satPrintRoster() {
     return true;
   });
   if (!rows.length) { alert('لا يوجد طلبة لطباعتهم وفق الفلتر الحالي'); return; }
+  const titleSuffix = [fGame, fGender].filter(Boolean).join(' — ');
   const html = `
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف أسماء المرشَّحين لاختبار القدرات${fGame ? ' — ' + spEsc(fGame) : ''}</div>
+    <div class="ptitle">كشف أسماء المرشَّحين لاختبار القدرات${titleSuffix ? ' — ' + spEsc(titleSuffix) : ''}</div>
     <table class="ptbl"><thead><tr>
       <th style="width:4%">#</th>
-      <th style="width:22%">الاسم</th>
+      <th style="width:19%">الاسم</th>
       <th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th><th style="width:9.5%"></th>
-      <th style="width:17%">ملاحظات</th>
+      <th style="width:10%">رقم النموذج</th>
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${spEsc(r.full_name)}</td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td></tr>`).join('')}
+      ${rows.map((r,i)=>{
+        const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
+        const modelNum = nomEntry ? `نموذج (${nomEntry.num})` : '—';
+        return `<tr><td>${i+1}</td><td>${spEsc(r.full_name)}</td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td style="height:26px"></td><td>${modelNum}</td></tr>`;
+      }).join('')}
     </tbody></table>`;
   openPrint(html);
 }
