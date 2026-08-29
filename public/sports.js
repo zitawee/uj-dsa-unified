@@ -1068,7 +1068,7 @@ async function loadSportsAbilityTest() {
 
   <div class="card">
     <div class="tw"><table>
-      <thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th>رقم النموذج</th><th>نتيجة اختبار القدرات</th></tr></thead>
+      <thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th>رقم النموذج</th>${ME?.role==='admin' ? `<th>علامة النموذج</th>` : ''}<th>نتيجة اختبار القدرات</th></tr></thead>
       <tbody id="sat-tbody"></tbody>
     </table></div>
   </div>`;
@@ -1101,6 +1101,7 @@ function satRender() {
       <td>${spEsc(r.gender)}</td>
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${modelNum}</td>
+      ${ME?.role==='admin' ? `<td style="font-weight:700">${r.nomination_score!=null ? r.nomination_score : '—'}</td>` : ''}
       <td style="white-space:nowrap">
         <button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSetResult('${r.id}','ability_test_passed')">✅ اجتاز</button>
         <button class="btn btn-sm" style="background:#8A1F1F;color:#fff" onclick="satSetResult('${r.id}','rejected')">❌ لم يجتز</button>
