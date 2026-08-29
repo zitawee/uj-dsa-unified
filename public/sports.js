@@ -1068,7 +1068,7 @@ async function loadSportsAbilityTest() {
 
   <div class="card">
     <div class="tw"><table>
-      <thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>رقم الجلوس</th><th>المدرسة</th><th>نوع اللعبة</th><th>نتيجة اختبار القدرات</th></tr></thead>
+      <thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th>رقم النموذج</th><th>نتيجة اختبار القدرات</th></tr></thead>
       <tbody id="sat-tbody"></tbody>
     </table></div>
   </div>`;
@@ -1090,20 +1090,23 @@ function satRender() {
   });
   const tb = document.getElementById('sat-tbody');
   if (!tb) return;
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="7" class="center">لا يوجد طلبة "مقبول للاختبار" مطابقون حالياً</td></tr>`; return; }
-  tb.innerHTML = rows.map((r,i) => `
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="6" class="center">لا يوجد طلبة "مقبول للاختبار" مطابقون حالياً</td></tr>`; return; }
+  tb.innerHTML = rows.map((r,i) => {
+    const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
+    const modelNum = nomEntry ? `نموذج (${nomEntry.num})` : '—';
+    return `
     <tr>
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)}</td>
       <td>${spEsc(r.gender)}</td>
-      <td>${spEsc(r.seat_number)}</td>
-      <td>${spEsc(r.school)}</td>
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
+      <td>${modelNum}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSetResult('${r.id}','ability_test_passed')">✅ اجتاز</button>
         <button class="btn btn-sm" style="background:#8A1F1F;color:#fff" onclick="satSetResult('${r.id}','rejected')">❌ لم يجتز</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 async function satSetResult(id, newStatus) {
