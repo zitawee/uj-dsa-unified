@@ -188,7 +188,7 @@ function computeSportsNominationScore(modelNumber, rank) {
   if (entry.fixed != null) return entry.fixed;
   return (rank && entry[rank] != null) ? entry[rank] : null;
 }
-const SPORTS_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة اليد','كرة القدم','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج'];
+const SPORTS_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة اليد','كرة القدم','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج','التنس الأرضي'];
 
 // ══ نماذج شهادات التفوق الرياضي (تُعبَّأ وتُطبَع من قِبل الجهة المانحة/الطالب قبل تقديم الطلب، ثم تُربَط بالطلب عبر رقم مرجعي فريد) ══
 const SportsCertificate = mongoose.model('sports_certificate', new mongoose.Schema({}, { strict:false, timestamps:true }));
