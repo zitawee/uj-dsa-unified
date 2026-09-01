@@ -1141,15 +1141,15 @@ function satPrintRoster() {
     </div>
     <div class="ptitle">كشف أسماء المرشَّحين لاختبار القدرات${titleSuffix ? ' — ' + spEsc(titleSuffix) : ''}</div>
     <table class="ptbl"><thead><tr>
-      <th style="width:4%;background:#fff;color:#000;border:1px solid #000">#</th>
-      <th style="width:19%;background:#fff;color:#000;border:1px solid #000">الاسم</th>
-      <th style="width:9.5%;background:#fff;border:1px solid #000"></th><th style="width:9.5%;background:#fff;border:1px solid #000"></th><th style="width:9.5%;background:#fff;border:1px solid #000"></th><th style="width:9.5%;background:#fff;border:1px solid #000"></th><th style="width:9.5%;background:#fff;border:1px solid #000"></th><th style="width:9.5%;background:#fff;border:1px solid #000"></th>
-      <th style="width:10%;background:#fff;color:#000;border:1px solid #000">رقم النموذج</th>
+      <th style="width:4%;background:#fff;color:#000;height:52px">#</th>
+      <th style="width:19%;background:#fff;color:#000;height:52px">الاسم</th>
+      <th style="width:9.5%;background:#fff;height:52px"></th><th style="width:9.5%;background:#fff;height:52px"></th><th style="width:9.5%;background:#fff;height:52px"></th><th style="width:9.5%;background:#fff;height:52px"></th><th style="width:9.5%;background:#fff;height:52px"></th><th style="width:9.5%;background:#fff;height:52px"></th>
+      <th style="width:10%;background:#fff;color:#000;height:52px">رقم النموذج</th>
     </tr></thead><tbody>
       ${rows.map((r,i)=>{
         const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
         const modelNum = nomEntry ? `نموذج (${nomEntry.num})` : '—';
-        return `<tr><td style="color:#000">${i+1}</td><td style="color:#000">${spEsc(r.full_name)}</td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="color:#000">${modelNum}</td></tr>`;
+        return `<tr><td style="color:#000">${i+1}</td><td style="color:#000">${spEsc(r.full_name)}</td><td></td><td></td><td></td><td></td><td></td><td></td><td style="color:#000">${modelNum}</td></tr>`;
       }).join('')}
     </tbody></table>`;
   openPrint(html);
