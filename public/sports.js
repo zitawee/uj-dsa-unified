@@ -1088,6 +1088,7 @@ function satRender() {
     }
     return true;
   });
+  rows.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   const tb = document.getElementById('sat-tbody');
   if (!tb) return;
   if (!rows.length) { tb.innerHTML = `<tr><td colspan="6" class="center">لا يوجد طلبة "مقبول للاختبار" مطابقون حالياً</td></tr>`; return; }
@@ -1131,6 +1132,7 @@ function satPrintRoster() {
     }
     return true;
   });
+  rows.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   if (!rows.length) { alert('لا يوجد طلبة لطباعتهم وفق الفلتر الحالي'); return; }
   const titleSuffix = [fGame, fGender].filter(Boolean).join(' — ');
   const html = `
