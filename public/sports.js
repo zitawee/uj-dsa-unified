@@ -17,6 +17,8 @@ const SP_TRACK_SUB = {
   arabic: ['الإمارات العربية المتحدة','البحرين','تونس','الجزائر','جزر القمر','جيبوتي','السعودية','السودان','سوريا','الصومال','العراق','سلطنة عُمان','فلسطين','قطر','الكويت','لبنان','ليبيا','مصر','المغرب','موريتانيا','اليمن']
 };
 const SP_GAME_TYPES = ['كرة الطائرة','كرة السلة','كرة اليد','كرة القدم','كرة الطاولة','ألعاب القوى','التايكوندو','الكراتيه','الريشة الطائرة','الشطرنج','التنس'];
+// اسم اللعبة كما يظهر في الأوراق المطبوعة فقط (مختلف أحياناً عن الاسم المُخزَّن/المعروض بالشاشة) — حالياً "التنس" فقط تُطبَع "التنس الأرضي"
+function spPrintGameLabel(g) { return g === 'التنس' ? 'التنس الأرضي' : g; }
 // نوع نموذج التفوق الرياضي: كل فئة تحمل علامة ثابتة محدَّدة سلفاً (من 20) — تُحتسب تلقائياً عند اختيار رقم النموذج
 const SP_NOMINATION_TYPES = [
   { num: 1, label: 'لاعب منتخب وطني مثّل الأردن', score: 20 },
@@ -733,7 +735,7 @@ const SP_PRINT_EXTRA_STYLE = `<style>
 </style>`;
 
 function spPrintRecordHTML(r) {
-  const activityTitle = (r.game_types||[]).join(' — ');
+  const activityTitle = (r.game_types||[]).map(spPrintGameLabel).join(' — ');
   const majorsRows = [0,1,2].map(i => {
     const label = ['الأول','الثاني','الثالث'][i];
     return `<tr><td>${label}</td><td>${spEsc((r.majors||[])[i])}</td></tr>`;
@@ -1134,7 +1136,7 @@ function satPrintRoster() {
   });
   rows.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   if (!rows.length) { alert('لا يوجد طلبة لطباعتهم وفق الفلتر الحالي'); return; }
-  const titleSuffix = [fGame, fGender].filter(Boolean).join(' — ');
+  const titleSuffix = [spPrintGameLabel(fGame), fGender].filter(Boolean).join(' — ');
   const html = `
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
@@ -1210,7 +1212,7 @@ function scRenderGameBody() {
   container.innerHTML = `
   <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">أعضاء لجنة "${spEsc(SC_CURRENT_GAME)}" (من 3 إلى 5 أعضاء)</div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">يمنح كل عضو علامة كاملة من (60)، وتُحتسَب علامة اللجنة تلقائياً كمتوسط علامات جميع الأعضاء المُدخَلين (يبقى الناتج دائماً من 60 كحد أقصى). تُحتسَب العلامة النهائية من: علامة اللجنة (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع. هذه اللجنة خاصة بلعبة "${spEsc(SC_CURRENT_GAME)}" فقط ومستقلة عن بقية الألعاب.</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">يمنح كل عضو علامة كاملة من (60)، وتُحتسَب علامة اللجنة تلقائياً كمتوسط علامات جميع الأعضاء المُدخَلين (يبقى الناتج دائماً من 60 كحد أقصى). تُحتسَب العلامة النهائية من: علامة اللجنة (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع. هذه اللجنة خاصة بلعبة "${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}" فقط ومستقلة عن بقية الألعاب.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
       ${[0,1,2,3,4].map(i => `
       <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
@@ -1403,7 +1405,7 @@ function scPrintGradingSheet() {
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف تقييم لجنة الاختبار — ${spEsc(SC_CURRENT_GAME)}</div>
+    <div class="ptitle">كشف تقييم لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
@@ -1432,7 +1434,7 @@ function scPrintFinalReport() {
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف علامات لجنة الاختبار — ${spEsc(SC_CURRENT_GAME)}</div>
+    <div class="ptitle">كشف علامات لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}

@@ -739,7 +739,7 @@ function tcRenderTable() {
   const members = teCommitteeMembers();
   const tbody = document.getElementById('tc-tbody');
   if (!tbody) return;
-  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
+  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act)).sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${3+members.length+3}" class="center">لا يوجد متقدمون مطابقون لهذه التصفية</td></tr>`; return; }
   const per = 100 / members.length;
   tbody.innerHTML = rows.map((r,i) => {
@@ -837,7 +837,7 @@ function tcPrintGradingSheet() {
   const act = document.getElementById('tc-f-act')?.value || '';
   const members = teCommitteeMembers();
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
-  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
+  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act)).sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   if (!rows.length) { alert('لا يوجد متقدمون مطابقون لهذه التصفية'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.tc-sheet-col:checked')).map(el => el.value);
   const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
@@ -867,7 +867,7 @@ function tcPrintFinalReport() {
   const act = document.getElementById('tc-f-act')?.value || '';
   const members = teCommitteeMembers();
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء اللجنة أولاً'); return; }
-  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
+  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act)).sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   if (!rows.length) { alert('لا يوجد متقدمون مطابقون لهذه التصفية'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.tc-sheet-col:checked')).map(el => el.value);
   const extraCols = TE_FIELDS.filter(f => extraKeys.includes(f.key));
