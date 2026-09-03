@@ -1225,6 +1225,11 @@ function scRenderGameBody() {
 
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="fg" style="min-width:180px"><label>الترتيب</label><select id="sc-f-sort" onchange="scRenderTable()">
+        <option value="name">أبجدياً (اسم الطالب)</option>
+        <option value="desc">الأعلى علامة</option>
+        <option value="asc">الأدنى علامة</option>
+      </select></div>
       <button class="btn btn-sm" onclick="scOpenPrintFields('blank')"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
       <button class="btn btn-sm" onclick="scOpenPrintFields('final')"><i class="ti ti-printer"></i> طباعة كشف العلامات النهائي</button>
       <div style="flex:1"></div>
@@ -1287,12 +1292,36 @@ async function scSaveCommittee() {
   scRenderGameBody();
 }
 
+// يحسب العلامة النهائية الحالية لصف (أو null إن لم تُدخَل أي علامة بعد) — تُستخدم لأغراض الترتيب فقط
+function spFinalScoreOf(r) {
+  const scores = r.committee_scores || [];
+  const hs = r.gpa ? (parseFloat(r.gpa) * 0.2) : 0;
+  const nom = r.nomination_score!=null ? r.nomination_score : (spNominationScore(r.nomination_type) || 0);
+  const filled = scores.filter(v => v != null && v !== '');
+  if (!filled.length) return null;
+  const cscore = filled.reduce((a,b)=>a+(+b||0),0) / filled.length;
+  return cscore + hs + nom;
+}
+
 function scRenderTable() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
+  const sortBy = document.getElementById('sc-f-sort')?.value || 'name';
   const tbody = document.getElementById('sc-tbody');
   if (!tbody) return;
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
+  let rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة اجتازوا اختبار القدرات للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
+  if (sortBy === 'desc' || sortBy === 'asc') {
+    // من لم تُدخَل له علامة بعد يُدفَع دائماً لآخر القائمة بغض النظر عن اتجاه الترتيب
+    rows = rows.slice().sort((a,b) => {
+      const fa = spFinalScoreOf(a), fb = spFinalScoreOf(b);
+      if (fa == null && fb == null) return (a.full_name||'').localeCompare(b.full_name||'', 'ar');
+      if (fa == null) return 1;
+      if (fb == null) return -1;
+      return sortBy === 'desc' ? fb - fa : fa - fb;
+    });
+  } else {
+    rows = rows.slice().sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
+  }
   const per = 60;
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];

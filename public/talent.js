@@ -668,6 +668,11 @@ async function loadTalentCommittee() {
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div class="fg" style="min-width:180px"><label>تصفية حسب نوع النشاط</label><select id="tc-f-act" onchange="tcRenderTable()"><option value="">كل الأنشطة</option>${TE_ACTIVITY_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+      <div class="fg" style="min-width:180px"><label>الترتيب</label><select id="tc-f-sort" onchange="tcRenderTable()">
+        <option value="name">أبجدياً (اسم الطالب)</option>
+        <option value="desc">الأعلى علامة</option>
+        <option value="asc">الأدنى علامة</option>
+      </select></div>
       <button class="btn btn-sm" onclick="tcOpenPrintFields('blank')"><i class="ti ti-printer"></i> طباعة كشف تقييم فارغ للجنة</button>
       <button class="btn btn-sm" onclick="tcOpenPrintFields('final')"><i class="ti ti-printer"></i> طباعة كشف العلامات النهائي</button>
       <div style="flex:1"></div>
@@ -734,12 +739,35 @@ async function tcSaveCommittee() {
   loadTalentCommittee();
 }
 
+// يحسب العلامة النهائية الحالية لصف (أو null إن لم تُدخَل أي علامة بعد) — تُستخدم لأغراض الترتيب فقط
+function teFinalScoreOf(r) {
+  const scores = r.committee_scores || [];
+  const hs = r.gpa ? (parseFloat(r.gpa) * 0.3) : 0;
+  const filled = scores.filter(v => v != null && v !== '');
+  if (!filled.length) return null;
+  const cscore = filled.reduce((a,b)=>a+(+b||0),0) * 0.7;
+  return cscore + hs;
+}
+
 function tcRenderTable() {
   const act = document.getElementById('tc-f-act')?.value || '';
+  const sortBy = document.getElementById('tc-f-sort')?.value || 'name';
   const members = teCommitteeMembers();
   const tbody = document.getElementById('tc-tbody');
   if (!tbody) return;
-  const rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act)).sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
+  let rows = TE_ROWS.filter(r => !act || (r.activity_types||[]).includes(act));
+  if (sortBy === 'desc' || sortBy === 'asc') {
+    // من لم تُدخَل له علامة بعد يُدفَع دائماً لآخر القائمة بغض النظر عن اتجاه الترتيب
+    rows = rows.slice().sort((a,b) => {
+      const fa = teFinalScoreOf(a), fb = teFinalScoreOf(b);
+      if (fa == null && fb == null) return (a.full_name||'').localeCompare(b.full_name||'', 'ar');
+      if (fa == null) return 1;
+      if (fb == null) return -1;
+      return sortBy === 'desc' ? fb - fa : fa - fb;
+    });
+  } else {
+    rows = rows.slice().sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
+  }
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${3+members.length+3}" class="center">لا يوجد متقدمون مطابقون لهذه التصفية</td></tr>`; return; }
   const per = 100 / members.length;
   tbody.innerHTML = rows.map((r,i) => {
@@ -750,7 +778,7 @@ function tcRenderTable() {
     return `<tr data-id="${r.id}" data-hs="${hs}">
       <td>${i+1}</td>
       <td>${teEsc(r.full_name)} <button class="btn btn-sm" style="padding:2px 6px" onclick="tcViewApplicant('${r.id}')" title="عرض بيانات الطالب"><i class="ti ti-eye"></i></button></td>
-      <td>${(r.activity_types||[]).map(teEsc).join('، ')}</td>
+      <td>${teEsc((r.activity_types||[]).join('، '))}${(r.instruments||[]).length ? ' - ' + teEsc(r.instruments.join('، ')) : ''}</td>
       ${members.map((m,mi) => `<td><input type="number" min="0" max="${per}" step="0.5" class="tc-score" style="width:64px" value="${scores[mi]!=null?scores[mi]:''}" oninput="tcRecalc(this)"></td>`).join('')}
       <td class="tc-cscore">${cscore!=null ? tePct(cscore) : '—'}</td>
       <td>${tePct(hs)}</td>
