@@ -206,7 +206,7 @@ function teRender() {
       <td>${teEsc(r.full_name)}</td>
       <td>${teEsc(r.phone)}</td>
       <td>${teEsc(r.governorate)} / ${teEsc(r.district)}</td>
-      <td>${(r.activity_types||[]).map(teEsc).join('، ')}</td>
+      <td>${teEsc((r.activity_types||[]).join('، '))}${(r.instruments||[]).length ? ' - ' + teEsc(r.instruments.join('، ')) : ''}</td>
       <td>${teEsc(TE_TRACKS[r.cert_track]||r.cert_track||'')}</td>
       <td>${teEsc(r.gpa)}%</td>
       <td style="font-weight:700">${r.final_score!=null ? tePct(r.final_score) : '—'}</td>
