@@ -1417,6 +1417,7 @@ function scOpenPrintFields(mode) {
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   document.getElementById('sc-modal-body').innerHTML = `
     <h3>${mode==='final' ? 'بيانات إضافية تُعرض في كشف العلامات النهائي' : 'بيانات إضافية تُعرض للجنة في الكشف'}</h3>
+    <div class="fg" style="margin-bottom:10px"><label>الجنس</label><select id="sc-print-gender"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select></div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${SC_SHEET_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sc-sheet-col" value="${f.key}"> ${f.label}</label>`).join('')}
@@ -1570,8 +1571,9 @@ function spSignatureBlockHTML() {
 function scPrintGradingSheet() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
-  if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة بعد'); return; }
+  const fGender = document.getElementById('sc-print-gender')?.value || '';
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender));
+  if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = '60';
@@ -1582,7 +1584,7 @@ function scPrintGradingSheet() {
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف تقييم لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}</div>
+    <div class="ptitle">كشف تقييم لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}${fGender ? ' — ' + spEsc(fGender) : ''}</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
@@ -1599,8 +1601,9 @@ function scPrintGradingSheet() {
 function scPrintFinalReport() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
-  if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة بعد'); return; }
+  const fGender = document.getElementById('sc-print-gender')?.value || '';
+  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender));
+  if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const per = '60';
@@ -1611,7 +1614,7 @@ function scPrintFinalReport() {
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف علامات لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}</div>
+    <div class="ptitle">كشف علامات لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}${fGender ? ' — ' + spEsc(fGender) : ''}</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
