@@ -1204,16 +1204,17 @@ app.get('/api/sports_excellence/settings', auth(['admin','sports_reviewer']), as
   try {
     const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
     const activeGames = Array.isArray(s?.active_games) && s.active_games.length ? s.active_games : SPORTS_GAME_TYPES;
-    res.json({ close_date: s?.close_date || null, committee_members_by_game: s?.committee_members_by_game || {}, higher_committee: s?.higher_committee || [], active_games: activeGames });
+    res.json({ close_date: s?.close_date || null, committee_members_by_game: s?.committee_members_by_game || {}, higher_committee: s?.higher_committee || [], active_games: activeGames, ability_test_pass_threshold: (s?.ability_test_pass_threshold != null ? s.ability_test_pass_threshold : 25) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/sports_excellence/settings', auth(['admin']), async (req, res) => {
   try {
     const activeGames = Array.isArray(req.body.active_games) ? req.body.active_games.filter(g => SPORTS_GAME_TYPES.includes(g)) : SPORTS_GAME_TYPES;
+    const threshold = parseFloat(req.body.ability_test_pass_threshold);
     await SportsSettings.findOneAndUpdate(
       { key: 'sports_excellence' },
-      { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members_by_game: (req.body.committee_members_by_game && typeof req.body.committee_members_by_game === 'object') ? req.body.committee_members_by_game : {}, higher_committee: Array.isArray(req.body.higher_committee) ? req.body.higher_committee : [], active_games: activeGames },
+      { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members_by_game: (req.body.committee_members_by_game && typeof req.body.committee_members_by_game === 'object') ? req.body.committee_members_by_game : {}, higher_committee: Array.isArray(req.body.higher_committee) ? req.body.higher_committee : [], active_games: activeGames, ability_test_pass_threshold: (!isNaN(threshold) ? threshold : 25) },
       { upsert: true }
     );
     res.json({ message: 'تم الحفظ' });
