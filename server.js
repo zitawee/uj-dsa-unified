@@ -152,6 +152,67 @@ function genTalentRef() {
 // لسهولة إزالته لاحقاً بالكامل بمجرد حذف هذا القسم + سطر الشريط الجانبي + صفحة sports.html
 // الوصول لبياناته مقصور على admin فقط ══
 const SportsApp = mongoose.model('sports_excellence', new mongoose.Schema({}, { strict:false, timestamps:true }));
+
+// ══ اختبار اللياقة البدنية — جداول المئينات (Percentile Norms) لكل جنس، 5 مهارات × 19 نقطة (من 95% إلى 5%) ══
+const FITNESS_PERCENTILES = [95,90,85,80,75,70,65,60,55,50,45,40,35,30,25,20,15,10,5];
+const FITNESS_SKILLS = [
+  { key: 'm_ball',    label: 'رمي الكرة الطبية',  unit: 'متر',   higherIsBetter: true  },
+  { key: 'long_jump', label: 'الوثب الطويل',       unit: 'متر',   higherIsBetter: true  },
+  { key: 'sit_reach', label: 'مرونة الجذع',        unit: 'سم',    higherIsBetter: true  },
+  { key: 'shuttle',   label: 'الجري المكوكي',       unit: 'ثانية', higherIsBetter: false },
+  { key: 'endurance', label: 'التحمل',              unit: 'ثانية', higherIsBetter: false },
+];
+const FITNESS_TABLES = {
+  'ذكر': {
+    m_ball:    [4.70,4.46,4.20,4.15,4.05,4.00,3.95,3.90,3.88,3.80,3.70,3.61,3.60,3.47,3.40,3.35,3.20,3.15,3.05],
+    long_jump: [2.70,2.60,2.50,2.50,2.45,2.40,2.40,2.35,2.30,2.30,2.25,2.20,2.15,2.13,2.10,2.03,2.00,1.90,1.80],
+    sit_reach: [50.00,48.00,46.30,45.00,44.00,43.00,42.00,41.00,40.00,39.00,38.10,37.00,36.30,35.40,34.00,32.00,31.00,30.00,26.90],
+    shuttle:   [8.25,8.45,8.51,8.57,8.63,8.72,8.78,8.82,8.89,8.94,9.06,9.07,9.13,9.24,9.27,9.48,9.58,9.77,10.08],
+    endurance: [5.43,5.59,6.03,6.10,6.22,6.31,6.38,6.49,6.58,7.01,7.12,7.21,7.35,7.45,8.07,8.32,8.42,9.10,10.06],
+  },
+  'أنثى': {
+    m_ball:    [3.55,3.24,3.20,3.10,3.08,3.00,3.00,2.95,2.90,2.80,2.80,2.70,2.65,2.60,2.50,2.47,2.40,2.31,2.25],
+    long_jump: [1.95,1.90,1.89,1.83,1.75,1.70,1.65,1.65,1.60,1.60,1.60,1.55,1.50,1.50,1.50,1.45,1.40,1.31,1.30],
+    sit_reach: [46.00,45.00,44.00,43.00,42.00,41.00,40.00,39.00,38.00,38.00,37.00,35.80,35.00,34.00,33.00,32.00,29.30,29.00,25.00],
+    shuttle:   [9.08,9.31,9.53,9.77,9.93,10.06,10.15,10.23,10.33,10.43,10.51,10.70,10.87,10.98,11.23,11.37,11.73,11.85,12.06],
+    endurance: [8.38,8.60,9.20,9.42,10.00,10.23,10.36,10.44,10.54,11.16,11.23,11.36,11.47,11.55,12.06,12.21,12.54,13.24,13.52],
+  },
+};
+
+// يحوّل قيمة خام لمهارة واحدة إلى مئين (0-100)، بالاستيفاء الخطي بين أقرب نقطتين، مع تقييد الحدّين الأعلى/الأدنى عند تجاوز الجدول
+function fitnessPercentileFor(rawValue, tableColumn, higherIsBetter) {
+  const v = parseFloat(rawValue);
+  if (isNaN(v)) return null;
+  const scores = tableColumn.map(x => higherIsBetter ? x : -x);
+  const score = higherIsBetter ? v : -v;
+  if (score >= scores[0]) return 100;
+  if (score <= scores[scores.length - 1]) return 0;
+  for (let i = 0; i < scores.length - 1; i++) {
+    const s1 = scores[i], p1 = FITNESS_PERCENTILES[i];
+    const s2 = scores[i+1], p2 = FITNESS_PERCENTILES[i+1];
+    if (score <= s1 && score >= s2) {
+      if (s1 === s2) return p1;
+      return p2 + (score - s2) / (s1 - s2) * (p1 - p2);
+    }
+  }
+  return 0;
+}
+
+// يحسب علامة اختبار اللياقة النهائية (من 50) من القياسات الخام الخمس + جنس الطالب، أو null إن لم تكتمل المهارات الخمس بعد
+function computeFitnessScore(measurements, gender) {
+  const table = FITNESS_TABLES[gender] || FITNESS_TABLES['ذكر'];
+  let sum = 0;
+  for (const s of FITNESS_SKILLS) {
+    const v = measurements ? measurements[s.key] : null;
+    if (v == null || v === '') return null;
+    const pct = fitnessPercentileFor(v, table[s.key], s.higherIsBetter);
+    if (pct == null) return null;
+    sum += pct;
+  }
+  const avg = sum / 5;      // من 100 — متوسط المئينات الخمسة
+  const final = avg / 2;    // من 50 — بنفس آلية "اختبار فحص القدرات" الحالية
+  return Math.round(final * 100) / 100;
+}
 const SportsSettings = mongoose.model('sports_excellence_settings', new mongoose.Schema({}, { strict:false }));
 function genSportsRef() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -1281,6 +1342,52 @@ app.delete('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
       );
     }
     res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ اختبار اللياقة البدنية — واجهة الهاتف (شاشة القياسات الميدانية) ══
+// يسمح بنفس صلاحيات اختبار فحص القدرات حالياً (admin + sports_reviewer)
+app.get('/api/sports_excellence/fitness/candidates', auth(['admin','sports_reviewer']), async (req, res) => {
+  try {
+    const docs = await SportsApp.find({ status: { $in: ['accepted_exam','ability_test_passed','rejected'] } }).lean();
+    res.json(docs.map(d => ({
+      id: String(d._id), full_name: d.full_name, gender: d.gender, game_types: d.game_types || [],
+      seat_number: d.seat_number, status: d.status, ability_test_score: d.ability_test_score != null ? d.ability_test_score : null,
+      fitness_measurements: d.fitness_measurements || {},
+    })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sports_excellence/fitness/skills', auth(['admin','sports_reviewer']), (req, res) => {
+  res.json(FITNESS_SKILLS.map(s => ({ key: s.key, label: s.label, unit: s.unit })));
+});
+
+app.put('/api/sports_excellence/:id/fitness', auth(['admin','sports_reviewer']), async (req, res) => {
+  try {
+    const { skill, value } = req.body;
+    const skillDef = FITNESS_SKILLS.find(s => s.key === skill);
+    if (!skillDef) return res.status(400).json({ error: 'مهارة غير معروفة' });
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 0) return res.status(400).json({ error: 'يرجى إدخال رقم صحيح' });
+
+    const doc = await SportsApp.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'الطالب غير موجود' });
+
+    const measurements = { ...(doc.fitness_measurements || {}), [skill]: num };
+    const update = { fitness_measurements: measurements, updated_by: req.user.username, updatedAt: new Date() };
+
+    // إن اكتملت المهارات الخمس، تُحسَب العلامة النهائية تلقائياً وتُملأ في نفس حقل "علامة الاختبار" المستخدَم بالإدخال اليدوي،
+    // مع تحديد النتيجة (اجتاز/لم يجتاز) حسب حدّ النجاح الحالي في الإعدادات — تماماً كما لو أُدخِلت العلامة يدوياً
+    const finalScore = computeFitnessScore(measurements, doc.gender);
+    if (finalScore != null) {
+      const settings = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
+      const threshold = settings?.ability_test_pass_threshold != null ? settings.ability_test_pass_threshold : 25;
+      update.ability_test_score = finalScore;
+      update.status = finalScore >= threshold ? 'ability_test_passed' : 'rejected';
+    }
+
+    const updated = await SportsApp.findByIdAndUpdate(req.params.id, update, { new: true }).lean();
+    res.json({ id: String(updated._id), fitness_measurements: updated.fitness_measurements, ability_test_score: updated.ability_test_score != null ? updated.ability_test_score : null, status: updated.status, completed: finalScore != null });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
