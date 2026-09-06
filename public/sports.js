@@ -1267,14 +1267,15 @@ function satPrintResults() {
   const fGame = document.getElementById('sat-f-game')?.value || '';
   const fGender = document.getElementById('sat-f-gender')?.value || '';
   const threshold = SP_SETTINGS?.ability_test_pass_threshold != null ? SP_SETTINGS.ability_test_pass_threshold : 25;
-  const rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
+  const rows = (SP_ROWS || []).filter(r => {
+    if (r.ability_test_score == null) return false; // فقط من له علامة مُدخَلة فعلاً — بصرف النظر عن حالته الحالية (حتى لو انتقل بالفعل لمرحلة لاحقة بعد الحفظ)
     if (fGame && !(r.game_types||[]).includes(fGame)) return false;
     if (fGender && r.gender !== fGender) return false;
     if (q) {
       const hay = [r.full_name, r.seat_number].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
-    return r.ability_test_score != null;
+    return true;
   });
   if (!rows.length) { alert('لا يوجد طلبة لهم علامة اختبار قدرات مُدخَلة وفق الفلتر الحالي'); return; }
   rows.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
