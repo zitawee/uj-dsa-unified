@@ -1093,6 +1093,7 @@ async function loadSportsAbilityTest() {
       <select id="sat-f-gender" onchange="satRender()"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select>
       <input type="text" id="sat-q" placeholder="بحث بالاسم أو رقم الجلوس..." style="flex:1;min-width:180px" oninput="satRender()">
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
+      <button class="btn btn-sm" onclick="satPrintResults()"><i class="ti ti-printer"></i> طباعة كشف نتائج اختبار القدرات</button>
       <button class="btn btn-sm" style="background:#0f4c81;color:#fff" onclick="satSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
     </div>
     <p style="font-size:11px;color:var(--muted);margin:6px 0 0">حدّ النجاح الحالي: <b>${passThreshold} فما فوق (من 50)</b>${ME?.role==='admin' ? ' — يمكن تعديله من شاشة "التفوق الرياضي" الرئيسية.' : ''} · أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.</p>
@@ -1255,6 +1256,51 @@ function satPrintRoster() {
         const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
         const modelNum = nomEntry ? `نموذج (${nomEntry.num})` : '—';
         return `<tr><td style="color:#000;height:46px">${i+1}</td><td style="color:#000;height:46px">${spEsc(r.full_name)}</td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="height:46px"></td><td style="color:#000;height:46px">${modelNum}</td></tr>`;
+      }).join('')}
+    </tbody></table>`;
+  openPrint(html);
+}
+
+// طباعة كشف بنتائج اختبار القدرات (العلامة والنتيجة) لمن أُدخِلت له علامة فعلاً، حسب نفس فلتر اللعبة/الجنس/البحث المعروض حالياً
+function satPrintResults() {
+  const q = (document.getElementById('sat-q')?.value || '').trim().toLowerCase();
+  const fGame = document.getElementById('sat-f-game')?.value || '';
+  const fGender = document.getElementById('sat-f-gender')?.value || '';
+  const threshold = SP_SETTINGS?.ability_test_pass_threshold != null ? SP_SETTINGS.ability_test_pass_threshold : 25;
+  const rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
+    if (fGame && !(r.game_types||[]).includes(fGame)) return false;
+    if (fGender && r.gender !== fGender) return false;
+    if (q) {
+      const hay = [r.full_name, r.seat_number].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return r.ability_test_score != null;
+  });
+  if (!rows.length) { alert('لا يوجد طلبة لهم علامة اختبار قدرات مُدخَلة وفق الفلتر الحالي'); return; }
+  rows.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
+  const titleSuffix = [spPrintGameLabel(fGame), fGender].filter(Boolean).join(' — ');
+  const html = `
+    <div class="ph2">
+      <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
+      <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
+      <div class="pmeta">${spDate(new Date())}</div>
+    </div>
+    <div class="ptitle">كشف نتائج اختبار فحص القدرات${titleSuffix ? ' — ' + spEsc(titleSuffix) : ''}</div>
+    <div style="font-size:12px;margin-bottom:8px">حدّ النجاح المعتمَد: ${threshold} فما فوق (من 50)</div>
+    <table class="ptbl"><thead><tr>
+      <th style="width:5%">#</th>
+      <th style="width:26%">الاسم</th>
+      <th style="width:10%">الجنس</th>
+      <th style="width:16%">نوع اللعبة</th>
+      <th style="width:15%">رقم النموذج</th>
+      <th style="width:14%">علامة الاختبار (من 50)</th>
+      <th style="width:14%">النتيجة</th>
+    </tr></thead><tbody>
+      ${rows.map((r,i)=>{
+        const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
+        const modelNum = nomEntry ? `نموذج (${nomEntry.num})` : '—';
+        const passed = r.status === 'ability_test_passed';
+        return `<tr><td>${i+1}</td><td>${spEsc(r.full_name)}</td><td>${spEsc(r.gender)}</td><td>${(r.game_types||[]).map(spEsc).join('، ')}</td><td>${modelNum}</td><td style="font-weight:700">${r.ability_test_score}</td><td style="font-weight:700;color:${passed?'#1B6B3A':'#8A1F1F'}">${passed?'اجتاز':'لم يجتاز'}</td></tr>`;
       }).join('')}
     </tbody></table>`;
   openPrint(html);
