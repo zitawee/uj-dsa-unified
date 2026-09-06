@@ -1072,7 +1072,7 @@ async function loadSportsAbilityTest() {
 
   <div class="card">
     <div class="tw"><table>
-      <thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th>رقم النموذج</th>${ME?.role==='admin' ? `<th>علامة النموذج</th>` : ''}<th>نتيجة اختبار القدرات</th></tr></thead>
+      <thead><tr><th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th>رقم النموذج</th>${ME?.role==='admin' ? `<th>علامة النموذج</th>` : ''}<th>علامة الاختبار (من 50)</th><th>نتيجة اختبار القدرات</th></tr></thead>
       <tbody id="sat-tbody"></tbody>
     </table></div>
   </div>`;
@@ -1095,24 +1095,37 @@ function satRender() {
   rows.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   const tb = document.getElementById('sat-tbody');
   if (!tb) return;
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="6" class="center">لا يوجد طلبة "مقبول للاختبار" مطابقون حالياً</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="${ME?.role==='admin'?8:7}" class="center">لا يوجد طلبة "مقبول للاختبار" مطابقون حالياً</td></tr>`; return; }
   tb.innerHTML = rows.map((r,i) => {
     const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
     const modelNum = nomEntry ? `نموذج (${nomEntry.num})` : '—';
     return `
-    <tr>
+    <tr data-sat-id="${r.id}">
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)}</td>
       <td>${spEsc(r.gender)}</td>
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${modelNum}</td>
       ${ME?.role==='admin' ? `<td style="font-weight:700">${r.nomination_score!=null ? r.nomination_score : '—'}</td>` : ''}
+      <td><input type="number" min="0" max="50" step="0.5" class="sat-score-input" value="${r.ability_test_score!=null ? r.ability_test_score : ''}" style="width:70px" onkeydown="if(event.key==='Enter')satSaveScore('${r.id}')"></td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSetResult('${r.id}','ability_test_passed')">✅ اجتاز</button>
-        <button class="btn btn-sm" style="background:#8A1F1F;color:#fff" onclick="satSetResult('${r.id}','rejected')">❌ لم يجتز</button>
+        <button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSaveScore('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button>
+        ${['ability_test_passed','rejected'].includes(r.status) ? `<span style="margin-inline-start:6px;font-weight:700">${SP_STATUS[r.status].label}</span>` : ''}
       </td>
     </tr>`;
   }).join('');
+}
+
+async function satSaveScore(id) {
+  const row = document.querySelector(`tr[data-sat-id="${id}"]`);
+  const input = row?.querySelector('.sat-score-input');
+  const val = input ? parseFloat(input.value) : NaN;
+  if (input && input.value.trim() !== '' && (isNaN(val) || val < 0 || val > 50)) { alert('يرجى إدخال علامة صحيحة بين 0 و50'); return; }
+  if (input && input.value.trim() === '') { alert('يرجى إدخال العلامة أولاً'); return; }
+  const newStatus = val >= 25 ? 'ability_test_passed' : 'rejected';
+  const r = await api('/api/sports_excellence/'+id, 'PUT', { ability_test_score: val, status: newStatus });
+  if (r.error) { alert(r.error); return; }
+  loadSportsAbilityTest();
 }
 
 async function satSetResult(id, newStatus) {
