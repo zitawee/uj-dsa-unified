@@ -1452,25 +1452,29 @@ function spFinalScoreOf(r) {
   return cscore + hs + nom;
 }
 
-function scRenderTable() {
-  const members = spCommitteeMembers(SC_CURRENT_GAME);
+// دالة ترتيب مشتركة تُطبَّق على الجدول المعروض بالشاشة وعلى الكشوف المطبوعة كليهما، حسب قائمة "الترتيب" الحالية
+function scSortRows(rows) {
   const sortBy = document.getElementById('sc-f-sort')?.value || 'name';
-  const tbody = document.getElementById('sc-tbody');
-  if (!tbody) return;
-  let rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة اجتازوا اختبار القدرات للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
   if (sortBy === 'desc' || sortBy === 'asc') {
     // من لم تُدخَل له علامة بعد يُدفَع دائماً لآخر القائمة بغض النظر عن اتجاه الترتيب
-    rows = rows.slice().sort((a,b) => {
+    return rows.slice().sort((a,b) => {
       const fa = spFinalScoreOf(a), fb = spFinalScoreOf(b);
       if (fa == null && fb == null) return (a.full_name||'').localeCompare(b.full_name||'', 'ar');
       if (fa == null) return 1;
       if (fb == null) return -1;
       return sortBy === 'desc' ? fb - fa : fa - fb;
     });
-  } else {
-    rows = rows.slice().sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   }
+  return rows.slice().sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
+}
+
+function scRenderTable() {
+  const members = spCommitteeMembers(SC_CURRENT_GAME);
+  const tbody = document.getElementById('sc-tbody');
+  if (!tbody) return;
+  let rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة اجتازوا اختبار القدرات للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
+  rows = scSortRows(rows);
   const per = 60;
   tbody.innerHTML = rows.map((r,i) => {
     const scores = r.committee_scores || [];
@@ -1572,7 +1576,7 @@ function scPrintGradingSheet() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender));
+  const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
@@ -1602,7 +1606,7 @@ function scPrintFinalReport() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
-  const rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender));
+  const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
