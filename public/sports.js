@@ -632,7 +632,7 @@ function spOpenCustomList() {
       <div class="fg"><label>الحالة (اختياري)</label><select id="sp-cl-status"><option value="">الكل</option>${Object.entries(SP_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
-      <div class="fg"><label>الترتيب حسب العلامة النهائية</label><select id="sp-cl-sort"><option value="">بدون ترتيب (كما هو مُدخَل)</option><option value="desc">الأعلى علامة أولاً</option><option value="asc">الأدنى علامة أولاً</option></select></div>
+      <div class="fg"><label>الترتيب حسب العلامة النهائية</label><select id="sp-cl-sort"><option value="">بدون ترتيب (كما هو مُدخَل)</option><option value="name">أبجدياً (اسم الطالب)</option><option value="desc">الأعلى علامة أولاً</option><option value="asc">الأدنى علامة أولاً</option></select></div>
       <div class="fg"><label>الاكتفاء بأعلى عدد (اختياري)</label><input type="number" id="sp-cl-top" min="1" placeholder="مثال: 10 — اتركه فارغاً لعرض الكل"></div>
     </div>
     <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">الحقول المطلوب إدراجها في الجدول</div>
@@ -663,7 +663,9 @@ function spGenerateCustomList() {
     if (status && (r.status||'pending') !== status) return false;
     return true;
   });
-  if (sortDir) {
+  if (sortDir === 'name') {
+    rows = rows.slice().sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
+  } else if (sortDir) {
     rows = rows.slice().sort((a,b) => sortDir === 'desc'
       ? (b.final_score ?? -1) - (a.final_score ?? -1)
       : (a.final_score ?? 999) - (b.final_score ?? 999));
