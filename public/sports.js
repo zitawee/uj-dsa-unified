@@ -175,6 +175,16 @@ async function loadSports() {
   </div>
 
   <div class="card">
+    <div style="font-weight:700;color:var(--g);margin-bottom:8px">حدّ النجاح في اختبار فحص القدرات</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">العلامة (من 50) التي عندها وما فوقها يُعتبَر الطالب "اجتاز" اختبار القدرات. تغيير هذا الحدّ لا يؤثر تلقائياً على من أُدخِلت علامته مسبقاً — استخدمي زر "إعادة تقييم" أدناه صراحةً إن رغبتِ بتطبيق الحدّ الجديد على نتائج سابقة.</div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div class="fg" style="max-width:160px"><label>حدّ النجاح (من 50)</label><input type="number" min="0" max="50" step="0.5" id="sp-ability-threshold" value="${settings?.ability_test_pass_threshold != null ? settings.ability_test_pass_threshold : 25}"></div>
+      <button class="btn btn-sm" onclick="spSaveAbilityThreshold()"><i class="ti ti-device-floppy"></i> حفظ الحدّ</button>
+      <button class="btn btn-sm" style="background:#0f4c81;color:#fff" onclick="satReevaluateAll()"><i class="ti ti-refresh"></i> إعادة تقييم كل النتائج المُدخَلة سابقاً حسب الحدّ الحالي</button>
+    </div>
+  </div>
+
+  <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">اللجنة العليا للتفوق الرياضي (5 أعضاء) — تختار الناجحين النهائيين من بين كل المتقدمين، عبر كل الألعاب</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">هذه اللجنة مستقلة تماماً عن لجان الاختبار الخاصة بكل لعبة. أسماؤها تظهر فقط في توقيع "كشف الطلبة الناجحين" النهائي أدناه.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
@@ -325,6 +335,16 @@ async function spSaveSettings() {
   SP_SETTINGS.close_date = close_date;
   const r = await api('/api/sports_excellence/settings', 'PUT', SP_SETTINGS);
   if (r.error) { alert(r.error); return; }
+  loadSports();
+}
+
+async function spSaveAbilityThreshold() {
+  const val = parseFloat(document.getElementById('sp-ability-threshold').value);
+  if (isNaN(val) || val < 0 || val > 50) { alert('يرجى إدخال رقم صحيح بين 0 و50'); return; }
+  SP_SETTINGS.ability_test_pass_threshold = val;
+  const r = await api('/api/sports_excellence/settings', 'PUT', SP_SETTINGS);
+  if (r.error) { alert(r.error); return; }
+  alert(`✅ تم حفظ حدّ النجاح (${val} فما فوق). لن يُطبَّق على النتائج المُدخَلة سابقاً إلا بالضغط على زر "إعادة تقييم".`);
   loadSports();
 }
 
@@ -1053,9 +1073,14 @@ async function loadSportsAbilityTest() {
   panel.innerHTML = `<div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات قبل الانتقال للاختبار العملي (لجنة التحكيم)</div></div></div>
     <div class="card"><div class="center" style="padding:24px">جارٍ التحميل...</div></div>`;
 
-  const rows = await api('/api/sports_excellence');
+  const [rows, settings] = await Promise.all([
+    api('/api/sports_excellence'),
+    api('/api/sports_excellence/settings'),
+  ]);
   if (!Array.isArray(rows)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
   SP_ROWS = rows; // تحديث الكاش العام أيضاً، تستفيد منه شاشات أخرى (لجنة التحكيم) دون إعادة تحميل منفصلة
+  SP_SETTINGS = settings || SP_SETTINGS || {};
+  const passThreshold = SP_SETTINGS.ability_test_pass_threshold != null ? SP_SETTINGS.ability_test_pass_threshold : 25;
   SP_ABILITY_CANDIDATES = rows.filter(r => r.status === 'accepted_exam');
   SAT_DRAFT_SCORES = {}; // بيانات جديدة من الخادم، فأي مسودات سابقة أصبحت غير ذات معنى
 
@@ -1070,7 +1095,7 @@ async function loadSportsAbilityTest() {
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
       <button class="btn btn-sm" style="background:#0f4c81;color:#fff" onclick="satSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
     </div>
-    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.</p>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">حدّ النجاح الحالي: <b>${passThreshold} فما فوق (من 50)</b>${ME?.role==='admin' ? ' — يمكن تعديله من شاشة "التفوق الرياضي" الرئيسية.' : ''} · أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.</p>
   </div>
 
   <div class="card">
@@ -1131,7 +1156,8 @@ async function satSaveScore(id) {
   const val = input ? parseFloat(input.value) : NaN;
   if (input && input.value.trim() !== '' && (isNaN(val) || val < 0 || val > 50)) { alert('يرجى إدخال علامة صحيحة بين 0 و50'); return; }
   if (input && input.value.trim() === '') { alert('يرجى إدخال العلامة أولاً'); return; }
-  const newStatus = val >= 25 ? 'ability_test_passed' : 'rejected';
+  const threshold = SP_SETTINGS?.ability_test_pass_threshold != null ? SP_SETTINGS.ability_test_pass_threshold : 25;
+  const newStatus = val >= threshold ? 'ability_test_passed' : 'rejected';
   const r = await api('/api/sports_excellence/'+id, 'PUT', { ability_test_score: val, status: newStatus });
   if (r.error) { alert(r.error); return; }
   delete SAT_DRAFT_SCORES[id];
@@ -1145,14 +1171,46 @@ async function satSaveAll() {
   const invalid = entries.find(([id,val]) => isNaN(parseFloat(val)) || parseFloat(val) < 0 || parseFloat(val) > 50);
   if (invalid) { alert('توجد علامة غير صحيحة (يجب أن تكون بين 0 و50) لأحد الطلبة، يرجى مراجعتها قبل الحفظ'); return; }
   if (!confirm(`سيتم حفظ ${entries.length} علامة الآن. متابعة؟`)) return;
+  const threshold = SP_SETTINGS?.ability_test_pass_threshold != null ? SP_SETTINGS.ability_test_pass_threshold : 25;
   let failed = 0;
   for (const [id, val] of entries) {
     const score = parseFloat(val);
-    const newStatus = score >= 25 ? 'ability_test_passed' : 'rejected';
+    const newStatus = score >= threshold ? 'ability_test_passed' : 'rejected';
     const r = await api('/api/sports_excellence/'+id, 'PUT', { ability_test_score: score, status: newStatus });
     if (r.error) failed++;
   }
   if (failed) alert(`تعذّر حفظ ${failed} من العلامات، يرجى إعادة المحاولة لها`);
+  loadSportsAbilityTest();
+}
+
+// يعيد تقييم كل من له علامة اختبار قدرات مُدخَلة سابقاً (اجتاز أو لم يجتاز) حسب حدّ النجاح الحالي في الإعدادات،
+// بعد عرض ملخص بعدد من ستتغيّر حالته والتأكيد الصريح من المستخدم — لا يُطبَّق شيء تلقائياً بصمت
+async function satReevaluateAll() {
+  const settings = await api('/api/sports_excellence/settings');
+  const threshold = settings?.ability_test_pass_threshold != null ? settings.ability_test_pass_threshold : 25;
+  const rows = await api('/api/sports_excellence');
+  if (!Array.isArray(rows)) { alert('تعذّر تحميل البيانات'); return; }
+  const scored = rows.filter(r => r.ability_test_score != null && ['ability_test_passed','rejected'].includes(r.status));
+  const changes = scored.map(r => {
+    const shouldBe = r.ability_test_score >= threshold ? 'ability_test_passed' : 'rejected';
+    return { r, shouldBe, changed: shouldBe !== r.status };
+  }).filter(c => c.changed);
+
+  if (!changes.length) { alert(`لا يوجد أي طالب ستتغيّر حالته — كل النتائج الحالية (${scored.length} طالب لهم علامة مُدخَلة) متوافقة أصلاً مع حدّ النجاح الحالي (${threshold}).`); return; }
+
+  const toPassed = changes.filter(c => c.shouldBe === 'ability_test_passed').length;
+  const toRejected = changes.length - toPassed;
+  const preview = changes.slice(0, 15).map(c => `• ${c.r.full_name} — علامته ${c.r.ability_test_score} ← ستصبح "${c.shouldBe==='ability_test_passed'?'اجتاز':'لم يجتاز'}"`).join('\n');
+  const more = changes.length > 15 ? `\n...و${changes.length - 15} طالب/ة آخرين` : '';
+  const msg = `سيتم تطبيق حدّ النجاح الحالي (${threshold}) على ${scored.length} طالب لهم علامة مُدخَلة مسبقاً.\n\nستتغيّر حالة ${changes.length} طالب/ة:\n- ${toPassed} سيصبحون "اجتاز"\n- ${toRejected} سيصبحون "لم يجتاز"\n\n${preview}${more}\n\nهل تريدين المتابعة وتطبيق هذا التغيير الآن؟`;
+  if (!confirm(msg)) return;
+
+  let failed = 0;
+  for (const c of changes) {
+    const r = await api('/api/sports_excellence/'+c.r.id, 'PUT', { status: c.shouldBe });
+    if (r.error) failed++;
+  }
+  alert(failed ? `تم التحديث مع تعذّر ${failed} حالة، يرجى المراجعة.` : `✅ تم تحديث حالة ${changes.length} طالب/ة بنجاح حسب حدّ النجاح الجديد (${threshold}).`);
   loadSportsAbilityTest();
 }
 
