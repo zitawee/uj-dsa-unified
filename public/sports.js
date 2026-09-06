@@ -1115,6 +1115,16 @@ function satDraftInput(id, val) {
   else SAT_DRAFT_SCORES[id] = val;
 }
 
+// يعرض القياسات الخام الخمس المُدخَلة لطالب معيّن عبر شاشة الهاتف (اختبار اللياقة)، إن وُجدت
+function satShowFitness(id) {
+  const r = SP_ABILITY_CANDIDATES.find(c => c.id === id) || SP_ROWS.find(c => c.id === id);
+  if (!r || !r.fitness_measurements) return;
+  const labels = { m_ball:'رمي الكرة الطبية (متر)', long_jump:'الوثب الطويل (متر)', sit_reach:'مرونة الجذع (سم)', shuttle:'الجري المكوكي (ثانية)', endurance:'التحمل (ثانية)' };
+  const lines = Object.entries(r.fitness_measurements).map(([k,v]) => `• ${labels[k]||k}: ${v}`).join('\n');
+  const scoreLine = r.ability_test_score != null ? `\n\nعلامة اختبار اللياقة المحسوبة: ${r.ability_test_score} من 50` : '\n\n(لم تكتمل المهارات الخمس بعد لحساب العلامة النهائية)';
+  alert(`قياسات اللياقة — ${r.full_name}\n\n${lines}${scoreLine}`);
+}
+
 function satRender() {
   const q = (document.getElementById('sat-q')?.value || '').trim().toLowerCase();
   const fGame = document.getElementById('sat-f-game')?.value || '';
@@ -1140,7 +1150,7 @@ function satRender() {
     return `
     <tr data-sat-id="${r.id}">
       <td>${i+1}</td>
-      <td>${spEsc(r.full_name)}</td>
+      <td>${spEsc(r.full_name)}${r.fitness_measurements && Object.keys(r.fitness_measurements).length ? ` <span title="عرض قياسات اللياقة المُدخَلة" style="cursor:pointer" onclick="satShowFitness('${r.id}')">📏</span>` : ''}</td>
       <td>${spEsc(r.gender)}</td>
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${modelNum}</td>

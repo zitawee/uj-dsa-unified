@@ -257,6 +257,7 @@ function buildSidebar() {
   <div class="folder-body sec-sports" id="f-sports" style="display:none">
     <div class="ni" onclick="go('sports_excellence',this)"><i class="ti ti-list-details"></i>طلبات التفوق الرياضي<span class="cnt" id="c-sports_excellence">0</span></div>
     <div class="ni" onclick="go('sports_ability_test',this)"><i class="ti ti-run"></i>اختبار فحص القدرات</div>
+    <div class="ni" onclick="window.open('/fitness.html','_blank')"><i class="ti ti-device-mobile"></i>اختبار اللياقة (شاشة الهاتف) <i class="ti ti-external-link" style="font-size:11px;opacity:.6"></i></div>
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('sports_committee',this)"><i class="ti ti-users-group"></i>علامات لجنة التحكيم</div>` : ''}
     <div class="ni" onclick="go('sports_certificate',this)"><i class="ti ti-certificate"></i>نماذج الطلبات</div>
   </div>` : ''}
