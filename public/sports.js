@@ -1081,22 +1081,23 @@ async function loadSportsAbilityTest() {
   SP_ROWS = rows; // تحديث الكاش العام أيضاً، تستفيد منه شاشات أخرى (لجنة التحكيم) دون إعادة تحميل منفصلة
   SP_SETTINGS = settings || SP_SETTINGS || {};
   const passThreshold = SP_SETTINGS.ability_test_pass_threshold != null ? SP_SETTINGS.ability_test_pass_threshold : 25;
-  SP_ABILITY_CANDIDATES = rows.filter(r => r.status === 'accepted_exam');
+  SP_ABILITY_CANDIDATES = rows.filter(r => ['accepted_exam','ability_test_passed','rejected'].includes(r.status));
   SAT_DRAFT_SCORES = {}; // بيانات جديدة من الخادم، فأي مسودات سابقة أصبحت غير ذات معنى
 
   panel.innerHTML = `
-  <div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات قبل الانتقال للاختبار العملي — ${SP_ABILITY_CANDIDATES.length} طالب/ة</div></div></div>
+  <div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات، إضافة لمن أُدخِلت له نتيجة بالفعل (اجتاز/لم يجتاز) — ${SP_ABILITY_CANDIDATES.length} طالب/ة</div></div></div>
 
   <div class="card">
     <div class="fb" style="align-items:center">
       <select id="sat-f-game" onchange="satRender()"><option value="">كل الألعاب</option>${SP_GAME_TYPES.map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
       <select id="sat-f-gender" onchange="satRender()"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select>
+      <select id="sat-f-status" onchange="satRender()"><option value="">كل الحالات (لم يُختبَر بعد + اجتاز + لم يجتاز)</option><option value="accepted_exam">لم تُدخَل علامته بعد فقط</option><option value="ability_test_passed">اجتاز فقط</option><option value="rejected">لم يجتاز فقط</option></select>
       <input type="text" id="sat-q" placeholder="بحث بالاسم أو رقم الجلوس..." style="flex:1;min-width:180px" oninput="satRender()">
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
       <button class="btn btn-sm" onclick="satPrintResults()"><i class="ti ti-printer"></i> طباعة كشف نتائج اختبار القدرات</button>
       <button class="btn btn-sm" style="background:#0f4c81;color:#fff" onclick="satSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
     </div>
-    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">حدّ النجاح الحالي: <b>${passThreshold} فما فوق (من 50)</b>${ME?.role==='admin' ? ' — يمكن تعديله من شاشة "التفوق الرياضي" الرئيسية.' : ''} · أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.</p>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">حدّ النجاح الحالي: <b>${passThreshold} فما فوق (من 50)</b>${ME?.role==='admin' ? ' — يمكن تعديله من شاشة "التفوق الرياضي" الرئيسية.' : ''} · العلامات تبقى ظاهرة هنا دائماً حتى بعد ترحيل الطالب لقائمة لجنة التحكيم أو رفضه، ويمكن تعديلها في أي وقت بحفظها من جديد. أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.</p>
   </div>
 
   <div class="card">
@@ -1118,7 +1119,9 @@ function satRender() {
   const q = (document.getElementById('sat-q')?.value || '').trim().toLowerCase();
   const fGame = document.getElementById('sat-f-game')?.value || '';
   const fGender = document.getElementById('sat-f-gender')?.value || '';
+  const fStatus = document.getElementById('sat-f-status')?.value || '';
   let rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
+    if (fStatus && r.status !== fStatus) return false;
     if (fGame && !(r.game_types||[]).includes(fGame)) return false;
     if (fGender && r.gender !== fGender) return false;
     if (q) {
@@ -1130,7 +1133,7 @@ function satRender() {
   rows.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   const tb = document.getElementById('sat-tbody');
   if (!tb) return;
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="${ME?.role==='admin'?8:7}" class="center">لا يوجد طلبة "مقبول للاختبار" مطابقون حالياً</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="${ME?.role==='admin'?8:7}" class="center">لا يوجد طلبة مطابقون للتصفية الحالية</td></tr>`; return; }
   tb.innerHTML = rows.map((r,i) => {
     const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
     const modelNum = nomEntry ? `نموذج (${nomEntry.num})` : '—';
@@ -1228,6 +1231,7 @@ function satPrintRoster() {
   const fGame = document.getElementById('sat-f-game')?.value || '';
   const fGender = document.getElementById('sat-f-gender')?.value || '';
   const rows = (SP_ABILITY_CANDIDATES || []).filter(r => {
+    if (r.status !== 'accepted_exam') return false; // كشف الاختبار الورقي يخص فقط من لم تُدخَل نتيجته بعد
     if (fGame && !(r.game_types||[]).includes(fGame)) return false;
     if (fGender && r.gender !== fGender) return false;
     if (q) {
