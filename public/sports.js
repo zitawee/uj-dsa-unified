@@ -1045,6 +1045,7 @@ async function spcDelete(id) {
 // طباعة كشف ورقي لإجراء الاختبار، ثم ترحيل النتيجة (اجتاز/لم يجتز) — من يجتاز يظهر تلقائياً لاحقاً في شاشة لجنة التحكيم
 // ══════════════════════════════════════════════════════════════
 let SP_ABILITY_CANDIDATES = [];
+let SAT_DRAFT_SCORES = {}; // علامات مُدخَلة لم تُحفَظ بعد بعد (id => قيمة) — تبقى محفوظة محلياً حتى أثناء البحث/التصفية أو تبديل الأسماء
 
 async function loadSportsAbilityTest() {
   const panel = document.getElementById('panel-sports_ability_test');
@@ -1056,6 +1057,7 @@ async function loadSportsAbilityTest() {
   if (!Array.isArray(rows)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
   SP_ROWS = rows; // تحديث الكاش العام أيضاً، تستفيد منه شاشات أخرى (لجنة التحكيم) دون إعادة تحميل منفصلة
   SP_ABILITY_CANDIDATES = rows.filter(r => r.status === 'accepted_exam');
+  SAT_DRAFT_SCORES = {}; // بيانات جديدة من الخادم، فأي مسودات سابقة أصبحت غير ذات معنى
 
   panel.innerHTML = `
   <div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات قبل الانتقال للاختبار العملي — ${SP_ABILITY_CANDIDATES.length} طالب/ة</div></div></div>
@@ -1066,8 +1068,9 @@ async function loadSportsAbilityTest() {
       <select id="sat-f-gender" onchange="satRender()"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select>
       <input type="text" id="sat-q" placeholder="بحث بالاسم أو رقم الجلوس..." style="flex:1;min-width:180px" oninput="satRender()">
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
+      <button class="btn btn-sm" style="background:#0f4c81;color:#fff" onclick="satSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
     </div>
-    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">اطبعي هذا الكشف واستخدميه يوم إجراء اختبار القدرات، ثم عودي هنا بعد الاختبار لتسجيل النتيجة لكل طالب (اجتاز/لم يجتاز).</p>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.</p>
   </div>
 
   <div class="card">
@@ -1077,6 +1080,12 @@ async function loadSportsAbilityTest() {
     </table></div>
   </div>`;
   satRender();
+}
+
+// يخزّن القيمة المُدخَلة فوراً أثناء الكتابة كي لا تُفقَد عند إعادة رسم الجدول (بحث/تصفية)
+function satDraftInput(id, val) {
+  if (val === '') { delete SAT_DRAFT_SCORES[id]; }
+  else SAT_DRAFT_SCORES[id] = val;
 }
 
 function satRender() {
@@ -1107,7 +1116,7 @@ function satRender() {
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${modelNum}</td>
       ${ME?.role==='admin' ? `<td style="font-weight:700">${r.nomination_score!=null ? r.nomination_score : '—'}</td>` : ''}
-      <td><input type="number" min="0" max="50" step="0.5" class="sat-score-input" value="${r.ability_test_score!=null ? r.ability_test_score : ''}" style="width:70px" onkeydown="if(event.key==='Enter')satSaveScore('${r.id}')"></td>
+      <td><input type="number" min="0" max="50" step="0.5" class="sat-score-input" value="${SAT_DRAFT_SCORES[r.id] !== undefined ? SAT_DRAFT_SCORES[r.id] : (r.ability_test_score!=null ? r.ability_test_score : '')}" style="width:70px" oninput="satDraftInput('${r.id}', this.value)" onkeydown="if(event.key==='Enter')satSaveScore('${r.id}')"></td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSaveScore('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button>
         ${['ability_test_passed','rejected'].includes(r.status) ? `<span style="margin-inline-start:6px;font-weight:700">${SP_STATUS[r.status].label}</span>` : ''}
@@ -1125,6 +1134,25 @@ async function satSaveScore(id) {
   const newStatus = val >= 25 ? 'ability_test_passed' : 'rejected';
   const r = await api('/api/sports_excellence/'+id, 'PUT', { ability_test_score: val, status: newStatus });
   if (r.error) { alert(r.error); return; }
+  delete SAT_DRAFT_SCORES[id];
+  loadSportsAbilityTest();
+}
+
+// حفظ كل العلامات المُدخَلة دفعة واحدة (لكل الطلبة الموجودين حالياً بـ SAT_DRAFT_SCORES، بصرف النظر عن التصفية/البحث الحالي)
+async function satSaveAll() {
+  const entries = Object.entries(SAT_DRAFT_SCORES).filter(([id,val]) => String(val).trim() !== '');
+  if (!entries.length) { alert('لا توجد علامات مُدخَلة لم تُحفَظ بعد'); return; }
+  const invalid = entries.find(([id,val]) => isNaN(parseFloat(val)) || parseFloat(val) < 0 || parseFloat(val) > 50);
+  if (invalid) { alert('توجد علامة غير صحيحة (يجب أن تكون بين 0 و50) لأحد الطلبة، يرجى مراجعتها قبل الحفظ'); return; }
+  if (!confirm(`سيتم حفظ ${entries.length} علامة الآن. متابعة؟`)) return;
+  let failed = 0;
+  for (const [id, val] of entries) {
+    const score = parseFloat(val);
+    const newStatus = score >= 25 ? 'ability_test_passed' : 'rejected';
+    const r = await api('/api/sports_excellence/'+id, 'PUT', { ability_test_score: score, status: newStatus });
+    if (r.error) failed++;
+  }
+  if (failed) alert(`تعذّر حفظ ${failed} من العلامات، يرجى إعادة المحاولة لها`);
   loadSportsAbilityTest();
 }
 
