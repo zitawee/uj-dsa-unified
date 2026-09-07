@@ -1245,7 +1245,7 @@ app.delete('/api/talent_excellence/:id', auth(['admin']), async (req, res) => {
 });
 
 // ══ بند مؤقت: التفوق الرياضي — إدارة داخلية (admin فقط) ══
-app.get('/api/sports_excellence', auth(['admin','sports_reviewer']), async (req, res) => {
+app.get('/api/sports_excellence', auth(['admin','sports_reviewer','fitness_coach']), async (req, res) => {
   try {
     let query = {};
     const { q, status, activity, governorate } = req.query;
@@ -1261,7 +1261,7 @@ app.get('/api/sports_excellence', auth(['admin','sports_reviewer']), async (req,
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/sports_excellence/settings', auth(['admin','sports_reviewer']), async (req, res) => {
+app.get('/api/sports_excellence/settings', auth(['admin','sports_reviewer','fitness_coach']), async (req, res) => {
   try {
     const s = await SportsSettings.findOne({ key: 'sports_excellence' }).lean();
     const activeGames = Array.isArray(s?.active_games) && s.active_games.length ? s.active_games : SPORTS_GAME_TYPES;
@@ -1347,7 +1347,7 @@ app.delete('/api/sports_excellence/:id', auth(['admin']), async (req, res) => {
 
 // ══ اختبار اللياقة البدنية — واجهة الهاتف (شاشة القياسات الميدانية) ══
 // يسمح بنفس صلاحيات اختبار فحص القدرات حالياً (admin + sports_reviewer)
-app.get('/api/sports_excellence/fitness/candidates', auth(['admin','sports_reviewer']), async (req, res) => {
+app.get('/api/sports_excellence/fitness/candidates', auth(['admin','sports_reviewer','fitness_coach']), async (req, res) => {
   try {
     const docs = await SportsApp.find({ status: { $in: ['accepted_exam','ability_test_passed','rejected'] } }).lean();
     res.json(docs.map(d => ({
@@ -1358,11 +1358,11 @@ app.get('/api/sports_excellence/fitness/candidates', auth(['admin','sports_revie
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/sports_excellence/fitness/skills', auth(['admin','sports_reviewer']), (req, res) => {
+app.get('/api/sports_excellence/fitness/skills', auth(['admin','sports_reviewer','fitness_coach']), (req, res) => {
   res.json(FITNESS_SKILLS.map(s => ({ key: s.key, label: s.label, unit: s.unit })));
 });
 
-app.put('/api/sports_excellence/:id/fitness', auth(['admin','sports_reviewer']), async (req, res) => {
+app.put('/api/sports_excellence/:id/fitness', auth(['admin','sports_reviewer','fitness_coach']), async (req, res) => {
   try {
     const { skill, value } = req.body;
     const skillDef = FITNESS_SKILLS.find(s => s.key === skill);
