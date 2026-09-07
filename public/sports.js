@@ -1084,8 +1084,9 @@ async function loadSportsAbilityTest() {
   SP_ABILITY_CANDIDATES = rows.filter(r => ['accepted_exam','ability_test_passed','rejected'].includes(r.status));
   SAT_DRAFT_SCORES = {}; // بيانات جديدة من الخادم، فأي مسودات سابقة أصبحت غير ذات معنى
 
+  const READ_ONLY = ME?.role === 'fitness_coach';
   panel.innerHTML = `
-  <div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات، إضافة لمن أُدخِلت له نتيجة بالفعل (اجتاز/لم يجتاز) — ${SP_ABILITY_CANDIDATES.length} طالب/ة</div></div></div>
+  <div class="ph"><div><div class="pt">اختبار فحص القدرات</div><div class="ps">الطلبة "مقبول للاختبار" الذين يخضعون لاختبار القدرات، إضافة لمن أُدخِلت له نتيجة بالفعل (اجتاز/لم يجتاز) — ${SP_ABILITY_CANDIDATES.length} طالب/ة${READ_ONLY ? ' — للعرض فقط' : ''}</div></div></div>
 
   <div class="card">
     <div class="fb" style="align-items:center">
@@ -1095,9 +1096,9 @@ async function loadSportsAbilityTest() {
       <input type="text" id="sat-q" placeholder="بحث بالاسم أو رقم الجلوس..." style="flex:1;min-width:180px" oninput="satRender()">
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
       <button class="btn btn-sm" onclick="satPrintResults()"><i class="ti ti-printer"></i> طباعة كشف نتائج اختبار القدرات</button>
-      <button class="btn btn-sm" style="background:#0f4c81;color:#fff" onclick="satSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>
+      ${!READ_ONLY ? `<button class="btn btn-sm" style="background:#0f4c81;color:#fff" onclick="satSaveAll()"><i class="ti ti-device-floppy"></i> حفظ كل العلامات المُدخَلة</button>` : ''}
     </div>
-    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">حدّ النجاح الحالي: <b>${passThreshold} فما فوق (من 50)</b>${ME?.role==='admin' ? ' — يمكن تعديله من شاشة "التفوق الرياضي" الرئيسية.' : ''} · العلامات تبقى ظاهرة هنا دائماً حتى بعد ترحيل الطالب لقائمة لجنة التحكيم أو رفضه، ويمكن تعديلها في أي وقت بحفظها من جديد. أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.</p>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">${READ_ONLY ? 'هذه الشاشة للعرض فقط — العلامة تُحسَب تلقائياً من قياسات اللياقة المُدخَلة عبر شاشة الهاتف، ولا يمكن تعديلها يدوياً من هنا.' : `حدّ النجاح الحالي: <b>${passThreshold} فما فوق (من 50)</b>${ME?.role==='admin' ? ' — يمكن تعديله من شاشة "التفوق الرياضي" الرئيسية.' : ''} · العلامات تبقى ظاهرة هنا دائماً حتى بعد ترحيل الطالب لقائمة لجنة التحكيم أو رفضه، ويمكن تعديلها في أي وقت بحفظها من جديد. أدخلي علامات أكثر من طالب متتالية دون قلق — تبقى محفوظة مؤقتاً أثناء البحث والتنقل بين الأسماء، ثم اضغطي "حفظ كل العلامات المُدخَلة" مرة واحدة، أو زر "حفظ" بجانب كل طالب على حدة إن رغبتِ بحفظه فوراً.`}</p>
   </div>
 
   <div class="card">
@@ -1155,9 +1156,9 @@ function satRender() {
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${modelNum}</td>
       ${ME?.role==='admin' ? `<td style="font-weight:700">${r.nomination_score!=null ? r.nomination_score : '—'}</td>` : ''}
-      <td><input type="number" min="0" max="50" step="0.5" class="sat-score-input" value="${SAT_DRAFT_SCORES[r.id] !== undefined ? SAT_DRAFT_SCORES[r.id] : (r.ability_test_score!=null ? r.ability_test_score : '')}" style="width:70px" oninput="satDraftInput('${r.id}', this.value)" onkeydown="if(event.key==='Enter')satSaveScore('${r.id}')"></td>
+      <td><input type="number" min="0" max="50" step="0.5" class="sat-score-input" value="${SAT_DRAFT_SCORES[r.id] !== undefined ? SAT_DRAFT_SCORES[r.id] : (r.ability_test_score!=null ? r.ability_test_score : '')}" style="width:70px" ${ME?.role==='fitness_coach' ? 'disabled' : ''} oninput="satDraftInput('${r.id}', this.value)" onkeydown="if(event.key==='Enter')satSaveScore('${r.id}')"></td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSaveScore('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button>
+        ${ME?.role!=='fitness_coach' ? `<button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSaveScore('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button>` : ''}
         ${['ability_test_passed','rejected'].includes(r.status) ? `<span style="margin-inline-start:6px;font-weight:700">${SP_STATUS[r.status].label}</span>` : ''}
       </td>
     </tr>`;

@@ -30,7 +30,7 @@ async function doLogin() {
   const r = await api('/api/login', 'POST', { username, password });
   btn.disabled = false; btn.textContent = 'دخول';
   if (r.error) { err.innerHTML = `<div class="err">${fEsc(r.error)}</div>`; return; }
-  if (!['admin','sports_reviewer'].includes(r.user.role)) {
+  if (!['admin','sports_reviewer','fitness_coach'].includes(r.user.role)) {
     err.innerHTML = '<div class="err">هذا الحساب لا يملك صلاحية الوصول لشاشة اختبار اللياقة</div>';
     return;
   }
