@@ -1433,6 +1433,8 @@ function scOpenPrintFields(mode) {
   document.getElementById('sc-modal-body').innerHTML = `
     <h3>${mode==='final' ? 'بيانات إضافية تُعرض في كشف العلامات النهائي' : 'بيانات إضافية تُعرض للجنة في الكشف'}</h3>
     <div class="fg" style="margin-bottom:10px"><label>الجنس</label><select id="sc-print-gender"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select></div>
+    <div class="fg" style="margin-bottom:10px"><label>أعمدة فارغة إضافية (اختياري)</label><input type="text" id="sc-print-extra-cols" placeholder="مثال: ملاحظات، توقيع"></div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">افصلي بين عناوين الأعمدة بفاصلة — تُضاف كأعمدة فارغة إضافية بعد أعمدة اللجنة، ليُكتَب بها يدوياً بعد الطباعة (مثال: عضو لجنة إضافي غير مسجَّل بالنظام، أو ملاحظات).</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${SC_SHEET_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sc-sheet-col" value="${f.key}"> ${f.label}</label>`).join('')}
@@ -1591,6 +1593,7 @@ function scPrintGradingSheet() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
+  const extraColTitles = (document.getElementById('sc-print-extra-cols')?.value || '').split(/[,،]/).map(s=>s.trim()).filter(Boolean);
   const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
@@ -1608,9 +1611,10 @@ function scPrintGradingSheet() {
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('')}
+      ${extraColTitles.map(t=>`<th>${spEsc(t)}</th>`).join('')}
       <th>المجموع (من 60)</th>
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${members.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
+      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${members.map(()=>`<td style="height:30px"></td>`).join('')}${extraColTitles.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
     </tbody></table>`;
   openPrint(html);
   scCloseModal();
@@ -1621,6 +1625,7 @@ function scPrintFinalReport() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
+  const extraColTitles = (document.getElementById('sc-print-extra-cols')?.value || '').split(/[,،]/).map(s=>s.trim()).filter(Boolean);
   const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
@@ -1638,12 +1643,13 @@ function scPrintFinalReport() {
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('')}
+      ${extraColTitles.map(t=>`<th>${spEsc(t)}</th>`).join('')}
       <th>علامة الاختبار (60)</th><th>علامة الثانوية (20)</th><th>علامة نوع النموذج (20)</th><th>العلامة النهائية</th>
     </tr></thead><tbody>
       ${rows.map((r,i) => {
         const scores = r.committee_scores || [];
         const nom = r.nomination_score!=null ? r.nomination_score : (spNominationScore(r.nomination_type) || 0);
-        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}<td style="text-align:center">${r.committee_score!=null?spPct(r.committee_score):'—'}</td><td style="text-align:center">${r.hs_score!=null?spPct(r.hs_score):'—'}</td><td style="text-align:center">${spPct(nom)}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`;
+        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}${extraColTitles.map(()=>`<td style="height:30px"></td>`).join('')}<td style="text-align:center">${r.committee_score!=null?spPct(r.committee_score):'—'}</td><td style="text-align:center">${r.hs_score!=null?spPct(r.hs_score):'—'}</td><td style="text-align:center">${spPct(nom)}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`;
       }).join('')}
     </tbody></table>
     ${spSignatureBlockHTML()}`;
