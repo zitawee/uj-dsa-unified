@@ -1346,6 +1346,7 @@ async function loadSportsCommittee() {
   if (!Array.isArray(rows)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
   SP_ROWS = rows;
   SP_SETTINGS = settings || {};
+  SC_DRAFT_SCORES = {}; // بيانات جديدة من الخادم، فأي مسودات سابقة أصبحت غير ذات معنى
   if (!SP_SETTINGS.committee_members_by_game) SP_SETTINGS.committee_members_by_game = {};
   if (!SC_CURRENT_GAME) SC_CURRENT_GAME = SP_GAME_TYPES[0];
 
@@ -1380,12 +1381,11 @@ function scRenderGameBody() {
   if (!container) return;
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   const n = members.length;
-  const per = 60;
 
   container.innerHTML = `
   <div class="card">
     <div style="font-weight:700;color:var(--g);margin-bottom:8px">أعضاء لجنة "${spEsc(SC_CURRENT_GAME)}" (من 3 إلى 5 أعضاء)</div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">يمنح كل عضو علامة كاملة من (60)، وتُحتسَب علامة اللجنة تلقائياً كمتوسط علامات جميع الأعضاء المُدخَلين (يبقى الناتج دائماً من 60 كحد أقصى). تُحتسَب العلامة النهائية من: علامة اللجنة (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). الاسم الوظيفي يظهر في كشف العلامات النهائي للتوقيع. هذه اللجنة خاصة بلعبة "${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}" فقط ومستقلة عن بقية الألعاب.</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تُدخَل "علامة الاختبار" مباشرة كرقم واحد من (60) بعد اتفاق أعضاء اللجنة عليها معاً — لا حاجة لعلامة منفصلة لكل عضو. تُحتسَب العلامة النهائية تلقائياً من: علامة الاختبار (60%) + علامة الثانوية (20%) + علامة نوع نموذج التفوق الرياضي الثابتة (20%). أسماء الأعضاء وصفاتهم الوظيفية تُستخدَم فقط لعرضها والتوقيع عليها في نهاية الكشف المطبوع. هذه اللجنة خاصة بلعبة "${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}" فقط ومستقلة عن بقية الألعاب.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
       ${[0,1,2,3,4].map(i => `
       <div style="border:1px solid var(--border);border-radius:var(--r);padding:8px">
@@ -1415,11 +1415,11 @@ function scRenderGameBody() {
     <div class="tw"><table>
       <thead><tr>
         <th>#</th><th>الاسم</th>
-        ${members.map(m=>`<th>${spEsc(m.name)}<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من ${per.toFixed(1)})</span></th>`).join('')}
         <th>علامة الاختبار<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 60)</span></th>
         <th>علامة الثانوية<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 20)</span></th>
         <th>علامة نوع النموذج<br><span style="font-weight:400;font-size:10px;color:var(--muted)">(من 20)</span></th>
         <th>العلامة النهائية</th>
+        <th></th>
       </tr></thead>
       <tbody id="sc-tbody"></tbody>
     </table></div>`}
@@ -1443,9 +1443,8 @@ function scOpenPrintFields(mode) {
   document.getElementById('sc-modal-body').innerHTML = `
     <h3>${mode==='final' ? 'بيانات إضافية تُعرض في كشف العلامات النهائي' : 'بيانات إضافية تُعرض للجنة في الكشف'}</h3>
     <div class="fg" style="margin-bottom:10px"><label>الجنس</label><select id="sc-print-gender"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select></div>
-    ${mode!=='final' ? `<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:12px"><input type="checkbox" id="sc-print-include-members" checked> تضمين أعمدة أعضاء اللجنة (الأسماء)</label>` : ''}
     <div class="fg" style="margin-bottom:10px"><label>أعمدة فارغة إضافية (اختياري)</label><input type="text" id="sc-print-extra-cols" placeholder="مثال: ملاحظات، توقيع"></div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">افصلي بين عناوين الأعمدة بفاصلة — تُضاف كأعمدة فارغة إضافية بعد أعمدة اللجنة، ليُكتَب بها يدوياً بعد الطباعة (مثال: عضو لجنة إضافي غير مسجَّل بالنظام، أو ملاحظات).${mode!=='final' ? ' يمكن أيضاً إلغاء تضمين أعمدة أعضاء اللجنة أعلاه، لتتّسع الأعمدة الإضافية أكثر للكتابة اليدوية.' : ''}</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">افصلي بين عناوين الأعمدة بفاصلة — تُضاف كأعمدة فارغة إضافية، ليُكتَب بها يدوياً بعد الطباعة (مثال: ملاحظات). أسماء أعضاء اللجنة وصفاتهم الوظيفية تظهر تلقائياً كمربّع توقيع في آخر الكشف، وليس كأعمدة.</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${SC_SHEET_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sc-sheet-col" value="${f.key}"> ${f.label}</label>`).join('')}
@@ -1471,13 +1470,10 @@ async function scSaveCommittee() {
 
 // يحسب العلامة النهائية الحالية لصف (أو null إن لم تُدخَل أي علامة بعد) — تُستخدم لأغراض الترتيب فقط
 function spFinalScoreOf(r) {
-  const scores = r.committee_scores || [];
   const hs = r.gpa ? (parseFloat(r.gpa) * 0.2) : 0;
   const nom = r.nomination_score!=null ? r.nomination_score : (spNominationScore(r.nomination_type) || 0);
-  const filled = scores.filter(v => v != null && v !== '');
-  if (!filled.length) return null;
-  const cscore = filled.reduce((a,b)=>a+(+b||0),0) / filled.length;
-  return cscore + hs + nom;
+  if (r.committee_score == null) return null;
+  return r.committee_score + hs + nom;
 }
 
 // دالة ترتيب مشتركة تُطبَّق على الجدول المعروض بالشاشة وعلى الكشوف المطبوعة كليهما، حسب قائمة "الترتيب" الحالية
@@ -1496,41 +1492,58 @@ function scSortRows(rows) {
   return rows.slice().sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
 }
 
+let SC_DRAFT_SCORES = {}; // علامات "اختبار اللجنة" المُدخَلة ولم تُحفَظ بعد (id => قيمة) — تبقى محفوظة محلياً حتى عند تغيير الترتيب
+
 function scRenderTable() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   const tbody = document.getElementById('sc-tbody');
   if (!tbody) return;
   let rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && ['ability_test_passed','passed'].includes(r.status));
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة اجتازوا اختبار القدرات للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="center">لا يوجد طلبة اجتازوا اختبار القدرات للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
   rows = scSortRows(rows);
-  const per = 60;
   tbody.innerHTML = rows.map((r,i) => {
-    const scores = r.committee_scores || [];
     const hs = r.gpa ? (parseFloat(r.gpa) * 0.2) : 0;
     const nom = r.nomination_score!=null ? r.nomination_score : (spNominationScore(r.nomination_type) || 0);
-    const filled = scores.filter(v => v != null && v !== '');
-    const cscore = filled.length ? filled.reduce((a,b)=>a+(+b||0),0) / filled.length : null;
+    const val = SC_DRAFT_SCORES[r.id] !== undefined ? SC_DRAFT_SCORES[r.id] : (r.committee_score!=null ? r.committee_score : '');
+    const cscore = (val !== '' && val != null && !isNaN(parseFloat(val))) ? parseFloat(val) : null;
     return `<tr data-id="${r.id}" data-hs="${hs}" data-nom="${nom}">
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)} <button class="btn btn-sm" style="padding:2px 6px" onclick="scViewApplicant('${r.id}')" title="عرض بيانات الطالب"><i class="ti ti-eye"></i></button></td>
-      ${members.map((m,mi) => `<td><input type="number" min="0" max="${per}" step="0.5" class="sc-score" style="width:64px" value="${scores[mi]!=null?scores[mi]:''}" oninput="scRecalc(this)"></td>`).join('')}
-      <td class="sc-cscore">${cscore!=null ? spPct(cscore) : '—'}</td>
+      <td><input type="number" min="0" max="60" step="0.5" class="sc-score-input" style="width:70px" value="${val}" oninput="scDraftInput('${r.id}', this.value); scRecalc(this)" onkeydown="if(event.key==='Enter')scSaveScore('${r.id}')"></td>
       <td>${spPct(hs)}</td>
       <td>${spPct(nom)}</td>
       <td class="sc-final" style="font-weight:700">${cscore!=null ? spPct(cscore+hs+nom) : '—'}</td>
+      <td><button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="scSaveScore('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button></td>
     </tr>`;
   }).join('');
+}
+
+function scDraftInput(id, val) {
+  if (val === '') delete SC_DRAFT_SCORES[id];
+  else SC_DRAFT_SCORES[id] = val;
 }
 
 function scRecalc(input) {
   const tr = input.closest('tr');
   const hs = parseFloat(tr.dataset.hs) || 0;
   const nom = parseFloat(tr.dataset.nom) || 0;
-  const vals = Array.from(tr.querySelectorAll('.sc-score')).map(el => el.value === '' ? null : parseFloat(el.value));
-  const filled = vals.filter(v => v != null);
-  const cscore = filled.length ? filled.reduce((a,b)=>a+b, 0) / filled.length : null;
-  tr.querySelector('.sc-cscore').textContent = cscore!=null ? spPct(cscore) : '—';
-  tr.querySelector('.sc-final').textContent = cscore!=null ? spPct(cscore+hs+nom) : '—';
+  const v = input.value === '' ? null : parseFloat(input.value);
+  tr.querySelector('.sc-final').textContent = v!=null && !isNaN(v) ? spPct(v+hs+nom) : '—';
+}
+
+async function scSaveScore(id) {
+  const tr = document.querySelector(`#sc-tbody tr[data-id="${id}"]`);
+  const input = tr?.querySelector('.sc-score-input');
+  const val = input ? parseFloat(input.value) : NaN;
+  if (input && input.value.trim() !== '' && (isNaN(val) || val < 0 || val > 60)) { alert('يرجى إدخال علامة صحيحة بين 0 و60'); return; }
+  if (input && input.value.trim() === '') { alert('يرجى إدخال العلامة أولاً'); return; }
+  const hs = parseFloat(tr.dataset.hs) || 0;
+  const nom = parseFloat(tr.dataset.nom) || 0;
+  const final_score = val + hs + nom;
+  const r = await api('/api/sports_excellence/'+id, 'PUT', { committee_score: val, hs_score: hs, nomination_score: nom, final_score });
+  if (r.error) { alert(r.error); return; }
+  delete SC_DRAFT_SCORES[id];
+  loadSportsCommittee();
 }
 
 // عرض سريع (للقراءة فقط) لبيانات الطالب من شاشة علامات اللجنة، دون مغادرتها
@@ -1568,22 +1581,23 @@ function scViewApplicant(id) {
 }
 
 async function scSaveAll() {
-  const trs = Array.from(document.querySelectorAll('#sc-tbody tr[data-id]'));
-  if (!trs.length) return;
-  const jobs = trs.map(tr => {
-    const id = tr.dataset.id;
-    const hs = parseFloat(tr.dataset.hs) || 0;
-    const nom = parseFloat(tr.dataset.nom) || 0;
-    const committee_scores = Array.from(tr.querySelectorAll('.sc-score')).map(el => el.value === '' ? null : parseFloat(el.value));
-    const filled = committee_scores.filter(v => v != null);
-    const committee_total = filled.length ? filled.reduce((a,b)=>a+b, 0) : null; // مجموع خام (للمرجعية فقط)
-    const committee_score = filled.length ? committee_total / filled.length : null; // متوسط علامات الأعضاء (من 60)
-    const final_score = filled.length ? committee_score + hs + nom : null;
-    return api('/api/sports_excellence/'+id, 'PUT', { committee_scores, committee_total, committee_score, hs_score: hs, nomination_score: nom, final_score });
-  });
-  const results = await Promise.all(jobs);
-  if (results.some(r => r && r.error)) { alert('حدث خطأ أثناء حفظ بعض العلامات'); return; }
-  alert('✅ تم حفظ جميع العلامات بنجاح');
+  const entries = Object.entries(SC_DRAFT_SCORES).filter(([id,val]) => String(val).trim() !== '');
+  if (!entries.length) { alert('لا توجد علامات مُدخَلة لم تُحفَظ بعد'); return; }
+  const invalid = entries.find(([id,val]) => isNaN(parseFloat(val)) || parseFloat(val) < 0 || parseFloat(val) > 60);
+  if (invalid) { alert('توجد علامة غير صحيحة (يجب أن تكون بين 0 و60) لأحد الطلبة، يرجى مراجعتها قبل الحفظ'); return; }
+  if (!confirm(`سيتم حفظ ${entries.length} علامة الآن. متابعة؟`)) return;
+  let failed = 0;
+  for (const [id, val] of entries) {
+    const tr = document.querySelector(`#sc-tbody tr[data-id="${id}"]`);
+    const hs = parseFloat(tr?.dataset.hs) || 0;
+    const nom = parseFloat(tr?.dataset.nom) || 0;
+    const score = parseFloat(val);
+    const final_score = score + hs + nom;
+    const r = await api('/api/sports_excellence/'+id, 'PUT', { committee_score: score, hs_score: hs, nomination_score: nom, final_score });
+    if (r.error) failed++;
+  }
+  if (failed) alert(`تعذّر حفظ ${failed} من العلامات، يرجى إعادة المحاولة لها`);
+  else alert('✅ تم حفظ جميع العلامات بنجاح');
   loadSportsCommittee();
 }
 
@@ -1604,13 +1618,11 @@ function scPrintGradingSheet() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
-  const includeMembers = document.getElementById('sc-print-include-members')?.checked !== false;
   const extraColTitles = (document.getElementById('sc-print-extra-cols')?.value || '').split(/[,،]/).map(s=>s.trim()).filter(Boolean);
   const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && ['ability_test_passed','passed'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
-  const per = '60';
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
     <div class="ph2">
@@ -1622,12 +1634,13 @@ function scPrintGradingSheet() {
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
-      ${includeMembers ? members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('') : ''}
+      <th style="min-width:120px">علامة الاختبار (من 60)</th>
       ${extraColTitles.map(t=>`<th style="min-width:110px">${spEsc(t)}</th>`).join('')}
-      ${includeMembers ? `<th>المجموع (من 60)</th>` : ''}
+      <th style="min-width:110px">العلامة النهائية</th>
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}${includeMembers ? members.map(()=>`<td style="height:36px"></td>`).join('') : ''}${extraColTitles.map(()=>`<td style="height:36px;min-width:110px"></td>`).join('')}${includeMembers ? `<td></td>` : ''}</tr>`).join('')}
-    </tbody></table>`;
+      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}<td style="height:36px"></td>${extraColTitles.map(()=>`<td style="height:36px;min-width:110px"></td>`).join('')}<td style="height:36px"></td></tr>`).join('')}
+    </tbody></table>
+    ${spSignatureBlockHTML()}`;
   openPrint(html);
   scCloseModal();
 }
@@ -1654,14 +1667,12 @@ function scPrintFinalReport() {
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
-      ${members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('')}
       ${extraColTitles.map(t=>`<th style="min-width:110px">${spEsc(t)}</th>`).join('')}
       <th>علامة الاختبار (60)</th><th>علامة الثانوية (20)</th><th>علامة نوع النموذج (20)</th><th>العلامة النهائية</th>
     </tr></thead><tbody>
       ${rows.map((r,i) => {
-        const scores = r.committee_scores || [];
         const nom = r.nomination_score!=null ? r.nomination_score : (spNominationScore(r.nomination_type) || 0);
-        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}${extraColTitles.map(()=>`<td style="height:36px;min-width:110px"></td>`).join('')}<td style="text-align:center">${r.committee_score!=null?spPct(r.committee_score):'—'}</td><td style="text-align:center">${r.hs_score!=null?spPct(r.hs_score):'—'}</td><td style="text-align:center">${spPct(nom)}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`;
+        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}${extraColTitles.map(()=>`<td style="height:36px;min-width:110px"></td>`).join('')}<td style="text-align:center">${r.committee_score!=null?spPct(r.committee_score):'—'}</td><td style="text-align:center">${r.hs_score!=null?spPct(r.hs_score):'—'}</td><td style="text-align:center">${spPct(nom)}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`;
       }).join('')}
     </tbody></table>
     ${spSignatureBlockHTML()}`;
