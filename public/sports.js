@@ -1433,8 +1433,9 @@ function scOpenPrintFields(mode) {
   document.getElementById('sc-modal-body').innerHTML = `
     <h3>${mode==='final' ? 'بيانات إضافية تُعرض في كشف العلامات النهائي' : 'بيانات إضافية تُعرض للجنة في الكشف'}</h3>
     <div class="fg" style="margin-bottom:10px"><label>الجنس</label><select id="sc-print-gender"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select></div>
+    ${mode!=='final' ? `<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:12px"><input type="checkbox" id="sc-print-include-members" checked> تضمين أعمدة أعضاء اللجنة (الأسماء)</label>` : ''}
     <div class="fg" style="margin-bottom:10px"><label>أعمدة فارغة إضافية (اختياري)</label><input type="text" id="sc-print-extra-cols" placeholder="مثال: ملاحظات، توقيع"></div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">افصلي بين عناوين الأعمدة بفاصلة — تُضاف كأعمدة فارغة إضافية بعد أعمدة اللجنة، ليُكتَب بها يدوياً بعد الطباعة (مثال: عضو لجنة إضافي غير مسجَّل بالنظام، أو ملاحظات).</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">افصلي بين عناوين الأعمدة بفاصلة — تُضاف كأعمدة فارغة إضافية بعد أعمدة اللجنة، ليُكتَب بها يدوياً بعد الطباعة (مثال: عضو لجنة إضافي غير مسجَّل بالنظام، أو ملاحظات).${mode!=='final' ? ' يمكن أيضاً إلغاء تضمين أعمدة أعضاء اللجنة أعلاه، لتتّسع الأعمدة الإضافية أكثر للكتابة اليدوية.' : ''}</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${SC_SHEET_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sc-sheet-col" value="${f.key}"> ${f.label}</label>`).join('')}
@@ -1593,6 +1594,7 @@ function scPrintGradingSheet() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
+  const includeMembers = document.getElementById('sc-print-include-members')?.checked !== false;
   const extraColTitles = (document.getElementById('sc-print-extra-cols')?.value || '').split(/[,،]/).map(s=>s.trim()).filter(Boolean);
   const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
@@ -1610,11 +1612,11 @@ function scPrintGradingSheet() {
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
-      ${members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('')}
+      ${includeMembers ? members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('') : ''}
       ${extraColTitles.map(t=>`<th>${spEsc(t)}</th>`).join('')}
-      <th>المجموع (من 60)</th>
+      ${includeMembers ? `<th>المجموع (من 60)</th>` : ''}
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${members.map(()=>`<td style="height:30px"></td>`).join('')}${extraColTitles.map(()=>`<td style="height:30px"></td>`).join('')}<td></td></tr>`).join('')}
+      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${includeMembers ? members.map(()=>`<td style="height:32px"></td>`).join('') : ''}${extraColTitles.map(()=>`<td style="height:32px"></td>`).join('')}${includeMembers ? `<td></td>` : ''}</tr>`).join('')}
     </tbody></table>`;
   openPrint(html);
   scCloseModal();
