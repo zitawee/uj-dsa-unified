@@ -99,6 +99,16 @@ function spFieldValue(r, key) {
   }
 }
 
+// نسخة مختصرة من spFieldValue مخصَّصة للكشوف المطبوعة فقط (لا تُستخدَم بالعرض الشاشي أو التصدير):
+// تعرض رقم نموذج التفوق الرياضي فقط (مثلاً "4") بدل الوصف الكامل الطويل، لتوفير مساحة أفقية بالكشف
+function spFieldValuePrint(r, key) {
+  if (key === 'nomination_type') {
+    const nomEntry = SP_NOMINATION_TYPES.find(t => t.label === r.nomination_type);
+    return nomEntry ? String(nomEntry.num) : '';
+  }
+  return spFieldValue(r, key);
+}
+
 // يُستدعى مرة واحدة بعد الدخول (admin فقط) لتعبئة عدّاد الشريط الجانبي دون تحميل اللوحة كاملة
 async function spLoadBadgeCount() {
   try {
@@ -1613,10 +1623,10 @@ function scPrintGradingSheet() {
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${includeMembers ? members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('') : ''}
-      ${extraColTitles.map(t=>`<th>${spEsc(t)}</th>`).join('')}
+      ${extraColTitles.map(t=>`<th style="min-width:110px">${spEsc(t)}</th>`).join('')}
       ${includeMembers ? `<th>المجموع (من 60)</th>` : ''}
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${includeMembers ? members.map(()=>`<td style="height:32px"></td>`).join('') : ''}${extraColTitles.map(()=>`<td style="height:32px"></td>`).join('')}${includeMembers ? `<td></td>` : ''}</tr>`).join('')}
+      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}${includeMembers ? members.map(()=>`<td style="height:36px"></td>`).join('') : ''}${extraColTitles.map(()=>`<td style="height:36px;min-width:110px"></td>`).join('')}${includeMembers ? `<td></td>` : ''}</tr>`).join('')}
     </tbody></table>`;
   openPrint(html);
   scCloseModal();
@@ -1645,13 +1655,13 @@ function scPrintFinalReport() {
       <th>#</th><th>اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${members.map(m=>`<th>${spEsc(m.name)}<br>(من ${per})</th>`).join('')}
-      ${extraColTitles.map(t=>`<th>${spEsc(t)}</th>`).join('')}
+      ${extraColTitles.map(t=>`<th style="min-width:110px">${spEsc(t)}</th>`).join('')}
       <th>علامة الاختبار (60)</th><th>علامة الثانوية (20)</th><th>علامة نوع النموذج (20)</th><th>العلامة النهائية</th>
     </tr></thead><tbody>
       ${rows.map((r,i) => {
         const scores = r.committee_scores || [];
         const nom = r.nomination_score!=null ? r.nomination_score : (spNominationScore(r.nomination_type) || 0);
-        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValue(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}${extraColTitles.map(()=>`<td style="height:30px"></td>`).join('')}<td style="text-align:center">${r.committee_score!=null?spPct(r.committee_score):'—'}</td><td style="text-align:center">${r.hs_score!=null?spPct(r.hs_score):'—'}</td><td style="text-align:center">${spPct(nom)}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`;
+        return `<tr><td style="text-align:center">${i+1}</td><td style="text-align:right">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}${members.map((m,mi)=>`<td style="text-align:center">${scores[mi]!=null?scores[mi]:'—'}</td>`).join('')}${extraColTitles.map(()=>`<td style="height:36px;min-width:110px"></td>`).join('')}<td style="text-align:center">${r.committee_score!=null?spPct(r.committee_score):'—'}</td><td style="text-align:center">${r.hs_score!=null?spPct(r.hs_score):'—'}</td><td style="text-align:center">${spPct(nom)}</td><td style="font-weight:700;text-align:center">${r.final_score!=null?spPct(r.final_score):'—'}</td></tr>`;
       }).join('')}
     </tbody></table>
     ${spSignatureBlockHTML()}`;
