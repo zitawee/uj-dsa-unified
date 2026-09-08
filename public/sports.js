@@ -1500,7 +1500,7 @@ function scRenderTable() {
   const members = spCommitteeMembers(SC_CURRENT_GAME);
   const tbody = document.getElementById('sc-tbody');
   if (!tbody) return;
-  let rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status));
+  let rows = SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && ['ability_test_passed','passed'].includes(r.status));
   if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${2+members.length+4}" class="center">لا يوجد طلبة اجتازوا اختبار القدرات للعبة "${spEsc(SC_CURRENT_GAME)}" بعد</td></tr>`; return; }
   rows = scSortRows(rows);
   const per = 60;
@@ -1606,7 +1606,7 @@ function scPrintGradingSheet() {
   const fGender = document.getElementById('sc-print-gender')?.value || '';
   const includeMembers = document.getElementById('sc-print-include-members')?.checked !== false;
   const extraColTitles = (document.getElementById('sc-print-extra-cols')?.value || '').split(/[,،]/).map(s=>s.trim()).filter(Boolean);
-  const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender)));
+  const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && ['ability_test_passed','passed'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
@@ -1638,7 +1638,7 @@ function scPrintFinalReport() {
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
   const extraColTitles = (document.getElementById('sc-print-extra-cols')?.value || '').split(/[,،]/).map(s=>s.trim()).filter(Boolean);
-  const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && !['pending','accepted_exam'].includes(r.status) && (!fGender || r.gender === fGender)));
+  const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && ['ability_test_passed','passed'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sc-sheet-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
