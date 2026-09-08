@@ -1632,7 +1632,7 @@ function scPrintGradingSheet() {
     </div>
     <div class="ptitle">كشف تقييم لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}${fGender ? ' — ' + spEsc(fGender) : ''}</div>
     <table class="ptbl" style="table-layout:fixed;width:100%"><thead><tr>
-      <th>#</th><th style="min-width:200px;width:200px">اسم الطالب</th>
+      <th style="width:30px">#</th><th style="min-width:200px;width:200px">اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       <th style="width:90px">علامة الاختبار (من 60)</th>
       ${extraColTitles.map(t=>`<th style="width:70px">${spEsc(t)}</th>`).join('')}
@@ -1665,7 +1665,7 @@ function scPrintFinalReport() {
     </div>
     <div class="ptitle">كشف علامات لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}${fGender ? ' — ' + spEsc(fGender) : ''}</div>
     <table class="ptbl" style="table-layout:fixed;width:100%"><thead><tr>
-      <th>#</th><th style="min-width:200px;width:200px">اسم الطالب</th>
+      <th style="width:30px">#</th><th style="min-width:200px;width:200px">اسم الطالب</th>
       ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
       ${extraColTitles.map(t=>`<th style="width:70px">${spEsc(t)}</th>`).join('')}
       <th style="width:90px">علامة الاختبار (60)</th><th style="width:90px">علامة الثانوية (20)</th><th style="width:90px">علامة نوع النموذج (20)</th><th style="width:90px">العلامة النهائية</th>
