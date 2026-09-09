@@ -241,7 +241,7 @@ async function loadSports() {
       <thead><tr>
         ${ME?.role==='admin' ? `<th style="width:36px"><input type="checkbox" id="sp-check-all" onchange="spToggleAllRows(this.checked)"></th>` : ''}
         ${ME?.role==='admin' ? `<th style="width:40px">مقبول</th>` : ''}
-        <th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th id="sp-major-col-th">التخصص الأول</th><th>المعدل</th><th>الرقم المرجعي للشهادة</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
+        <th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th id="sp-major-col-th">التخصص الأول</th><th>المعدل</th><th>علامة الاختبار</th><th>العلامة النهائية</th><th>رقم الشهادة</th><th>الحالة</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="tbl-sports-body"></tbody>
     </table></div>
@@ -300,7 +300,7 @@ function spRender() {
   const majorColTh = document.getElementById('sp-major-col-th');
   if (majorColTh) majorColTh.textContent = ['التخصص الأول','التخصص الثاني','التخصص الثالث'][majorIdx];
   const tb = document.getElementById('tbl-sports-body');
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="14" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="13" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
       ${ME?.role==='admin' ? `<td style="text-align:center"><input type="checkbox" class="sp-row-chk" value="${r.id}" onchange="spUpdateSelCount()"></td>` : ''}
@@ -311,10 +311,10 @@ function spRender() {
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${spEsc((r.majors||[])[majorIdx]||'')}</td>
       <td>${spEsc(r.gpa)}%</td>
-      <td>${r.cert_ref_code ? `<a href="#" onclick="spViewCertByRef('${spEsc(r.cert_ref_code)}');return false" style="font-family:monospace;color:var(--g);font-weight:700;text-decoration:underline">${spEsc(r.cert_ref_code)}</a>` : `<span style="background:#FCEBEB;color:#791F1F;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px">⚠️ بلا شهادة مرتبطة</span>`}</td>
+      <td>${r.committee_score!=null ? spPct(r.committee_score) : '—'}</td>
       <td style="font-weight:700">${r.final_score!=null ? spPct(r.final_score) : '—'}</td>
+      <td>${r.cert_ref_code ? `<a href="#" onclick="spViewCertByRef('${spEsc(r.cert_ref_code)}');return false" style="font-family:monospace;color:var(--g);font-weight:700;text-decoration:underline">${spEsc(r.cert_ref_code)}</a>` : `<span style="background:#FCEBEB;color:#791F1F;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px">⚠️ بلا شهادة مرتبطة</span>`}</td>
       <td class="sp-status-cell">${spBadge(r.status)}</td>
-      <td>${spDate(r.createdAt)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="spView('${r.id}')"><i class="ti ti-eye"></i></button>
         <button class="btn btn-sm" onclick="spPrintOne('${r.id}')"><i class="ti ti-printer"></i></button>
