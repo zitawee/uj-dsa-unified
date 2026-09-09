@@ -216,9 +216,12 @@ async function loadSports() {
       <select id="sp-f-status" onchange="spRender()"><option value="">كل الحالات</option>${Object.entries(SP_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select>
       <select id="sp-f-gov" onchange="spRender()"><option value="">كل المحافظات</option>${[...new Set(rows.map(r=>r.governorate).filter(Boolean))].map(g=>`<option>${g}</option>`).join('')}</select>
       <select id="sp-f-game" onchange="spRender()"><option value="">كل الألعاب</option>${SP_GAME_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+      <select id="sp-f-priority" onchange="spRender()"><option value="">كل الأولويات</option><option value="0">التخصص الأول</option><option value="1">التخصص الثاني</option><option value="2">التخصص الثالث</option></select>
+      <select id="sp-f-track" onchange="spRender()"><option value="">كل المسارات</option><option value="other">الكليات الجامعية (عدا علوم الرياضة)</option><option value="sports">كلية علوم الرياضة</option></select>
       <select id="sp-sort" onchange="spRender()"><option value="date_desc">الأحدث</option><option value="score_desc">الأعلى علامة</option><option value="score_asc">الأدنى علامة</option></select>
       <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;white-space:nowrap;background:#FCEBEB;color:#791F1F;padding:0 10px;border-radius:var(--r)"><input type="checkbox" id="sp-f-nocert" onchange="spRender()"> ⚠️ إظهار غير المرتبطة بشهادة فقط</label>
     </div>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">فلتر "الأولوية/المسار" يعتمد على تخصصات الطالب المُختارة عند التقديم (وليس الحالة الحالية) — مثال: "التخصص الأول" + "علوم الرياضة" يعرض فقط من اختار أحد تخصصَي علوم الرياضة كأولوية أولى. ترك أحد الفلترين على "الكل" يوسِّع النتيجة تلقائياً (فمثلاً "علوم الرياضة" بمفرده دون تحديد أولوية يعرض من اختارها في أي من أولوياته الثلاث).</p>
   </div>
 
   ${ME?.role==='admin' ? `
@@ -256,17 +259,31 @@ async function loadSports() {
   spRender();
 }
 
+// يحدد "مسار" تخصص معيّن: هل هو أحد تخصصَي كلية علوم الرياضة أم أي تخصص آخر (كليات جامعية عادية)
+function spMajorTrack(major) {
+  return (SP_MAJORS['كلية علوم الرياضة']||[]).includes(major) ? 'sports' : 'other';
+}
+
 function spRender() {
   const q = (document.getElementById('sp-q')?.value || '').trim().toLowerCase();
   const fStatus = document.getElementById('sp-f-status')?.value || '';
   const fGov = document.getElementById('sp-f-gov')?.value || '';
   const fAct = document.getElementById('sp-f-game')?.value || '';
+  const fPriority = document.getElementById('sp-f-priority')?.value || '';
+  const fTrack = document.getElementById('sp-f-track')?.value || '';
   const fNoCert = document.getElementById('sp-f-nocert')?.checked || false;
   const sort = document.getElementById('sp-sort')?.value || 'date_desc';
   let rows = SP_ROWS.filter(r => {
     if (fStatus && (r.status || 'pending') !== fStatus) return false;
     if (fGov && r.governorate !== fGov) return false;
     if (fAct && !(r.game_types||[]).includes(fAct)) return false;
+    if (fTrack) {
+      const majors = r.majors || [];
+      if (fPriority !== '') {
+        const m = majors[parseInt(fPriority)];
+        if (!m || spMajorTrack(m) !== fTrack) return false;
+      } else if (!majors.some(m => spMajorTrack(m) === fTrack)) return false;
+    }
     if (fNoCert && r.cert_ref_code) return false;
     if (q) {
       const hay = [r.full_name, r.phone, r.phone_alt, r.school, r.ref_code].join(' ').toLowerCase();
