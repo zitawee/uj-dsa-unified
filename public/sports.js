@@ -327,9 +327,9 @@ async function spDeleteSelected() {
 }
 
 // وضع/إزالة إشارة "مقبول" مباشرة من الجدول — تُحفظ فوراً في قاعدة البيانات
-// (تُستخدم status='passed' كعلامة القبول النهائي؛ إلغاء التحديد يعيدها إلى "قيد المراجعة")
+// (تُستخدم status='passed' كعلامة القبول النهائي؛ إلغاء التحديد يعيدها إلى "اجتاز اختبار القدرات" — أي مرحلة ما بعد لجنة التحكيم مباشرة، وليس لبداية المسار)
 async function spToggleAccept(id, cb) {
-  const newStatus = cb.checked ? 'passed' : 'pending';
+  const newStatus = cb.checked ? 'passed' : 'ability_test_passed';
   cb.disabled = true;
   const res = await api('/api/sports_excellence/'+id, 'PUT', { status: newStatus });
   cb.disabled = false;
