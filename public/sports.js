@@ -860,7 +860,8 @@ function spOpenPassedListPrintFields() {
   if (!passedCount) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" حتى الآن'); return; }
   document.getElementById('sp-modal-body').innerHTML = `
     <h3>الحقول المطلوب إدراجها في كشف الناجحين</h3>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">عمود "اسم الطالب" يظهر دائماً. اختاري أي حقول إضافية تريدين عرضها بجانبه في الكشف المطبوع (${passedCount} طالب/طالبة).</div>
+    <div class="fg" style="margin-bottom:10px"><label>المسار</label><select id="sp-pl-track"><option value="">كل المسارات معاً (${passedCount} طالب/طالبة)</option><option value="other">الكليات الجامعية فقط (عدا علوم الرياضة)</option><option value="sports">كلية علوم الرياضة فقط</option></select></div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">التصنيف بحسب "التخصص الأول" الذي اختاره الطالب عند التقديم. عمود "اسم الطالب" يظهر دائماً — اختاري أي حقول إضافية تريدين عرضها بجانبه.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${SP_FIELDS.filter(f=>f.key!=='full_name').map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sp-pl-col" value="${f.key}"${SP_PASSED_LIST_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
     </div>
@@ -875,11 +876,14 @@ function spOpenPassedListPrintFields() {
 function spPrintPassedList() {
   const members = (SP_SETTINGS.higher_committee || []);
   if (!members.length) { alert('يرجى إدخال أسماء اللجنة العليا أولاً'); return; }
-  const passed = SP_ROWS.filter(r => r.status === 'passed')
-    .sort((a,b) => (a.game_types?.[0]||'').localeCompare(b.game_types?.[0]||'', 'ar') || (b.final_score||0)-(a.final_score||0));
-  if (!passed.length) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" حتى الآن'); return; }
+  const fTrack = document.getElementById('sp-pl-track')?.value || '';
+  let passed = SP_ROWS.filter(r => r.status === 'passed');
+  if (fTrack) passed = passed.filter(r => spMajorTrack((r.majors||[])[0]) === fTrack);
+  passed = passed.sort((a,b) => (a.game_types?.[0]||'').localeCompare(b.game_types?.[0]||'', 'ar') || (b.final_score||0)-(a.final_score||0));
+  if (!passed.length) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" مطابق لهذا المسار'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sp-pl-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
+  const trackSuffix = fTrack === 'sports' ? ' — كلية علوم الرياضة' : fTrack === 'other' ? ' — الكليات الجامعية' : '';
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
     <div class="ph2">
@@ -887,7 +891,7 @@ function spPrintPassedList() {
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
       <div class="pmeta">${spDate(new Date())}</div>
     </div>
-    <div class="ptitle">كشف أسماء الطلبة الناجحين — التفوق الرياضي</div>
+    <div class="ptitle">كشف أسماء الطلبة الناجحين — التفوق الرياضي${spEsc(trackSuffix)}</div>
     <div style="text-align:center;font-size:11pt;margin-bottom:10px">العدد الإجمالي: ${passed.length} طالب/طالبة</div>
     <table class="ptbl"><thead><tr>
       <th>#</th><th>اسم الطالب</th>
