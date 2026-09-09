@@ -1443,7 +1443,8 @@ function scOpenPrintFields(mode) {
   document.getElementById('sc-modal-body').innerHTML = `
     <h3>${mode==='final' ? 'بيانات إضافية تُعرض في كشف العلامات النهائي' : 'بيانات إضافية تُعرض للجنة في الكشف'}</h3>
     <div class="fg" style="margin-bottom:10px"><label>الجنس</label><select id="sc-print-gender"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select></div>
-    ${mode!=='final' ? `<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:12px"><input type="checkbox" id="sc-print-include-examscore" checked> تضمين عمود "علامة الاختبار (من 60)"</label>` : ''}
+    ${mode!=='final' ? `<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:8px"><input type="checkbox" id="sc-print-include-examscore" checked> تضمين عمود "علامة الاختبار (من 60)"</label>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:12px"><input type="checkbox" id="sc-print-include-finalscore" checked> تضمين عمود "العلامة النهائية"</label>` : ''}
     <div class="fg" style="margin-bottom:10px"><label>أعمدة فارغة إضافية (اختياري)</label><input type="text" id="sc-print-extra-cols" placeholder="مثال: ملاحظات، توقيع"></div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">افصلي بين عناوين الأعمدة بفاصلة — تُضاف كأعمدة فارغة إضافية، ليُكتَب بها يدوياً بعد الطباعة (مثال: ملاحظات).${mode!=='final' ? ' يمكن إلغاء تضمين عمود "علامة الاختبار" أعلاه إن كانت الأعمدة الإضافية (مثل تفاصيل مهارات معيّنة) تغني عنه.' : ''} أسماء أعضاء اللجنة وصفاتهم الوظيفية تظهر تلقائياً كمربّع توقيع في آخر الكشف، وليس كأعمدة.</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">تظهر هذه الحقول بجانب اسم الطالب في الكشف المطبوع.</div>
@@ -1620,6 +1621,7 @@ function scPrintGradingSheet() {
   if (!members.length) { alert('يرجى إدخال أسماء أعضاء لجنة هذه اللعبة أولاً'); return; }
   const fGender = document.getElementById('sc-print-gender')?.value || '';
   const includeExamScore = document.getElementById('sc-print-include-examscore')?.checked !== false;
+  const includeFinalScore = document.getElementById('sc-print-include-finalscore')?.checked !== false;
   const extraColTitles = (document.getElementById('sc-print-extra-cols')?.value || '').split(/[,،]/).map(s=>s.trim()).filter(Boolean);
   const rows = scSortRows(SP_ROWS.filter(r => (r.game_types||[]).includes(SC_CURRENT_GAME) && ['ability_test_passed','passed'].includes(r.status) && (!fGender || r.gender === fGender)));
   if (!rows.length) { alert('لا يوجد طلبة اجتازوا اختبار القدرات لهذه اللعبة (وفق الجنس المحدَّد) بعد'); return; }
@@ -1627,6 +1629,7 @@ function scPrintGradingSheet() {
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
+    <style>.ptbl th{background:#fff!important;color:#000!important;border:1px solid #333!important}</style>
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
@@ -1635,12 +1638,12 @@ function scPrintGradingSheet() {
     <div class="ptitle">كشف تقييم لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}${fGender ? ' — ' + spEsc(fGender) : ''}</div>
     <table class="ptbl" style="table-layout:fixed;width:100%"><thead><tr>
       <th style="width:30px">#</th><th style="min-width:200px;width:200px">اسم الطالب</th>
-      ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
+      ${extraCols.map(c=>`<th style="width:90px">${c.label}</th>`).join('')}
       ${includeExamScore ? `<th style="width:90px">علامة الاختبار (من 60)</th>` : ''}
       ${extraColTitles.map(t=>`<th style="width:70px">${spEsc(t)}</th>`).join('')}
-      <th style="width:90px">العلامة النهائية</th>
+      ${includeFinalScore ? `<th style="width:90px">العلامة النهائية</th>` : ''}
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}${includeExamScore ? `<td style="height:36px"></td>` : ''}${extraColTitles.map(()=>`<td style="height:36px"></td>`).join('')}<td style="height:36px"></td></tr>`).join('')}
+      ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${spEsc(r.full_name)}</td>${extraCols.map(c=>`<td style="text-align:center">${spEsc(spFieldValuePrint(r,c.key))}</td>`).join('')}${includeExamScore ? `<td style="height:36px"></td>` : ''}${extraColTitles.map(()=>`<td style="height:36px"></td>`).join('')}${includeFinalScore ? `<td style="height:36px"></td>` : ''}</tr>`).join('')}
     </tbody></table>
     ${spSignatureBlockHTML()}`;
   openPrint(html);
@@ -1660,6 +1663,7 @@ function scPrintFinalReport() {
   const per = '60';
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
+    <style>.ptbl th{background:#fff!important;color:#000!important;border:1px solid #333!important}</style>
     <div class="ph2">
       <img src="/logo.png" class="plogo" alt="شعار الجامعة الأردنية">
       <div class="puni"><div class="ar">الجامعة الأردنية</div><div class="en">The University of Jordan</div><div class="dep">عمادة شؤون الطلبة — Dean of Student Affairs</div></div>
@@ -1668,7 +1672,7 @@ function scPrintFinalReport() {
     <div class="ptitle">كشف علامات لجنة الاختبار — ${spEsc(spPrintGameLabel(SC_CURRENT_GAME))}${fGender ? ' — ' + spEsc(fGender) : ''}</div>
     <table class="ptbl" style="table-layout:fixed;width:100%"><thead><tr>
       <th style="width:30px">#</th><th style="min-width:200px;width:200px">اسم الطالب</th>
-      ${extraCols.map(c=>`<th>${c.label}</th>`).join('')}
+      ${extraCols.map(c=>`<th style="width:90px">${c.label}</th>`).join('')}
       ${extraColTitles.map(t=>`<th style="width:70px">${spEsc(t)}</th>`).join('')}
       <th style="width:90px">علامة الاختبار (60)</th><th style="width:90px">علامة الثانوية (20)</th><th style="width:90px">علامة نوع النموذج (20)</th><th style="width:90px">العلامة النهائية</th>
     </tr></thead><tbody>
