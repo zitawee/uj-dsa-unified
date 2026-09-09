@@ -681,13 +681,15 @@ function spOpenCustomList() {
       <div class="fg"><label>فرع الشهادة (اختياري)</label><select id="sp-cl-track"><option value="">الكل</option>${Object.entries(SP_TRACKS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
       <div class="fg"><label>الحالة (اختياري)</label><select id="sp-cl-status"><option value="">الكل</option>${Object.entries(SP_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
     </div>
+    <div class="fg"><label>المسار</label><select id="sp-cl-major-track"><option value="">كل المسارات معاً</option><option value="other">الكليات الجامعية (عدا علوم الرياضة)</option><option value="sports">كلية علوم الرياضة</option></select></div>
+    <div style="font-size:11px;color:var(--muted);margin:-4px 0 10px">التصنيف بحسب "التخصص الأول" الذي اختاره الطالب عند التقديم.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
       <div class="fg"><label>الترتيب حسب العلامة النهائية</label><select id="sp-cl-sort"><option value="">بدون ترتيب (كما هو مُدخَل)</option><option value="name">أبجدياً (اسم الطالب)</option><option value="desc">الأعلى علامة أولاً</option><option value="asc">الأدنى علامة أولاً</option></select></div>
       <div class="fg"><label>الاكتفاء بأعلى عدد (اختياري)</label><input type="number" id="sp-cl-top" min="1" placeholder="مثال: 10 — اتركه فارغاً لعرض الكل"></div>
     </div>
     <div style="font-weight:700;color:var(--g);font-size:12.5px;margin:10px 0 4px">الحقول المطلوب إدراجها في الجدول</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
-      ${SP_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sp-cl-col" value="${f.key}"${SP_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
+      ${SP_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sp-cl-col" value="${f.key}"${SP_PASSED_LIST_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
     </div>
     <button class="btn" style="width:100%;margin-top:10px;background:var(--g);color:#fff" onclick="spGenerateCustomList()"><i class="ti ti-table"></i> إنشاء القائمة</button>
     <div id="sp-cl-result" style="margin-top:14px"></div>
@@ -701,6 +703,7 @@ function spGenerateCustomList() {
   const acts = Array.from(document.querySelectorAll('.sp-cl-game:checked')).map(el => el.value);
   const track = document.getElementById('sp-cl-track').value;
   const status = document.getElementById('sp-cl-status').value;
+  const majorTrack = document.getElementById('sp-cl-major-track')?.value || '';
   const sortDir = document.getElementById('sp-cl-sort').value;
   const topN = parseInt(document.getElementById('sp-cl-top').value) || 0;
   const colKeys = Array.from(document.querySelectorAll('.sp-cl-col:checked')).map(el => el.value);
@@ -711,6 +714,7 @@ function spGenerateCustomList() {
     if (acts.length && !acts.some(a => (r.game_types||[]).includes(a))) return false;
     if (track && r.cert_track !== track) return false;
     if (status && (r.status||'pending') !== status) return false;
+    if (majorTrack && spMajorTrack((r.majors||[])[0]) !== majorTrack) return false;
     return true;
   });
   if (sortDir === 'name') {
