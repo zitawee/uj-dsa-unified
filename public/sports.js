@@ -852,7 +852,7 @@ async function spSaveHigherCommittee() {
 }
 
 // نافذة اختيار الحقول قبل طباعة كشف الناجحين (بنفس أسلوب "قائمة مخصصة")
-const SP_PASSED_LIST_DEFAULT_COLS = ['gender','seat_number','game_types','school','final_score'];
+const SP_PASSED_LIST_DEFAULT_COLS = ['gender','game_types','gpa','major1','committee_score','hs_score','nomination_score','final_score'];
 function spOpenPassedListPrintFields() {
   const members = (SP_SETTINGS.higher_committee || []);
   if (!members.length) { alert('يرجى إدخال أسماء اللجنة العليا أولاً'); return; }
