@@ -158,7 +158,7 @@ async function loadTalent() {
     <div class="tw"><table>
       <thead><tr>
         <th style="width:40px">مقبول</th>
-        <th>#</th><th>الاسم</th><th>الهاتف</th><th>المحافظة / اللواء</th><th>نوع النشاط</th><th>فرع الشهادة</th><th>المعدل</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
+        <th>#</th><th>الاسم</th><th>نوع النشاط</th><th>التخصص الأول</th><th>المعدل</th><th>علامة الاختبار</th><th>العلامة النهائية</th><th>الحالة</th><th>تاريخ التقديم</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="tbl-talent-body"></tbody>
     </table></div>
@@ -198,17 +198,16 @@ function teRender() {
     return new Date(b.createdAt||0) - new Date(a.createdAt||0);
   });
   const tb = document.getElementById('tbl-talent-body');
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="11" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="10" class="center">لا توجد نتائج مطابقة</td></tr>`; return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
       <td style="text-align:center"><input type="checkbox" value="${r.id}" ${r.status==='passed'?'checked':''} onchange="teToggleAccept('${r.id}', this)" title="وضع إشارة القبول (تُحفظ تلقائياً)"></td>
       <td>${i+1}</td>
       <td>${teEsc(r.full_name)}</td>
-      <td>${teEsc(r.phone)}</td>
-      <td>${teEsc(r.governorate)} / ${teEsc(r.district)}</td>
       <td>${teEsc((r.activity_types||[]).join('، '))}${(r.instruments||[]).length ? ' - ' + teEsc(r.instruments.join('، ')) : ''}</td>
-      <td>${teEsc(TE_TRACKS[r.cert_track]||r.cert_track||'')}</td>
+      <td>${teEsc((r.majors||[])[0]||'')}</td>
       <td>${teEsc(r.gpa)}%</td>
+      <td>${r.committee_score!=null ? tePct(r.committee_score) : '—'}</td>
       <td style="font-weight:700">${r.final_score!=null ? tePct(r.final_score) : '—'}</td>
       <td class="te-status-cell">${teBadge(r.status)}</td>
       <td>${teDate(r.createdAt)}</td>
@@ -221,9 +220,9 @@ function teRender() {
 }
 
 // وضع/إزالة إشارة "مقبول" مباشرة من الجدول — تُحفظ فوراً في قاعدة البيانات
-// (تُستخدم status='passed' كعلامة القبول النهائي؛ إلغاء التحديد يعيدها إلى "قيد المراجعة")
+// (تُستخدم status='passed' كعلامة القبول النهائي؛ إلغاء التحديد يعيدها إلى "مقبول للاختبار" — أي مرحلة ما بعد لجنة التحكيم مباشرة، وليس لبداية المسار)
 async function teToggleAccept(id, cb) {
-  const newStatus = cb.checked ? 'passed' : 'pending';
+  const newStatus = cb.checked ? 'passed' : 'accepted_exam';
   cb.disabled = true;
   const res = await api('/api/talent_excellence/'+id, 'PUT', { status: newStatus });
   cb.disabled = false;
