@@ -134,9 +134,9 @@ function spPct(n) { return n.toFixed(2) + '%'; }
 function spEsc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function spBadge(status) {
+function spBadge(status, isReserve) {
   const s = SP_STATUS[status] || SP_STATUS.pending;
-  return `<span class="st ${s.cls}">${s.label}</span>`;
+  return `<span class="st ${s.cls}">${s.label}</span>${isReserve ? ' <span style="background:#fff3cd;color:#7a5c00;font-weight:700;padding:2px 7px;border-radius:6px;font-size:11px">احتياط</span>' : ''}`;
 }
 function spDate(d) {
   if (!d) return '';
@@ -241,6 +241,7 @@ async function loadSports() {
       <thead><tr>
         ${ME?.role==='admin' ? `<th style="width:36px"><input type="checkbox" id="sp-check-all" onchange="spToggleAllRows(this.checked)"></th>` : ''}
         ${ME?.role==='admin' ? `<th style="width:40px">مقبول</th>` : ''}
+        ${ME?.role==='admin' ? `<th style="width:50px">احتياط</th>` : ''}
         <th>#</th><th>الاسم</th><th>الجنس</th><th>نوع اللعبة</th><th id="sp-major-col-th">التخصص الأول</th><th>المعدل</th><th>علامة الاختبار</th><th>العلامة النهائية</th><th>رقم الشهادة</th><th>الحالة</th><th>إجراءات</th>
       </tr></thead>
       <tbody id="tbl-sports-body"></tbody>
@@ -300,11 +301,12 @@ function spRender() {
   const majorColTh = document.getElementById('sp-major-col-th');
   if (majorColTh) majorColTh.textContent = ['التخصص الأول','التخصص الثاني','التخصص الثالث'][majorIdx];
   const tb = document.getElementById('tbl-sports-body');
-  if (!rows.length) { tb.innerHTML = `<tr><td colspan="13" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="14" class="center">لا توجد نتائج مطابقة</td></tr>`; spUpdateSelCount(); return; }
   tb.innerHTML = rows.map((r,i) => `
     <tr>
       ${ME?.role==='admin' ? `<td style="text-align:center"><input type="checkbox" class="sp-row-chk" value="${r.id}" onchange="spUpdateSelCount()"></td>` : ''}
       ${ME?.role==='admin' ? `<td style="text-align:center"><input type="checkbox" value="${r.id}" ${r.status==='passed'?'checked':''} onchange="spToggleAccept('${r.id}', this)" title="وضع إشارة القبول (تُحفظ تلقائياً)"></td>` : ''}
+      ${ME?.role==='admin' ? `<td style="text-align:center"><input type="checkbox" class="sp-reserve-chk" value="${r.id}" ${r.is_reserve?'checked':''} ${r.status!=='passed'?'disabled':''} onchange="spToggleReserve('${r.id}', this)" title="${r.status!=='passed'?'يجب تحديد مقبول أولاً':'وضع إشارة الاحتياط (تُحفظ تلقائياً)'}"></td>` : ''}
       <td>${i+1}</td>
       <td>${spEsc(r.full_name)}</td>
       <td>${spEsc(r.gender)}</td>
@@ -314,7 +316,7 @@ function spRender() {
       <td>${r.committee_score!=null ? spPct(r.committee_score) : '—'}</td>
       <td style="font-weight:700">${r.final_score!=null ? spPct(r.final_score) : '—'}</td>
       <td>${r.cert_ref_code ? `<a href="#" onclick="spViewCertByRef('${spEsc(r.cert_ref_code)}');return false" style="font-family:monospace;color:var(--g);font-weight:700;text-decoration:underline">${spEsc(r.cert_ref_code)}</a>` : `<span style="background:#FCEBEB;color:#791F1F;font-weight:700;padding:2px 8px;border-radius:6px;font-size:11.5px">⚠️ بلا شهادة مرتبطة</span>`}</td>
-      <td class="sp-status-cell">${spBadge(r.status)}</td>
+      <td class="sp-status-cell">${spBadge(r.status, r.is_reserve)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="spView('${r.id}')"><i class="ti ti-eye"></i></button>
         <button class="btn btn-sm" onclick="spPrintOne('${r.id}')"><i class="ti ti-printer"></i></button>
@@ -350,14 +352,30 @@ async function spDeleteSelected() {
 // (تُستخدم status='passed' كعلامة القبول النهائي؛ إلغاء التحديد يعيدها إلى "اجتاز اختبار القدرات" — أي مرحلة ما بعد لجنة التحكيم مباشرة، وليس لبداية المسار)
 async function spToggleAccept(id, cb) {
   const newStatus = cb.checked ? 'passed' : 'ability_test_passed';
+  const update = { status: newStatus };
+  if (!cb.checked) update.is_reserve = false; // لا معنى لبقاء "احتياط" مفعَّلة لطالب لم يعد "مقبولاً" أصلاً
   cb.disabled = true;
-  const res = await api('/api/sports_excellence/'+id, 'PUT', { status: newStatus });
+  const res = await api('/api/sports_excellence/'+id, 'PUT', update);
   cb.disabled = false;
   if (res && res.error) { alert(res.error); cb.checked = !cb.checked; return; }
   const r = SP_ROWS.find(x => x.id === id);
-  if (r) r.status = newStatus;
+  if (r) { r.status = newStatus; if (!cb.checked) r.is_reserve = false; }
   const statusCell = cb.closest('tr')?.querySelector('.sp-status-cell');
-  if (statusCell) statusCell.innerHTML = spBadge(newStatus);
+  if (statusCell) statusCell.innerHTML = spBadge(newStatus, r?.is_reserve);
+  const reserveCb = cb.closest('tr')?.querySelector('.sp-reserve-chk');
+  if (reserveCb) { reserveCb.disabled = !cb.checked; if (!cb.checked) reserveCb.checked = false; }
+}
+
+// وضع/إزالة إشارة "احتياط" — تصنيف إضافي فوق "مقبول"، لا يغيّر الحالة الأساسية إطلاقاً
+async function spToggleReserve(id, cb) {
+  cb.disabled = true;
+  const res = await api('/api/sports_excellence/'+id, 'PUT', { is_reserve: cb.checked });
+  cb.disabled = false;
+  if (res && res.error) { alert(res.error); cb.checked = !cb.checked; return; }
+  const r = SP_ROWS.find(x => x.id === id);
+  if (r) r.is_reserve = cb.checked;
+  const statusCell = cb.closest('tr')?.querySelector('.sp-status-cell');
+  if (statusCell) statusCell.innerHTML = spBadge(r?.status, cb.checked);
 }
 
 async function spSaveSettings() {
@@ -682,6 +700,7 @@ function spOpenCustomList() {
       <div class="fg"><label>الحالة (اختياري)</label><select id="sp-cl-status"><option value="">الكل</option>${Object.entries(SP_STATUS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
     </div>
     <div class="fg"><label>المسار</label><select id="sp-cl-major-track"><option value="">كل المسارات معاً</option><option value="other">الكليات الجامعية (عدا علوم الرياضة)</option><option value="sports">كلية علوم الرياضة</option></select></div>
+    <div class="fg"><label>النوع (عند فلترة الحالة "مقبول" فقط)</label><select id="sp-cl-reserve"><option value="">الأساسيون والاحتياط معاً</option><option value="main">الأساسيون فقط</option><option value="reserve">الاحتياط فقط</option></select></div>
     <div style="font-size:11px;color:var(--muted);margin:-4px 0 10px">التصنيف بحسب "التخصص الأول" الذي اختاره الطالب عند التقديم.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
       <div class="fg"><label>الترتيب حسب العلامة النهائية</label><select id="sp-cl-sort"><option value="">بدون ترتيب (كما هو مُدخَل)</option><option value="name">أبجدياً (اسم الطالب)</option><option value="desc">الأعلى علامة أولاً</option><option value="asc">الأدنى علامة أولاً</option></select></div>
@@ -704,6 +723,7 @@ function spGenerateCustomList() {
   const track = document.getElementById('sp-cl-track').value;
   const status = document.getElementById('sp-cl-status').value;
   const majorTrack = document.getElementById('sp-cl-major-track')?.value || '';
+  const reserveFilter = document.getElementById('sp-cl-reserve')?.value || '';
   const sortDir = document.getElementById('sp-cl-sort').value;
   const topN = parseInt(document.getElementById('sp-cl-top').value) || 0;
   const colKeys = Array.from(document.querySelectorAll('.sp-cl-col:checked')).map(el => el.value);
@@ -715,6 +735,8 @@ function spGenerateCustomList() {
     if (track && r.cert_track !== track) return false;
     if (status && (r.status||'pending') !== status) return false;
     if (majorTrack && spMajorTrack((r.majors||[])[0]) !== majorTrack) return false;
+    if (reserveFilter === 'main' && r.is_reserve) return false;
+    if (reserveFilter === 'reserve' && !r.is_reserve) return false;
     return true;
   });
   if (sortDir === 'name') {
@@ -868,6 +890,7 @@ function spOpenPassedListPrintFields() {
   document.getElementById('sp-modal-body').innerHTML = `
     <h3>الحقول المطلوب إدراجها في كشف الناجحين</h3>
     <div class="fg" style="margin-bottom:10px"><label>المسار</label><select id="sp-pl-track"><option value="">كل المسارات معاً (${passedCount} طالب/طالبة)</option><option value="other">الكليات الجامعية فقط (عدا علوم الرياضة)</option><option value="sports">كلية علوم الرياضة فقط</option></select></div>
+    <div class="fg" style="margin-bottom:10px"><label>النوع</label><select id="sp-pl-reserve"><option value="">الأساسيون والاحتياط معاً</option><option value="main">الأساسيون فقط</option><option value="reserve">الاحتياط فقط</option></select></div>
     <div class="fg" style="margin-bottom:10px"><label>الترتيب</label><select id="sp-pl-sort"><option value="score_desc">الأعلى علامة أولاً</option><option value="score_asc">الأدنى علامة أولاً</option><option value="name">أبجدياً (اسم الطالب)</option><option value="game">حسب نوع اللعبة</option></select></div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">التصنيف بحسب "التخصص الأول" الذي اختاره الطالب عند التقديم. عمود "اسم الطالب" يظهر دائماً — اختاري أي حقول إضافية تريدين عرضها بجانبه.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
@@ -885,17 +908,20 @@ function spPrintPassedList() {
   const members = (SP_SETTINGS.higher_committee || []);
   if (!members.length) { alert('يرجى إدخال أسماء اللجنة العليا أولاً'); return; }
   const fTrack = document.getElementById('sp-pl-track')?.value || '';
+  const fReserve = document.getElementById('sp-pl-reserve')?.value || '';
   const sortBy = document.getElementById('sp-pl-sort')?.value || 'score_desc';
   let passed = SP_ROWS.filter(r => r.status === 'passed');
   if (fTrack) passed = passed.filter(r => spMajorTrack((r.majors||[])[0]) === fTrack);
+  if (fReserve === 'main') passed = passed.filter(r => !r.is_reserve);
+  else if (fReserve === 'reserve') passed = passed.filter(r => r.is_reserve);
   if (sortBy === 'score_asc') passed = passed.sort((a,b) => (a.final_score??999)-(b.final_score??999));
   else if (sortBy === 'name') passed = passed.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
   else if (sortBy === 'game') passed = passed.sort((a,b) => (a.game_types?.[0]||'').localeCompare(b.game_types?.[0]||'', 'ar') || (b.final_score??-1)-(a.final_score??-1));
   else passed = passed.sort((a,b) => (b.final_score??-1)-(a.final_score??-1));
-  if (!passed.length) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" مطابق لهذا المسار'); return; }
+  if (!passed.length) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" مطابق لهذا الفلتر'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sp-pl-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
-  const trackSuffix = fTrack === 'sports' ? ' — كلية علوم الرياضة' : fTrack === 'other' ? ' — الكليات الجامعية' : '';
+  const trackSuffix = (fTrack === 'sports' ? ' — كلية علوم الرياضة' : fTrack === 'other' ? ' — الكليات الجامعية' : '') + (fReserve === 'main' ? ' — الأساسيون' : fReserve === 'reserve' ? ' — الاحتياط' : '');
   const html = `
     ${SC_PRINT_FONT}${SP_TABLE_ALIGN_STYLE}
     <div class="ph2">
