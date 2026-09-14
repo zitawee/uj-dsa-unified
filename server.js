@@ -214,6 +214,9 @@ function computeFitnessScore(measurements, gender) {
   return Math.round(final * 100) / 100;
 }
 const SportsSettings = mongoose.model('sports_excellence_settings', new mongoose.Schema({}, { strict:false }));
+// إعدادات عامة على مستوى النظام كله (وليست خاصة بنظام معيّن) — تُستخدَم حالياً للتحكّم بإظهار/إخفاء قسمَي
+// "التفوق الفني" و"التفوق الرياضي" بالقائمة الجانبية للجميع، بما أنهما يُستخدَمان موسمياً مرة كل عام فقط
+const SystemSettings = mongoose.model('system_settings', new mongoose.Schema({}, { strict:false }));
 function genSportsRef() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = ''; for (let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
@@ -1276,6 +1279,26 @@ app.put('/api/sports_excellence/settings', auth(['admin']), async (req, res) => 
     await SportsSettings.findOneAndUpdate(
       { key: 'sports_excellence' },
       { key: 'sports_excellence', close_date: req.body.close_date || null, committee_members_by_game: (req.body.committee_members_by_game && typeof req.body.committee_members_by_game === 'object') ? req.body.committee_members_by_game : {}, higher_committee: Array.isArray(req.body.higher_committee) ? req.body.higher_committee : [], active_games: activeGames, ability_test_pass_threshold: (!isNaN(threshold) ? threshold : 25) },
+      { upsert: true }
+    );
+    res.json({ message: 'تم الحفظ' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ إعدادات عامة (إظهار/إخفاء قسمَي التفوق الفني والرياضي بالقائمة الجانبية) ══
+// GET متاح لأي مستخدم مسجَّل دخول (كل الأدوار تحتاج معرفة الحالة الحالية لبناء القائمة الجانبية بشكل صحيح)
+app.get('/api/system_settings', auth(), async (req, res) => {
+  try {
+    const s = await SystemSettings.findOne({ key: 'general' }).lean();
+    res.json({ show_talent: s?.show_talent !== false, show_sports: s?.show_sports !== false });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/system_settings', auth(['admin']), async (req, res) => {
+  try {
+    await SystemSettings.findOneAndUpdate(
+      { key: 'general' },
+      { key: 'general', show_talent: req.body.show_talent !== false, show_sports: req.body.show_sports !== false },
       { upsert: true }
     );
     res.json({ message: 'تم الحفظ' });
