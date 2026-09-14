@@ -246,13 +246,13 @@ function buildSidebar() {
   <div class="sbt">الرئيسية</div>
   <div class="ni active" onclick="go('dash',this)"><i class="ti ti-layout-dashboard"></i>لوحة التحكم<span class="cnt" id="c-all">0</span></div>
   <div class="ni" onclick="go('incomplete',this)"><i class="ti ti-alert-circle" style="color:#633806"></i>طلبات غير مكتملة<span class="cnt inc" id="c-inc">0</span></div>
-  ${ME?.role==='admin' ? `
+  ${ME?.role==='admin' && SYS_SETTINGS.show_talent ? `
   <div class="folder-hdr sec-talent" onclick="toggleFolder('f-talent')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-talent"></i><i class="ti ti-music" style="color:#8A2A22"></i>التفوق الفني</div>
   <div class="folder-body sec-talent" id="f-talent" style="display:none">
     <div class="ni" onclick="go('talent_excellence',this)"><i class="ti ti-list-details"></i>طلبات التفوق الفني<span class="cnt" id="c-talent_excellence">0</span></div>
     <div class="ni" onclick="go('talent_committee',this)"><i class="ti ti-users-group"></i>علامات لجنة التحكيم</div>
   </div>` : ''}
-  ${(ME?.role==='admin' || ME?.role==='sports_reviewer' || ME?.role==='fitness_coach') ? `
+  ${(ME?.role==='admin' || ME?.role==='sports_reviewer' || ME?.role==='fitness_coach') && SYS_SETTINGS.show_sports ? `
   <div class="folder-hdr sec-sports" onclick="toggleFolder('f-sports')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-sports"></i><i class="ti ti-ball-volleyball" style="color:#1B4D8A"></i>التفوق الرياضي</div>
   <div class="folder-body sec-sports" id="f-sports" style="display:none">
     ${ME?.role!=='fitness_coach' ? `<div class="ni" onclick="go('sports_excellence',this)"><i class="ti ti-list-details"></i>طلبات التفوق الرياضي<span class="cnt" id="c-sports_excellence">0</span></div>` : ''}
@@ -363,12 +363,19 @@ async function checkSession() {
   if (stored) { ME=JSON.parse(stored); showApp(); }
 }
 
-function showApp() {
+let SYS_SETTINGS = { show_talent: true, show_sports: true };
+async function loadSysSettings() {
+  const r = await api('/api/system_settings');
+  if (r && !r.error) SYS_SETTINGS = r;
+}
+
+async function showApp() {
   localStorage.setItem('uj_me', JSON.stringify(ME));
   document.getElementById('login-page').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('hn').textContent=ME.fullName;
   const rb=document.getElementById('hr'); rb.textContent=RLABELS[ME.role]; rb.className='rtag '+RCLS[ME.role];
+  await loadSysSettings();
   buildSidebar(); buildPanels();
   if (ME.role!=='admin') { document.getElementById('nav-users').style.display='none'; document.getElementById('nav-archive').style.display='none'; }
   if (ME.role==='admin' && typeof teLoadBadgeCount==='function') teLoadBadgeCount();

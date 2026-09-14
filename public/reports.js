@@ -1277,6 +1277,15 @@ async function loadUsers() {
   document.getElementById('panel-users').innerHTML=`
   <div class="ph"><div><div class="pt"><i class="ti ti-shield"></i> إدارة المستخدمين</div></div></div>
   <div class="card">
+    <div class="ct"><i class="ti ti-eye"></i>إظهار/إخفاء الأقسام الموسمية بالقائمة الجانبية</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">قسما "التفوق الفني" و"التفوق الرياضي" يُستخدَمان مرة واحدة كل عام. عند إخفاء أحدهما، يختفي بالكامل من القائمة الجانبية لكل المستخدمين (بمن فيهم أصحاب الصلاحية الخاصة به) حتى تُعيدي إظهاره من هنا وقت الحاجة.</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="sys-show-talent" ${SYS_SETTINGS.show_talent?'checked':''}> إظهار قسم "التفوق الفني"</label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="sys-show-sports" ${SYS_SETTINGS.show_sports?'checked':''}> إظهار قسم "التفوق الرياضي"</label>
+    </div>
+    <button class="btn btn-g" onclick="saveSysSettings()">✔ حفظ</button>
+  </div>
+  <div class="card">
     <div class="ct"><i class="ti ti-user-plus"></i>إضافة مستخدم جديد</div>
     <div id="msg-users" class="msg"></div>
     <div class="g2">
@@ -1295,6 +1304,16 @@ async function loadUsers() {
   <div class="tw"><table><thead><tr><th>#</th><th>اسم المستخدم</th><th>الاسم الكامل</th><th>الصلاحية</th><th>الجهة المرتبطة</th><th>تاريخ الإنشاء</th><th></th></tr></thead>
   <tbody id="tbl-users"></tbody></table></div>`;
   refreshUsers();
+}
+
+async function saveSysSettings() {
+  const show_talent = document.getElementById('sys-show-talent').checked;
+  const show_sports = document.getElementById('sys-show-sports').checked;
+  const r = await api('/api/system_settings', 'PUT', { show_talent, show_sports });
+  if (r.error) { alert(r.error); return; }
+  SYS_SETTINGS = { show_talent, show_sports };
+  buildSidebar();
+  alert('✅ تم الحفظ — ستظهر/تختفي الأقسام لكل المستخدمين فوراً عند تحديث الصفحة لديهم.');
 }
 
 function toggleUserDept() {
