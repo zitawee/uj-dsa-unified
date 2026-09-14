@@ -868,6 +868,7 @@ function spOpenPassedListPrintFields() {
   document.getElementById('sp-modal-body').innerHTML = `
     <h3>الحقول المطلوب إدراجها في كشف الناجحين</h3>
     <div class="fg" style="margin-bottom:10px"><label>المسار</label><select id="sp-pl-track"><option value="">كل المسارات معاً (${passedCount} طالب/طالبة)</option><option value="other">الكليات الجامعية فقط (عدا علوم الرياضة)</option><option value="sports">كلية علوم الرياضة فقط</option></select></div>
+    <div class="fg" style="margin-bottom:10px"><label>الترتيب</label><select id="sp-pl-sort"><option value="score_desc">الأعلى علامة أولاً</option><option value="score_asc">الأدنى علامة أولاً</option><option value="name">أبجدياً (اسم الطالب)</option><option value="game">حسب نوع اللعبة</option></select></div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">التصنيف بحسب "التخصص الأول" الذي اختاره الطالب عند التقديم. عمود "اسم الطالب" يظهر دائماً — اختاري أي حقول إضافية تريدين عرضها بجانبه.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
       ${SP_FIELDS.filter(f=>f.key!=='full_name').map(f=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:6px"><input type="checkbox" class="sp-pl-col" value="${f.key}"${SP_PASSED_LIST_DEFAULT_COLS.includes(f.key)?' checked':''}> ${f.label}</label>`).join('')}
@@ -884,9 +885,13 @@ function spPrintPassedList() {
   const members = (SP_SETTINGS.higher_committee || []);
   if (!members.length) { alert('يرجى إدخال أسماء اللجنة العليا أولاً'); return; }
   const fTrack = document.getElementById('sp-pl-track')?.value || '';
+  const sortBy = document.getElementById('sp-pl-sort')?.value || 'score_desc';
   let passed = SP_ROWS.filter(r => r.status === 'passed');
   if (fTrack) passed = passed.filter(r => spMajorTrack((r.majors||[])[0]) === fTrack);
-  passed = passed.sort((a,b) => (a.game_types?.[0]||'').localeCompare(b.game_types?.[0]||'', 'ar') || (b.final_score||0)-(a.final_score||0));
+  if (sortBy === 'score_asc') passed = passed.sort((a,b) => (a.final_score??999)-(b.final_score??999));
+  else if (sortBy === 'name') passed = passed.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||'', 'ar'));
+  else if (sortBy === 'game') passed = passed.sort((a,b) => (a.game_types?.[0]||'').localeCompare(b.game_types?.[0]||'', 'ar') || (b.final_score??-1)-(a.final_score??-1));
+  else passed = passed.sort((a,b) => (b.final_score??-1)-(a.final_score??-1));
   if (!passed.length) { alert('لا يوجد أي طالب مُحدَّد كـ"مقبول" مطابق لهذا المسار'); return; }
   const extraKeys = Array.from(document.querySelectorAll('.sp-pl-col:checked')).map(el => el.value);
   const extraCols = SP_FIELDS.filter(f => extraKeys.includes(f.key));
