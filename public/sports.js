@@ -1150,7 +1150,7 @@ async function loadSportsAbilityTest() {
   SP_ROWS = rows; // تحديث الكاش العام أيضاً، تستفيد منه شاشات أخرى (لجنة التحكيم) دون إعادة تحميل منفصلة
   SP_SETTINGS = settings || SP_SETTINGS || {};
   const passThreshold = SP_SETTINGS.ability_test_pass_threshold != null ? SP_SETTINGS.ability_test_pass_threshold : 25;
-  SP_ABILITY_CANDIDATES = rows.filter(r => ['accepted_exam','ability_test_passed','rejected'].includes(r.status));
+  SP_ABILITY_CANDIDATES = rows.filter(r => ['accepted_exam','ability_test_passed','rejected','passed'].includes(r.status));
   SAT_DRAFT_SCORES = {}; // بيانات جديدة من الخادم، فأي مسودات سابقة أصبحت غير ذات معنى
 
   const READ_ONLY = ME?.role === 'fitness_coach';
@@ -1161,7 +1161,7 @@ async function loadSportsAbilityTest() {
     <div class="fb" style="align-items:center">
       <select id="sat-f-game" onchange="satRender()"><option value="">كل الألعاب</option>${SP_GAME_TYPES.map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
       <select id="sat-f-gender" onchange="satRender()"><option value="">الذكور والإناث معاً</option><option value="ذكر">ذكور فقط</option><option value="أنثى">إناث فقط</option></select>
-      <select id="sat-f-status" onchange="satRender()"><option value="">كل الحالات (لم يُختبَر بعد + اجتاز + لم يجتاز)</option><option value="accepted_exam">لم تُدخَل علامته بعد فقط</option><option value="ability_test_passed">اجتاز فقط</option><option value="rejected">لم يجتاز فقط</option></select>
+      <select id="sat-f-status" onchange="satRender()"><option value="">كل الحالات (لم يُختبَر بعد + اجتاز + لم يجتاز + ناجح)</option><option value="accepted_exam">لم تُدخَل علامته بعد فقط</option><option value="ability_test_passed">اجتاز فقط</option><option value="rejected">لم يجتاز فقط</option><option value="passed">ناجح (مقبول نهائياً) فقط</option></select>
       <input type="text" id="sat-q" placeholder="بحث بالاسم أو رقم الجلوس..." style="flex:1;min-width:180px" oninput="satRender()">
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="satPrintRoster()"><i class="ti ti-printer"></i> طباعة كشف أسماء المرشَّحين (للاختبار الورقي)</button>
       <button class="btn btn-sm" onclick="satPrintResults()"><i class="ti ti-printer"></i> طباعة كشف نتائج اختبار القدرات</button>
@@ -1225,10 +1225,10 @@ function satRender() {
       <td>${(r.game_types||[]).map(spEsc).join('، ')}</td>
       <td>${modelNum}</td>
       ${ME?.role==='admin' ? `<td style="font-weight:700">${r.nomination_score!=null ? r.nomination_score : '—'}</td>` : ''}
-      <td><input type="number" min="0" max="50" step="0.5" class="sat-score-input" value="${SAT_DRAFT_SCORES[r.id] !== undefined ? SAT_DRAFT_SCORES[r.id] : (r.ability_test_score!=null ? r.ability_test_score : '')}" style="width:70px" ${ME?.role==='fitness_coach' ? 'disabled' : ''} oninput="satDraftInput('${r.id}', this.value)" onkeydown="if(event.key==='Enter')satSaveScore('${r.id}')"></td>
+      <td><input type="number" min="0" max="50" step="0.5" class="sat-score-input" value="${SAT_DRAFT_SCORES[r.id] !== undefined ? SAT_DRAFT_SCORES[r.id] : (r.ability_test_score!=null ? r.ability_test_score : '')}" style="width:70px" ${(ME?.role==='fitness_coach' || r.status==='passed') ? 'disabled' : ''} title="${r.status==='passed' ? 'الطالب مقبول نهائياً — عدّلي من الشاشة الرئيسية إن احتجتِ تغيير العلامة' : ''}" oninput="satDraftInput('${r.id}', this.value)" onkeydown="if(event.key==='Enter')satSaveScore('${r.id}')"></td>
       <td style="white-space:nowrap">
-        ${ME?.role!=='fitness_coach' ? `<button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSaveScore('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button>` : ''}
-        ${['ability_test_passed','rejected'].includes(r.status) ? `<span style="margin-inline-start:6px;font-weight:700">${SP_STATUS[r.status].label}</span>` : ''}
+        ${(ME?.role!=='fitness_coach' && r.status!=='passed') ? `<button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="satSaveScore('${r.id}')"><i class="ti ti-device-floppy"></i> حفظ</button>` : ''}
+        ${['ability_test_passed','rejected','passed'].includes(r.status) ? `<span style="margin-inline-start:6px;font-weight:700">${SP_STATUS[r.status].label}</span>` : ''}
       </td>
     </tr>`;
   }).join('');
