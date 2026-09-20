@@ -1317,7 +1317,7 @@ app.get('/api/installment_plan', auth(['admin']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// لصق قائمة نصية (كل سطر: رقم جامعي [فاصل] الاسم [فاصل] الكلية) — الفاصل: تاب أو فاصلة أو عدة مسافات
+// لصق قائمة نصية (كل سطر: رقم جامعي [فاصل] الكلية) — الفاصل: تاب أو فاصلة أو عدة مسافات
 // mode: 'replace' يمسح القائمة الحالية بالكامل قبل الإضافة، 'append' يضيف/يحدّث فوق القائمة الحالية
 app.post('/api/installment_plan/bulk', auth(['admin']), async (req, res) => {
   try {
@@ -1330,9 +1330,8 @@ app.post('/api/installment_plan/bulk', auth(['admin']), async (req, res) => {
       if (!parts.length) continue;
       const university_id = parts[0];
       if (!/^\d+$/.test(university_id)) continue; // تجاهل أي سطر لا يبدأ برقم جامعي صحيح
-      const college = parts.length >= 3 ? parts[parts.length - 1] : (parts[2] || '');
-      const name = parts.length >= 2 ? parts.slice(1, parts.length >= 3 ? parts.length - 1 : parts.length).join(' ') : '';
-      rows.push({ university_id, name, college });
+      const college = parts.slice(1).join(' ').trim();
+      rows.push({ university_id, college });
     }
     if (!rows.length) return res.status(400).json({ error: 'تعذّر العثور على أي رقم جامعي صالح ضمن النص المُدخَل' });
 
@@ -1352,10 +1351,12 @@ app.delete('/api/installment_plan/:id', auth(['admin']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/installment_plan', auth(['admin']), async (req, res) => {
+// حذف القائمة بالكامل — مسار POST صريح (وليس DELETE بلا مُعرِّف) لتفادي أي التباس أو حجب
+// قد تفرضه طبقات وسيطة (Proxy/CDN) على طلبات DELETE بلا معرّف مورد محدَّد
+app.post('/api/installment_plan/clear-all', auth(['admin']), async (req, res) => {
   try {
-    await InstallmentPlan.deleteMany({});
-    res.json({ message: 'تم حذف القائمة بالكامل' });
+    const r = await InstallmentPlan.deleteMany({});
+    res.json({ message: 'تم حذف القائمة بالكامل', deleted: r.deletedCount || 0 });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1366,7 +1367,7 @@ app.get('/api/public/installment-plan', async (req, res) => {
     if (!sid) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
     const doc = await InstallmentPlan.findOne({ university_id: sid }).lean();
     if (!doc) return res.status(404).json({ error: 'رقمك الجامعي غير مدرج ضمن قائمة المقبولين بنظام تقسيط الرسوم الجامعية' });
-    res.json({ found: true, university_id: doc.university_id, name: doc.name || '', college: doc.college || '' });
+    res.json({ found: true, university_id: doc.university_id, college: doc.college || '' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
