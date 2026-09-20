@@ -70,7 +70,6 @@ async function doCheck(){
         <div class="icon">✅</div>
         <div class="title">اسمك مدرج ضمن قائمة المقبولين بنظام التقسيط</div>
         <div class="st-line"><span>الرقم الجامعي</span><b>${data.university_id||'-'}</b></div>
-        ${data.name ? `<div class="st-line"><span>الاسم</span><b>${data.name}</b></div>` : ''}
         ${data.college ? `<div class="st-line"><span>الكلية</span><b>${data.college}</b></div>` : ''}
       </div>`;
   }catch(e){
