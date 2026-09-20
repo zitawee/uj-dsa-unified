@@ -217,6 +217,10 @@ const SportsSettings = mongoose.model('sports_excellence_settings', new mongoose
 // إعدادات عامة على مستوى النظام كله (وليست خاصة بنظام معيّن) — تُستخدَم حالياً للتحكّم بإظهار/إخفاء قسمَي
 // "التفوق الفني" و"التفوق الرياضي" بالقائمة الجانبية للجميع، بما أنهما يُستخدَمان موسمياً مرة كل عام فقط
 const SystemSettings = mongoose.model('system_settings', new mongoose.Schema({}, { strict:false }));
+// قائمة الطلبة المقبولين بنظام تقسيط الرسوم الجامعية — كل عنصر: { university_id, name, college }
+// تُدار من قِبل admin (لصق/استبدال القائمة دفعة واحدة عند وصولها من الشؤون المالية)، ويُستعلَم عنها
+// علناً بدون تسجيل دخول عبر صفحة /installment.html بإدخال الرقم الجامعي فقط
+const InstallmentPlan = mongoose.model('installment_plan', new mongoose.Schema({}, { strict:false, timestamps:true }));
 function genSportsRef() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = ''; for (let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
@@ -1302,6 +1306,67 @@ app.put('/api/system_settings', auth(['admin']), async (req, res) => {
       { upsert: true }
     );
     res.json({ message: 'تم الحفظ' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ نظام تقسيط الرسوم الجامعية — إدارة قائمة الطلبة المقبولين بالتقسيط (admin فقط) ══
+app.get('/api/installment_plan', auth(['admin']), async (req, res) => {
+  try {
+    const list = await InstallmentPlan.find({}).sort({ university_id: 1 }).lean();
+    res.json(list.map(d => ({ ...d, id: String(d._id) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// لصق قائمة نصية (كل سطر: رقم جامعي [فاصل] الاسم [فاصل] الكلية) — الفاصل: تاب أو فاصلة أو عدة مسافات
+// mode: 'replace' يمسح القائمة الحالية بالكامل قبل الإضافة، 'append' يضيف/يحدّث فوق القائمة الحالية
+app.post('/api/installment_plan/bulk', auth(['admin']), async (req, res) => {
+  try {
+    const text = String(req.body.text || '');
+    const mode = req.body.mode === 'append' ? 'append' : 'replace';
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const rows = [];
+    for (const line of lines) {
+      const parts = line.split(/\t|,|\s{2,}/).map(p => p.trim()).filter(p => p !== '');
+      if (!parts.length) continue;
+      const university_id = parts[0];
+      if (!/^\d+$/.test(university_id)) continue; // تجاهل أي سطر لا يبدأ برقم جامعي صحيح
+      const college = parts.length >= 3 ? parts[parts.length - 1] : (parts[2] || '');
+      const name = parts.length >= 2 ? parts.slice(1, parts.length >= 3 ? parts.length - 1 : parts.length).join(' ') : '';
+      rows.push({ university_id, name, college });
+    }
+    if (!rows.length) return res.status(400).json({ error: 'تعذّر العثور على أي رقم جامعي صالح ضمن النص المُدخَل' });
+
+    if (mode === 'replace') await InstallmentPlan.deleteMany({});
+    for (const r of rows) {
+      await InstallmentPlan.findOneAndUpdate({ university_id: r.university_id }, r, { upsert: true });
+    }
+    const total = await InstallmentPlan.countDocuments({});
+    res.json({ message: `تم حفظ ${rows.length} سجل بنجاح`, added: rows.length, total });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/installment_plan/:id', auth(['admin']), async (req, res) => {
+  try {
+    await InstallmentPlan.findByIdAndDelete(req.params.id);
+    res.json({ message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/installment_plan', auth(['admin']), async (req, res) => {
+  try {
+    await InstallmentPlan.deleteMany({});
+    res.json({ message: 'تم حذف القائمة بالكامل' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ استعلام عام بدون تسجيل دخول: هل الرقم الجامعي مدرج ضمن قائمة المقبولين بنظام التقسيط ══
+app.get('/api/public/installment-plan', async (req, res) => {
+  try {
+    const sid = String(req.query.sid || '').trim();
+    if (!sid) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    const doc = await InstallmentPlan.findOne({ university_id: sid }).lean();
+    if (!doc) return res.status(404).json({ error: 'رقمك الجامعي غير مدرج ضمن قائمة المقبولين بنظام تقسيط الرسوم الجامعية' });
+    res.json({ found: true, university_id: doc.university_id, name: doc.name || '', college: doc.college || '' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
