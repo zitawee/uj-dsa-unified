@@ -51,6 +51,11 @@ function inOpenBulk() {
       يمكن الفصل بينها بفاصلة أو Tab (كما هو الحال عند اللصق من Excel مباشرة). مثال:<br>
       <code style="background:#f4f6f4;padding:2px 5px;border-radius:4px;display:inline-block;margin-top:4px">2021123456, أحمد محمد علي, كلية العلوم</code>
     </p>
+    <div class="fg" style="margin-bottom:10px">
+      <label>أو استيراد مباشرة من ملف Excel (xlsx / csv)</label>
+      <input type="file" id="in-file" accept=".xlsx,.xls,.csv" onchange="inHandleExcelFile(this)">
+      <div id="in-file-msg" style="font-size:11.5px;color:var(--muted);margin-top:4px"></div>
+    </div>
     <div class="fg" style="margin-bottom:10px"><textarea id="in-bulk-text" rows="10" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;resize:vertical" placeholder="2021123456, أحمد محمد علي, كلية العلوم&#10;2020987654, سارة خالد, كلية الآداب"></textarea></div>
     <div class="fg" style="margin-bottom:12px">
       <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer"><input type="radio" name="in-mode" value="replace" checked> استبدال القائمة الحالية بالكامل بهذه القائمة</label>
@@ -69,6 +74,64 @@ function inOpenBulk() {
 }
 
 function inCloseModal() { document.getElementById('mod-installment')?.classList.remove('open'); }
+
+// قراءة ملف Excel/CSV بالكامل في المتصفح (مكتبة XLSX محمَّلة مسبقاً في الصفحة) وتحويله تلقائياً
+// إلى نفس صيغة النص المستخدَمة في مربع اللصق، ليراجعها admin قبل الحفظ إن أراد.
+function inHandleExcelFile(input) {
+  const file = input.files && input.files[0];
+  const msgEl = document.getElementById('in-file-msg');
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { msgEl.textContent = 'تعذّر تحميل مكتبة قراءة ملفات Excel'; msgEl.style.color = '#c0392b'; return; }
+  msgEl.textContent = 'جارٍ قراءة الملف...'; msgEl.style.color = 'var(--muted)';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+        .map(r => r.map(c => String(c ?? '').trim()))
+        .filter(r => r.some(c => c !== ''));
+      if (!rows.length) { msgEl.textContent = 'الملف فارغ أو تعذّرت قراءته'; msgEl.style.color = '#c0392b'; return; }
+
+      // تحديد الأعمدة: إن وُجد صف عناوين (يحتوي كلمات مثل "رقم"/"اسم"/"كلية") نعتمد عليه،
+      // وإلا نفترض: العمود الأول = رقم جامعي، وإن وُجد عمود ثالث فأكثر فالأخير = كلية والوسط = اسم،
+      // وإن وُجد عمودان فقط يُعتبر الثاني = كلية (حالة القائمة القادمة من الشؤون المالية عادة: رقم جامعي + كلية فقط).
+      let idIdx = 0, nameIdx = -1, collegeIdx = -1, dataRows = rows;
+      const header = rows[0];
+      const looksLikeHeader = header.some(c => /رقم|جامعي|اسم|كلية|id|name|college/i.test(c));
+      if (looksLikeHeader) {
+        header.forEach((c, i) => {
+          if (/رقم|جامعي|id/i.test(c)) idIdx = i;
+          if (/اسم|name/i.test(c)) nameIdx = i;
+          if (/كلية|college/i.test(c)) collegeIdx = i;
+        });
+        dataRows = rows.slice(1);
+      } else if (header.length >= 3) {
+        nameIdx = 1; collegeIdx = header.length - 1;
+      } else if (header.length === 2) {
+        collegeIdx = 1;
+      }
+
+      const lines = dataRows
+        .filter(r => /^\d+$/.test((r[idIdx] || '').trim()))
+        .map(r => {
+          const parts = [r[idIdx].trim()];
+          if (nameIdx >= 0 && r[nameIdx]) parts.push(r[nameIdx].trim());
+          if (collegeIdx >= 0 && r[collegeIdx]) parts.push(r[collegeIdx].trim());
+          return parts.join(', ');
+        });
+
+      if (!lines.length) { msgEl.textContent = 'لم يتم العثور على أي رقم جامعي صالح داخل الملف'; msgEl.style.color = '#c0392b'; return; }
+      document.getElementById('in-bulk-text').value = lines.join('\n');
+      msgEl.textContent = `تم استخراج ${lines.length} سجل من الملف — راجعيها بالأسفل ثم اضغطي "حفظ"`;
+      msgEl.style.color = 'var(--g)';
+    } catch (err) {
+      msgEl.textContent = 'تعذّرت قراءة الملف: ' + err.message;
+      msgEl.style.color = '#c0392b';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 async function inSaveBulk() {
   const text = document.getElementById('in-bulk-text').value;
