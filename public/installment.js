@@ -63,7 +63,7 @@ function inOpenBulk() {
     </div>
     <div id="in-bulk-msg" class="msg"></div>
     <div style="display:flex;gap:8px">
-      <button class="btn" style="flex:1;background:var(--g);color:#fff" onclick="inSaveBulk()"><i class="ti ti-device-floppy"></i> حفظ</button>
+      <button class="btn" id="in-save-btn" style="flex:1;background:var(--g);color:#fff" onclick="inSaveBulk()"><i class="ti ti-device-floppy"></i> حفظ</button>
       <button class="btn" onclick="inCloseModal()">إغلاق</button>
     </div>`;
   modal.classList.add('open');
@@ -130,8 +130,13 @@ async function inSaveBulk() {
   const text = document.getElementById('in-bulk-text').value;
   const mode = document.querySelector('input[name="in-mode"]:checked')?.value || 'replace';
   const msg = document.getElementById('in-bulk-msg');
+  const btn = document.getElementById('in-save-btn');
   if (!text.trim()) { msg.textContent = 'يرجى لصق القائمة أولاً'; msg.className = 'msg err'; return; }
+  const lineCount = text.split(/\r?\n/).filter(l => l.trim()).length;
+  if (btn) { btn.disabled = true; btn.innerHTML = `<i class="ti ti-loader-2"></i> جارٍ الحفظ (${lineCount} سجل)... يرجى الانتظار ولا تُغلقي الصفحة`; }
+  msg.textContent = ''; msg.className = 'msg';
   const r = await api('/api/installment_plan/bulk', 'POST', { text, mode });
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i> حفظ'; }
   if (r.error) { msg.textContent = r.error; msg.className = 'msg err'; return; }
   inCloseModal();
   await loadInstallmentPlan();
