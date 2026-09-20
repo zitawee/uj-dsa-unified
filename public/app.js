@@ -271,6 +271,7 @@ function buildSidebar() {
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('room_booking',this)"><i class="ti ti-bed"></i>نظام حجز الغرف</div>` : ''}
     ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('training_courses',this)"><i class="ti ti-school"></i>الدورات التدريبية</div>` : ''}
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('finance',this)"><i class="ti ti-cash"></i>النظام المالي</div>` : ''}
+    ${ME?.role==='admin' ? `<div class="ni" onclick="go('installment_plan',this)"><i class="ti ti-calendar-dollar"></i>نظام تقسيط الرسوم</div>` : ''}
   </div>
 
   <!-- النماذج الرسمية -->
@@ -326,7 +327,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
+  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','installment_plan','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
 }
 
@@ -458,7 +459,7 @@ function go(name, el) {
   if (el) el.classList.add('active');
   if (window.innerWidth <= 768) closeSidebar();
   const loaders = {
-    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, students:loadStudents, achievements:loadAchievements,
+    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
