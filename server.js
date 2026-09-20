@@ -1336,9 +1336,13 @@ app.post('/api/installment_plan/bulk', auth(['admin']), async (req, res) => {
     if (!rows.length) return res.status(400).json({ error: 'تعذّر العثور على أي رقم جامعي صالح ضمن النص المُدخَل' });
 
     if (mode === 'replace') await InstallmentPlan.deleteMany({});
-    for (const r of rows) {
-      await InstallmentPlan.findOneAndUpdate({ university_id: r.university_id }, r, { upsert: true });
-    }
+    // كتابة دفعة واحدة (bulkWrite) بدل حلقة await متسلسلة لكل سطر — مع قوائم بالمئات/الآلاف
+    // كانت الحلقة المتسلسلة تعني مئات رحلات الذهاب والإياب مع قاعدة البيانات، ما قد يستغرق دقائق
+    // ويتسبب أحياناً بانتهاء مهلة الخادم (timeout) قبل اكتمال الحفظ
+    const ops = rows.map(r => ({
+      updateOne: { filter: { university_id: r.university_id }, update: { $set: r }, upsert: true }
+    }));
+    if (ops.length) await InstallmentPlan.bulkWrite(ops, { ordered: false });
     const total = await InstallmentPlan.countDocuments({});
     res.json({ message: `تم حفظ ${rows.length} سجل بنجاح`, added: rows.length, total });
   } catch(e) { res.status(500).json({ error: e.message }); }
