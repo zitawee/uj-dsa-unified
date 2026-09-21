@@ -22,21 +22,21 @@ async function loadInstallmentPlan() {
 function inRender(filter = '') {
   const panel = document.getElementById('panel-installment_plan');
   const q = filter.trim();
-  const rows = q ? IN_LIST.filter(r => String(r.university_id).includes(q) || (r.college||'').includes(q)) : IN_LIST;
+  const rows = q ? IN_LIST.filter(r => String(r.university_id).includes(q) || (r.college||'').includes(q) || String(r.serial_number||'').includes(q)) : IN_LIST;
   panel.innerHTML = `
   <div class="ph"><div><div class="pt">نظام تقسيط الرسوم الجامعية</div><div class="ps">${IN_LIST.length} طالب/ة مدرَجون ضمن قائمة التقسيط — صفحة الاستعلام العامة: <a href="/installment.html" target="_blank">installment.html</a></div></div></div>
   <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="inOpenBulk()"><i class="ti ti-clipboard-plus"></i> لصق/تحديث القائمة</button>
     <button class="btn btn-sm" style="color:#c0392b" onclick="inClearAll()"><i class="ti ti-trash"></i> حذف كامل القائمة</button>
-    <input id="in-search" type="text" placeholder="بحث برقم جامعي / كلية..." style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--r)" oninput="inRender(this.value)" value="${inEsc(q)}">
+    <input id="in-search" type="text" placeholder="بحث برقم جامعي / كلية / رقم تسلسلي..." style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--r)" oninput="inRender(this.value)" value="${inEsc(q)}">
   </div>
   <div class="card">
     <div class="tw"><table>
-      <thead><tr><th>#</th><th>الرقم الجامعي</th><th>الكلية</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>الرقم التسلسلي</th><th>الرقم الجامعي</th><th>الكلية</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map((r,i) => `<tr>
-          <td>${i+1}</td><td style="font-weight:700">${inEsc(r.university_id)}</td><td>${inEsc(r.college||'-')}</td>
+          <td>${i+1}</td><td>${inEsc(r.serial_number||'-')}</td><td style="font-weight:700">${inEsc(r.university_id)}</td><td>${inEsc(r.college||'-')}</td>
           <td><button class="btn btn-sm" style="color:#c0392b" onclick="inDeleteOne('${r.id}','${inEsc(r.university_id)}')"><i class="ti ti-trash"></i> حذف</button></td>
-        </tr>`).join('') : `<tr><td colspan="4" class="center">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد بيانات بعد — استخدمي زر "لصق/تحديث القائمة" لإضافة الطلبة'}</td></tr>`}</tbody>
+        </tr>`).join('') : `<tr><td colspan="5" class="center">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد بيانات بعد — استخدمي زر "لصق/تحديث القائمة" لإضافة الطلبة'}</td></tr>`}</tbody>
     </table></div>
   </div>`;
 }
@@ -47,16 +47,16 @@ function inOpenBulk() {
   modal.querySelector('.modal').innerHTML = `
     <h3>لصق/تحديث قائمة الطلبة المقبولين بالتقسيط</h3>
     <p style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:10px">
-      الصقي القائمة سطراً لكل طالب/ة، بالترتيب: <b>الرقم الجامعي</b> ثم <b>الكلية</b> —
-      يمكن الفصل بينهما بفاصلة أو Tab (كما هو الحال عند اللصق من Excel مباشرة). مثال:<br>
-      <code style="background:#f4f6f4;padding:2px 5px;border-radius:4px;display:inline-block;margin-top:4px">2021123456, كلية العلوم</code>
+      الصقي القائمة سطراً لكل طالب/ة، بالترتيب: <b>الرقم التسلسلي</b> (اختياري) ثم <b>الرقم الجامعي</b> ثم <b>الكلية</b> —
+      يمكن الفصل بينها بفاصلة أو Tab (كما هو الحال عند اللصق من Excel مباشرة). مثال:<br>
+      <code style="background:#f4f6f4;padding:2px 5px;border-radius:4px;display:inline-block;margin-top:4px">1, 2021123456, كلية العلوم</code>
     </p>
     <div class="fg" style="margin-bottom:10px">
       <label>أو استيراد مباشرة من ملف Excel (xlsx / csv)</label>
       <input type="file" id="in-file" accept=".xlsx,.xls,.csv" onchange="inHandleExcelFile(this)">
       <div id="in-file-msg" style="font-size:11.5px;color:var(--muted);margin-top:4px"></div>
     </div>
-    <div class="fg" style="margin-bottom:10px"><textarea id="in-bulk-text" rows="10" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;resize:vertical" placeholder="2021123456, كلية العلوم&#10;2020987654, كلية الآداب"></textarea></div>
+    <div class="fg" style="margin-bottom:10px"><textarea id="in-bulk-text" rows="10" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;resize:vertical" placeholder="1, 2021123456, كلية العلوم&#10;2, 2020987654, كلية الآداب"></textarea></div>
     <div class="fg" style="margin-bottom:12px">
       <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer"><input type="radio" name="in-mode" value="replace" checked> استبدال القائمة الحالية بالكامل بهذه القائمة</label>
       <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin-top:4px"><input type="radio" name="in-mode" value="append"> إضافة/تحديث فوق القائمة الحالية (دون حذف الموجود)</label>
@@ -76,7 +76,7 @@ function inOpenBulk() {
 function inCloseModal() { document.getElementById('mod-installment')?.classList.remove('open'); }
 
 // قراءة ملف Excel/CSV بالكامل في المتصفح (مكتبة XLSX محمَّلة مسبقاً في الصفحة) وتحويله تلقائياً
-// إلى نفس صيغة النص المستخدَمة في مربع اللصق (رقم جامعي + كلية فقط)، ليراجعها admin قبل الحفظ إن أراد.
+// إلى نفس صيغة النص المستخدَمة في مربع اللصق (رقم تسلسلي + رقم جامعي + كلية)، ليراجعها admin قبل الحفظ إن أراد.
 function inHandleExcelFile(input) {
   const file = input.files && input.files[0];
   const msgEl = document.getElementById('in-file-msg');
@@ -93,23 +93,32 @@ function inHandleExcelFile(input) {
         .filter(r => r.some(c => c !== ''));
       if (!rows.length) { msgEl.textContent = 'الملف فارغ أو تعذّرت قراءته'; msgEl.style.color = '#c0392b'; return; }
 
-      // تحديد الأعمدة: إن وُجد صف عناوين (يحتوي كلمات مثل "رقم"/"كلية") نعتمد عليه،
-      // وإلا نفترض: العمود الأول = رقم جامعي، والعمود الثاني = كلية (يُتجاهَل أي عمود آخر مثل الاسم إن وُجد).
-      let idIdx = 0, collegeIdx = 1, dataRows = rows;
+      // تحديد الأعمدة: إن وُجد صف عناوين نعتمد عليه (نبحث عن "تسلسل" لعمود الرقم التسلسلي أولاً
+      // كي لا يُخلَط مع "الرقم الجامعي")، وإلا نفترض حسب عدد الأعمدة: 3 أعمدة = تسلسلي + جامعي + كلية،
+      // وعمودان فقط = جامعي + كلية (بلا رقم تسلسلي، توافقاً مع الملفات الأقدم).
+      let serialIdx = -1, idIdx = -1, collegeIdx = -1, dataRows = rows;
       const header = rows[0];
-      const looksLikeHeader = header.some(c => /رقم|جامعي|كلية|id|college/i.test(c));
+      const looksLikeHeader = header.some(c => /تسلسل|جامعي|كلية|serial|id|college/i.test(c));
       if (looksLikeHeader) {
         header.forEach((c, i) => {
-          if (/رقم|جامعي|id/i.test(c)) idIdx = i;
-          if (/كلية|college/i.test(c)) collegeIdx = i;
+          if (/تسلسل|serial/i.test(c)) serialIdx = i;
+          else if (/جامعي|id/i.test(c)) idIdx = i;
+          else if (/كلية|college/i.test(c)) collegeIdx = i;
         });
         dataRows = rows.slice(1);
+      } else if (header.length >= 3) {
+        serialIdx = 0; idIdx = 1; collegeIdx = 2;
+      } else if (header.length === 2) {
+        idIdx = 0; collegeIdx = 1;
       }
+      if (idIdx === -1) idIdx = 0;
 
       const lines = dataRows
         .filter(r => /^\d+$/.test((r[idIdx] || '').trim()))
         .map(r => {
-          const parts = [r[idIdx].trim()];
+          const parts = [];
+          if (serialIdx >= 0 && r[serialIdx]) parts.push(r[serialIdx].trim());
+          parts.push(r[idIdx].trim());
           if (collegeIdx >= 0 && r[collegeIdx]) parts.push(r[collegeIdx].trim());
           return parts.join(', ');
         });
