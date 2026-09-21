@@ -1317,7 +1317,9 @@ app.get('/api/installment_plan', auth(['admin']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// لصق قائمة نصية (كل سطر: رقم جامعي [فاصل] الكلية) — الفاصل: تاب أو فاصلة أو عدة مسافات
+// لصق قائمة نصية — كل سطر: [الرقم التسلسلي اختياري] ثم رقم جامعي ثم الكلية — الفاصل: تاب أو فاصلة أو عدة مسافات
+// إن كان أول عنصرين بالسطر رقمين وبقي بعدهما نص (الكلية)، يُعتبر الأول رقماً تسلسلياً والثاني رقماً جامعياً؛
+// وإلا فالعنصر الأول هو الرقم الجامعي مباشرة (توافقاً مع الصيغة القديمة بلا رقم تسلسلي)
 // mode: 'replace' يمسح القائمة الحالية بالكامل قبل الإضافة، 'append' يضيف/يحدّث فوق القائمة الحالية
 app.post('/api/installment_plan/bulk', auth(['admin']), async (req, res) => {
   try {
@@ -1328,10 +1330,17 @@ app.post('/api/installment_plan/bulk', auth(['admin']), async (req, res) => {
     for (const line of lines) {
       const parts = line.split(/\t|,|\s{2,}/).map(p => p.trim()).filter(p => p !== '');
       if (!parts.length) continue;
-      const university_id = parts[0];
-      if (!/^\d+$/.test(university_id)) continue; // تجاهل أي سطر لا يبدأ برقم جامعي صحيح
-      const college = parts.slice(1).join(' ').trim();
-      rows.push({ university_id, college });
+      let serial_number = '', university_id, college;
+      if (parts.length >= 3 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])) {
+        serial_number = parts[0];
+        university_id = parts[1];
+        college = parts.slice(2).join(' ').trim();
+      } else {
+        university_id = parts[0];
+        college = parts.slice(1).join(' ').trim();
+      }
+      if (!/^\d+$/.test(university_id)) continue; // تجاهل أي سطر لا يحتوي رقماً جامعياً صحيحاً
+      rows.push({ serial_number, university_id, college });
     }
     if (!rows.length) return res.status(400).json({ error: 'تعذّر العثور على أي رقم جامعي صالح ضمن النص المُدخَل' });
 
@@ -1371,7 +1380,7 @@ app.get('/api/public/installment-plan', async (req, res) => {
     if (!sid) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
     const doc = await InstallmentPlan.findOne({ university_id: sid }).lean();
     if (!doc) return res.status(404).json({ error: 'رقمك الجامعي غير مدرج ضمن قائمة المقبولين بنظام تقسيط الرسوم الجامعية' });
-    res.json({ found: true, university_id: doc.university_id, college: doc.college || '' });
+    res.json({ found: true, university_id: doc.university_id, college: doc.college || '', serial_number: doc.serial_number || '' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
