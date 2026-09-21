@@ -38,6 +38,9 @@
   .st-line:last-child{border-bottom:none}
   .st-line span{flex-shrink:0;color:var(--muted)}
   .st-line b{color:#173b23;text-align:left}
+  .serial-box{margin:4px 0 14px;padding:10px 8px;background:#fff;border:1.5px solid #BFE5CB;border-radius:8px}
+  .serial-box .serial-label{font-size:11.5px;color:var(--muted);margin-bottom:2px}
+  .serial-box .serial-num{font-size:34px;font-weight:800;color:var(--g);line-height:1.2}
   .err{margin-top:14px;font-size:12.5px;background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5;border-radius:var(--r);padding:12px;text-align:center;line-height:1.7}
 </style>
 </head>
@@ -69,6 +72,7 @@ async function doCheck(){
       <div class="ok-box">
         <div class="icon">✅</div>
         <div class="title">اسمك مدرج ضمن قائمة المقبولين بنظام التقسيط</div>
+        ${data.serial_number ? `<div class="serial-box"><div class="serial-label">الرقم التسلسلي</div><div class="serial-num">${data.serial_number}</div></div>` : ''}
         <div class="st-line"><span>الرقم الجامعي</span><b>${data.university_id||'-'}</b></div>
         ${data.college ? `<div class="st-line"><span>الكلية</span><b>${data.college}</b></div>` : ''}
       </div>`;
