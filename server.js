@@ -815,7 +815,7 @@ app.get('/api/public/training-courses', async (req, res) => {
   try {
     const docs = await TrainingCourse.find().sort({ createdAt: -1 }).lean();
     const todayStr = new Date().toISOString().slice(0,10);
-    res.json(docs.map(d => {
+    const list = docs.map(d => {
       const regs = d.registrants || [];
       const open = (!d.close_date || d.close_date >= todayStr) && regs.length < (d.cap || 0);
       return {
@@ -823,7 +823,8 @@ app.get('/api/public/training-courses', async (req, res) => {
         quota_note: d.quota_note, description: d.description || '',
         seats_left: Math.max(0, (d.cap||0) - regs.length), cap: d.cap || 0, open,
       };
-    }));
+    }).filter(c => c.open); // إخفاء الدورات المكتملة/المغلقة تماماً من صفحة الاستعلام العامة
+    res.json(list);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
