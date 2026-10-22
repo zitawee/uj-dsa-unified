@@ -3,6 +3,7 @@ const bcrypt   = require('bcryptjs');
 const mongoose = require('mongoose');
 const path     = require('path');
 const fs       = require('fs');
+const crypto   = require('crypto');
 
 const app  = express();
 app.set('trust proxy', true);
@@ -908,6 +909,33 @@ app.get('/api/public/events', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ══ رمز QR متجدِّد تلقائياً (لحصر تسجيل الطلبة على مَن يمسح الشاشة المعروضة فعلياً داخل القاعة،
+// ومنع التسجيل عبر رابط يُعاد إرساله لاحقاً على واتساب مثلاً) — نفس فكرة رموز TOTP: سرّ خاص
+// بكل كشف مشاركين + نافذة زمنية قصيرة، فيصبح الرمز المعروض على الشاشة غير صالح خلال ثوانٍ ══
+const QR_WINDOW_SECONDS = 25;
+function qrTokenFor(secret, bucket) {
+  return crypto.createHmac('sha256', secret).update(String(bucket)).digest('hex').slice(0, 8);
+}
+function qrCurrentBucket() { return Math.floor(Date.now() / 1000 / QR_WINDOW_SECONDS); }
+
+// توليد/جلب رمز QR الحالي لكشف مشاركين معيّن — لعرضه مباشرة على شاشة/بروجكتور داخل القاعة (admin/editor فقط)
+app.get('/api/participants/:id/qr-token', auth(['admin','editor','coordinator','manager']), async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'غير موجود' });
+    let secret = doc.qr_secret;
+    if (!secret) {
+      secret = crypto.randomBytes(16).toString('hex');
+      doc.qr_secret = secret;
+      await doc.save();
+    }
+    const bucket = qrCurrentBucket();
+    const token = qrTokenFor(secret, bucket);
+    const ttl = QR_WINDOW_SECONDS - (Math.floor(Date.now() / 1000) % QR_WINDOW_SECONDS);
+    res.json({ token, ttl, window: QR_WINDOW_SECONDS });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/public/participants-info/:id', async (req, res) => {
   try {
     const doc = await models['participants'].findById(req.params.id).lean();
@@ -918,6 +946,7 @@ app.get('/api/public/participants-info/:id', async (req, res) => {
       registered_count: Array.isArray(doc.students) ? doc.students.length : 0,
       level_field_type: doc.level_field_type || 'level',
       reg_expiry: doc.reg_expiry || doc.date || null,
+      require_live_qr: !!doc.require_live_qr,
     });
   } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
 });
@@ -945,6 +974,17 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
     const capLimit = doc.max_capacity ? Number(doc.max_capacity) : null;
     if (capLimit && students.length >= capLimit)
       return res.status(400).json({ error: 'عذراً، اكتمل العدد المسموح به من التسجيل لهذا النشاط' });
+
+    // تسجيل محصور بمسح رمز QR المعروض مباشرة على الشاشة داخل القاعة — يُرفَض أي رابط ثابت
+    // أُعيد إرساله لاحقاً (واتساب مثلاً) لأن الرمز يتجدّد تلقائياً كل ثوانٍ معدودة
+    if (doc.require_live_qr) {
+      const sentToken = String(req.body.qr_token || '').trim();
+      const secret = doc.qr_secret || '';
+      const bucket = qrCurrentBucket();
+      const validTokens = secret ? [qrTokenFor(secret, bucket), qrTokenFor(secret, bucket - 1)] : [];
+      if (!sentToken || !validTokens.includes(sentToken))
+        return res.status(403).json({ error: '⏱️ انتهت صلاحية رمز QR، يرجى مسح الرمز المعروض حالياً على الشاشة داخل القاعة مباشرة — لا يمكن استخدام رابط أُرسل مسبقاً' });
+    }
 
     const name  = (req.body.name   || '').trim();
     const uniId = (req.body.uni_id || '').trim();
