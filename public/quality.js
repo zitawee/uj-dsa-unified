@@ -491,6 +491,12 @@ async function loadParticipants() {
         <div class="fg"><label>الحد الأقصى لعدد المسجَّلين عبر رابط التسجيل (اختياري)</label><input id="pf-maxcap" type="number" min="1" placeholder="بدون حدّ إن تُرك فارغاً"></div>
         <div class="fg"><label>صلاحية رابط التسجيل حتى تاريخ (اختياري)</label><input id="pf-regexp" type="date"></div>
       </div>
+      <div class="fg" style="margin-top:8px">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;cursor:pointer">
+          <input type="checkbox" id="pf-liveqr" style="margin-top:3px">
+          <span>حصر التسجيل على مَن يمسح رمز QR المعروض مباشرة على شاشة/بروجكتور داخل القاعة فقط (الرمز يتجدَّد تلقائياً كل ٢٥ ثانية، فلا يعمل أي رابط أو رمز QR يُعاد إرساله لاحقاً عبر واتساب أو غيره). عند تفعيل هذا الخيار، استخدمي زر «فتح شاشة QR المباشرة» أدناه فقط — لن تعمل أي نسخة QR مطبوعة مسبقاً.</span>
+        </label>
+      </div>
     </div>
     <div class="card" id="pf-reglink-card">
       <div class="ct"><i class="ti ti-link"></i>رابط تسجيل الطلبة ذاتياً</div>
@@ -532,7 +538,8 @@ async function loadParticipants() {
 function showPForm() {
   const f=document.getElementById('part-form'); f.style.display='block';
   delete f.dataset.editId;
-  f.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>el.value='');
+  f.querySelectorAll('input:not([type=file]):not([type=checkbox]),select,textarea').forEach(el=>el.value='');
+  document.getElementById('pf-liveqr').checked=false;
   document.getElementById('part-rows').innerHTML='';
   document.getElementById('pf-cnt').textContent='';
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ فقط';
@@ -673,6 +680,7 @@ async function editPart(id) {
   document.getElementById('pf-eval').value=r.eval_num||'';
   document.getElementById('pf-maxcap').value=r.max_capacity||'';
   document.getElementById('pf-regexp').value=r.reg_expiry||'';
+  document.getElementById('pf-liveqr').checked=!!r.require_live_qr;
   document.getElementById('pf-sups').value=r.supervisors||'';
   document.getElementById('pf-staff').value=r.staff||'';
   const c=document.getElementById('part-rows'); c.innerHTML='';
@@ -682,7 +690,7 @@ async function editPart(id) {
   initSsel(c, NATIONALITIES);
   wirePartCollegeMajor(c);
   updatePartCnt();
-  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null, liveQr: !!r.require_live_qr });
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
   f.scrollIntoView({behavior:'smooth'});
 }
@@ -852,15 +860,58 @@ function renderRegLink(id, info) {
   const expLine = expiry
     ? `<div style="font-size:11.5px;color:${isExpired?'#8A1F1F':'var(--muted)'};margin-top:3px">${isExpired?'⛔ انتهت صلاحية الرابط بتاريخ':'صالح حتى تاريخ'} <b>${expiry}</b>${!explicitExpiry?' (افتراضي — تاريخ انعقاد النشاط، لعدم تحديد تاريخ يدوياً)':''}</div>`
     : `<div style="font-size:11.5px;color:var(--muted);margin-top:3px">الرابط مفعَّل بدون تاريخ انتهاء</div>`;
+  const liveQr = !!info?.liveQr;
+  const liveQrLine = liveQr
+    ? `<div style="font-size:11.5px;background:#FFF8E1;border:1px solid #F0D98A;color:#8B6914;border-radius:6px;padding:7px 9px;margin-top:8px">🔒 التسجيل مقصور حالياً على مَن يمسح رمز QR المعروض مباشرة على الشاشة — الرابط النصّي أعلاه وحده <b>لن يعمل</b> لهذا النشاط. استخدمي الزر أدناه لعرض الشاشة المباشرة.</div>`
+    : '';
   box.innerHTML = `
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">شاركي/شارك هذا الرابط مع الطلبة ليسجّلوا حضورهم بأنفسهم مباشرة ضمن قائمة المشاركين أدناه (بدون تسجيل دخول):</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       <input type="text" readonly value="${link}" onclick="this.select()" style="flex:1;min-width:220px;font-size:11.5px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:#F9FAFB">
       <button class="btn btn-sm btn-g" onclick="copyRegLink('${link}')">📋 نسخ الرابط</button>
       <button class="btn btn-sm" onclick="refreshPartStudents('${id}')">🔄 تحديث قائمة المسجَّلين</button>
+      ${liveQr ? `<button class="btn btn-sm" style="background:#1B6B3A;color:#fff" onclick="openLiveQR('${id}')">📡 فتح شاشة QR المباشرة للقاعة</button>` : ''}
     </div>
     ${capLine}
-    ${expLine}`;
+    ${expLine}
+    ${liveQrLine}`;
+}
+
+// ══ شاشة QR مباشرة (ملء الشاشة) لعرضها على بروجكتور داخل القاعة — الرمز يتجدَّد تلقائياً كل
+// QR_WINDOW_SECONDS ثانية (مطابقة لقيمة الخادم)، فيصبح أي التقاط/مشاركة للرمز عديم الفائدة بسرعة ══
+let LQR_TIMER = null;
+async function openLiveQR(partId) {
+  if(!window.QRCode){ alert('تعذّر تحميل مكتبة QR — يرجى تحديث الصفحة والمحاولة من جديد'); return; }
+  document.getElementById('liveqr-overlay')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'liveqr-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:#0F2A1A;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;text-align:center;padding:20px';
+  ov.innerHTML = `
+    <div style="font-size:20px;font-weight:700">امسح الرمز للتسجيل في النشاط</div>
+    <div style="background:#fff;border-radius:16px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.4)"><img id="lqr-img" style="width:min(50vw,360px);height:min(50vw,360px);display:block"></div>
+    <div style="font-size:13px;opacity:.85">⏱️ يتجدَّد الرمز تلقائياً كل ثوانٍ قليلة — أي رمز محفوظ أو مُرسَل مسبقاً لن يعمل</div>
+    <div id="lqr-count" style="font-size:12px;opacity:.7"></div>
+    <button class="btn" style="background:#fff;color:#0F2A1A;font-weight:700;padding:10px 28px" onclick="closeLiveQR()">✕ إغلاق الشاشة</button>`;
+  document.body.appendChild(ov);
+
+  const tick = async () => {
+    const r = await api('/api/participants/'+partId+'/qr-token');
+    if(!r || r.error){ document.getElementById('lqr-count').textContent = 'تعذّر تحديث الرمز، يُعاد المحاولة...'; return; }
+    const link = `${location.origin}/register.html?id=${partId}&t=${r.token}`;
+    try {
+      const dataUrl = await new Promise((resolve,reject)=>QRCode.toDataURL(link, {width:360,margin:1}, (err,url)=>err?reject(err):resolve(url)));
+      const img = document.getElementById('lqr-img'); if(img) img.src = dataUrl;
+    } catch(e){}
+    let left = r.ttl;
+    const cEl = document.getElementById('lqr-count');
+    if(cEl) cEl.textContent = `يتجدَّد خلال ${left} ثانية`;
+  };
+  await tick();
+  LQR_TIMER = setInterval(tick, 5000);
+}
+function closeLiveQR() {
+  if(LQR_TIMER){ clearInterval(LQR_TIMER); LQR_TIMER=null; }
+  document.getElementById('liveqr-overlay')?.remove();
 }
 
 function copyRegLink(link) {
@@ -879,12 +930,12 @@ async function refreshPartStudents(id) {
   initSsel(c, NATIONALITIES);
   wirePartCollegeMajor(c);
   updatePartCnt();
-  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null });
+  renderRegLink(id, { count: (r.students||[]).length, cap: r.max_capacity ? Number(r.max_capacity) : null, expiry: r.reg_expiry||null, activityDate: r.date||null, liveQr: !!r.require_live_qr });
   alert(`✅ تم تحديث القائمة — ${r.students?r.students.length:0} طالب مسجَّل حالياً`);
 }
 
 async function savePart() {
-  const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),max_capacity:g('pf-maxcap')?Number(g('pf-maxcap')):null,reg_expiry:g('pf-regexp')||null,students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
+  const data={activity:g('pf-act'),date:g('pf-date'),organizer:g('pf-org'),eval_num:g('pf-eval'),max_capacity:g('pf-maxcap')?Number(g('pf-maxcap')):null,reg_expiry:g('pf-regexp')||null,require_live_qr:document.getElementById('pf-liveqr').checked,students:getPartStudents(),supervisors:g('pf-sups'),staff:g('pf-staff')};
   if(!data.activity){showMsg('msg-participants','يرجى إدخال اسم النشاط',true);return null;}
   const f=document.getElementById('part-form'); const editId=f.dataset.editId;
   const r = editId ? await api('/api/participants/'+editId,'PUT',data) : await api('/api/participants','POST',data);
@@ -895,7 +946,7 @@ async function savePart() {
     // أول حفظ لسجل جديد: يبقى النموذج مفتوحاً لإظهار رابط تسجيل الطلبة مباشرة
     f.dataset.editId = savedId;
     const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ التعديلات';
-    renderRegLink(savedId, { count: data.students.length, cap: data.max_capacity, expiry: data.reg_expiry, activityDate: data.date });
+    renderRegLink(savedId, { count: data.students.length, cap: data.max_capacity, expiry: data.reg_expiry, activityDate: data.date, liveQr: data.require_live_qr });
   } else {
     document.getElementById('part-form').style.display='none';
     delete f.dataset.editId;

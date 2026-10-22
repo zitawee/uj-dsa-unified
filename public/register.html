@@ -166,6 +166,7 @@ document.getElementById('f-col').addEventListener('change', function(){
 
 const params = new URLSearchParams(location.search);
 const PID = params.get('id');
+const QR_TOKEN = params.get('t'); // رمز QR المتجدِّد (إن وُجد) — مُرفَق تلقائياً عند المسح من الشاشة المعروضة
 
 let CAPTCHA_TOKEN=null;
 async function loadCaptcha(){
@@ -212,6 +213,9 @@ async function init(){
     }else if(r.max_capacity && r.registered_count >= r.max_capacity){
       document.getElementById('activityInfo').innerHTML += `<br><br>❌ <b>عذراً، اكتمل العدد المسموح به من التسجيل لهذا النشاط.</b>`;
       document.getElementById('formArea').style.display='none';
+    }else if(r.require_live_qr && !QR_TOKEN){
+      document.getElementById('activityInfo').innerHTML += `<br><br>⛔ <b>هذا التسجيل مقصور على مَن يمسح رمز QR المعروض مباشرة على الشاشة داخل القاعة فقط — لا يمكن استخدام رابط مُرسَل.</b>`;
+      document.getElementById('formArea').style.display='none';
     }else{
       loadCaptcha();
     }
@@ -230,7 +234,7 @@ async function submitReg(){
   const data = {
     name, uni_id: uniId, phone: v('f-phone'), email: v('f-email'), gender: v('f-gender'),
     nationality: v('f-nat'), college: v('f-col'), major: v('f-major'), year: v('f-year'),
-    captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha')
+    captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha'), qr_token: QR_TOKEN || ''
   };
 
   const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='جارٍ الإرسال...';
