@@ -923,11 +923,13 @@ app.get('/api/participants/:id/qr-token', auth(['admin','editor','coordinator','
   try {
     const doc = await models['participants'].findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'غير موجود' });
-    let secret = doc.qr_secret;
+    let secret = doc.get('qr_secret');
     if (!secret) {
-      secret = crypto.randomBytes(16).toString('hex');
-      doc.qr_secret = secret;
-      await doc.save();
+      // updateOne صريح (المخطط strict:false فلا يُحفَظ الحقل الجديد بمجرد إسناده للمستند)، مع شرط عدم الوجود لتفادي سباق فتح شاشتين
+      await models['participants'].updateOne({ _id: doc._id, qr_secret: { $exists: false } }, { $set: { qr_secret: crypto.randomBytes(16).toString('hex') } });
+      const fresh = await models['participants'].findById(doc._id).lean();
+      secret = fresh && fresh.qr_secret;
+      if (!secret) return res.status(500).json({ error: 'تعذّر إنشاء مفتاح الرمز' });
     }
     const bucket = qrCurrentBucket();
     const token = qrTokenFor(secret, bucket);
@@ -945,7 +947,8 @@ function qrSignTicket(secret, partId, exp) {
 app.post('/api/public/participants/:id/qr-ticket', async (req, res) => {
   try {
     const doc = await models['participants'].findById(req.params.id).lean();
-    if (!doc || !doc.require_live_qr || !doc.qr_secret) return res.status(400).json({ error: 'غير مطلوب لهذا النشاط' });
+    if (!doc || !doc.require_live_qr) return res.status(400).json({ error: 'غير مطلوب لهذا النشاط' });
+    if (!doc.qr_secret) return res.status(403).json({ error: 'لم تُفتح شاشة QR المباشرة لهذا النشاط بعد — يرجى مسح الرمز المعروض على الشاشة داخل القاعة' });
     const sent = String(req.body.t || '').trim();
     const bucket = qrCurrentBucket();
     const ok = sent && [qrTokenFor(doc.qr_secret, bucket), qrTokenFor(doc.qr_secret, bucket - 1)].includes(sent);
@@ -996,11 +999,12 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
 
     // تسجيل محصور بمسح رمز QR المعروض مباشرة على الشاشة داخل القاعة — يُرفَض أي رابط ثابت
     // أُعيد إرساله لاحقاً (واتساب مثلاً) لأن الرمز يتجدّد تلقائياً كل ثوانٍ معدودة
-    if (doc.require_live_qr) {
+    if (doc.get('require_live_qr')) {
       const parts = String(req.body.qr_ticket || '').split('.');
       const exp = Number(parts[0]);
       const sig = parts[1] || '';
-      const valid = doc.qr_secret && exp && exp > Date.now() && sig === qrSignTicket(doc.qr_secret, String(doc._id), exp);
+      const secretNow = doc.get('qr_secret');
+      const valid = secretNow && exp && exp > Date.now() && sig === qrSignTicket(secretNow, String(doc._id), exp);
       if (!valid)
         return res.status(403).json({ error: '⏱️ انتهت صلاحية جلسة التسجيل، يرجى مسح الرمز المعروض حالياً على الشاشة داخل القاعة من جديد' });
     }
