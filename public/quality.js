@@ -494,7 +494,7 @@ async function loadParticipants() {
       <div class="fg" style="margin-top:8px">
         <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;cursor:pointer">
           <input type="checkbox" id="pf-liveqr" style="margin-top:3px">
-          <span>حصر التسجيل على مَن يمسح رمز QR المعروض مباشرة على شاشة/بروجكتور داخل القاعة فقط (الرمز يتجدَّد تلقائياً كل ٢٥ ثانية، فلا يعمل أي رابط أو رمز QR يُعاد إرساله لاحقاً عبر واتساب أو غيره). عند تفعيل هذا الخيار، استخدمي زر «فتح شاشة QR المباشرة» أدناه فقط — لن تعمل أي نسخة QR مطبوعة مسبقاً.</span>
+          <span>حصر التسجيل على مَن يمسح رمز QR المعروض مباشرة على شاشة/بروجكتور داخل القاعة فقط (الرمز يتجدَّد تلقائياً كل ١٥ ثانية، فلا يعمل أي رابط أو رمز QR يُعاد إرساله لاحقاً عبر واتساب أو غيره). عند تفعيل هذا الخيار، استخدمي زر «فتح شاشة QR المباشرة» أدناه فقط — لن تعمل أي نسخة QR مطبوعة مسبقاً.</span>
         </label>
       </div>
     </div>
@@ -907,7 +907,7 @@ async function openLiveQR(partId) {
     if(cEl) cEl.textContent = `يتجدَّد خلال ${left} ثانية`;
   };
   await tick();
-  LQR_TIMER = setInterval(tick, 5000);
+  LQR_TIMER = setInterval(tick, 3000);
 }
 function closeLiveQR() {
   if(LQR_TIMER){ clearInterval(LQR_TIMER); LQR_TIMER=null; }
