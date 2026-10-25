@@ -912,7 +912,7 @@ app.get('/api/public/events', async (req, res) => {
 // ══ رمز QR متجدِّد تلقائياً (لحصر تسجيل الطلبة على مَن يمسح الشاشة المعروضة فعلياً داخل القاعة،
 // ومنع التسجيل عبر رابط يُعاد إرساله لاحقاً على واتساب مثلاً) — نفس فكرة رموز TOTP: سرّ خاص
 // بكل كشف مشاركين + نافذة زمنية قصيرة، فيصبح الرمز المعروض على الشاشة غير صالح خلال ثوانٍ ══
-const QR_WINDOW_SECONDS = 25;
+const QR_WINDOW_SECONDS = 15;
 function qrTokenFor(secret, bucket) {
   return crypto.createHmac('sha256', secret).update(String(bucket)).digest('hex').slice(0, 8);
 }
@@ -933,6 +933,25 @@ app.get('/api/participants/:id/qr-token', auth(['admin','editor','coordinator','
     const token = qrTokenFor(secret, bucket);
     const ttl = QR_WINDOW_SECONDS - (Math.floor(Date.now() / 1000) % QR_WINDOW_SECONDS);
     res.json({ token, ttl, window: QR_WINDOW_SECONDS });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// تذكرة تسجيل قصيرة العمر: تُصدَر مرة واحدة لحظة فتح الصفحة بعد التحقق من رمز QR الحي، وتبقى صالحة ١٠ دقائق
+// ليتسع الوقت لتعبئة النموذج دون أن يُرفَض الطالب الجاد، بينما رمز QR نفسه ينتهي خلال ثوانٍ فلا يفيد إعادة إرساله
+const QR_TICKET_MINUTES = 10;
+function qrSignTicket(secret, partId, exp) {
+  return crypto.createHmac('sha256', secret).update('ticket:' + partId + ':' + exp).digest('hex').slice(0, 24);
+}
+app.post('/api/public/participants/:id/qr-ticket', async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id).lean();
+    if (!doc || !doc.require_live_qr || !doc.qr_secret) return res.status(400).json({ error: 'غير مطلوب لهذا النشاط' });
+    const sent = String(req.body.t || '').trim();
+    const bucket = qrCurrentBucket();
+    const ok = sent && [qrTokenFor(doc.qr_secret, bucket), qrTokenFor(doc.qr_secret, bucket - 1)].includes(sent);
+    if (!ok) return res.status(403).json({ error: '⏱️ انتهت صلاحية رمز QR، يرجى مسح الرمز المعروض حالياً على الشاشة داخل القاعة مباشرة — لا يمكن استخدام رمز أو رابط أُرسل مسبقاً' });
+    const exp = Date.now() + QR_TICKET_MINUTES * 60 * 1000;
+    res.json({ ticket: exp + '.' + qrSignTicket(doc.qr_secret, String(doc._id), exp), minutes: QR_TICKET_MINUTES });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -978,12 +997,12 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
     // تسجيل محصور بمسح رمز QR المعروض مباشرة على الشاشة داخل القاعة — يُرفَض أي رابط ثابت
     // أُعيد إرساله لاحقاً (واتساب مثلاً) لأن الرمز يتجدّد تلقائياً كل ثوانٍ معدودة
     if (doc.require_live_qr) {
-      const sentToken = String(req.body.qr_token || '').trim();
-      const secret = doc.qr_secret || '';
-      const bucket = qrCurrentBucket();
-      const validTokens = secret ? [qrTokenFor(secret, bucket), qrTokenFor(secret, bucket - 1)] : [];
-      if (!sentToken || !validTokens.includes(sentToken))
-        return res.status(403).json({ error: '⏱️ انتهت صلاحية رمز QR، يرجى مسح الرمز المعروض حالياً على الشاشة داخل القاعة مباشرة — لا يمكن استخدام رابط أُرسل مسبقاً' });
+      const parts = String(req.body.qr_ticket || '').split('.');
+      const exp = Number(parts[0]);
+      const sig = parts[1] || '';
+      const valid = doc.qr_secret && exp && exp > Date.now() && sig === qrSignTicket(doc.qr_secret, String(doc._id), exp);
+      if (!valid)
+        return res.status(403).json({ error: '⏱️ انتهت صلاحية جلسة التسجيل، يرجى مسح الرمز المعروض حالياً على الشاشة داخل القاعة من جديد' });
     }
 
     const name  = (req.body.name   || '').trim();
