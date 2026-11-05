@@ -30,23 +30,25 @@
 <header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
 <div class="wrap"><div class="card" id="box"><div style="text-align:center;color:#888">جارٍ التحقق...</div></div></div>
 <script>
-const P = new URLSearchParams(location.search), SID = P.get('s'), TOK = P.get('t');
+const P = new URLSearchParams(location.search), ACT = P.get('a'), TOK = P.get('t');
 let TICKET = '';
 const box = document.getElementById('box');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function fail(msg){ box.innerHTML = '<h1>تسجيل الحضور</h1><div class="err">'+esc(msg)+'</div>'; }
 async function init(){
-  if(!SID || !TOK) return fail('يرجى مسح رمز QR المعروض على الشاشة لتسجيل الحضور.');
+  if(!ACT || !TOK) return fail('يرجى مسح رمز QR المعروض على الشاشة لتسجيل الحضور.');
+  const H={'Content-Type':'application/json'};
   try{
-    const ir = await fetch('/api/public/talent-attendance/'+encodeURIComponent(SID)+'/info');
+    const ir = await fetch('/api/public/talent-attendance/info?a='+encodeURIComponent(ACT));
     const info = await ir.json();
     if(!ir.ok) return fail(info.error||'رابط غير صالح');
-    const tr = await fetch('/api/public/talent-attendance/'+encodeURIComponent(SID)+'/ticket',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({t:TOK})});
+    if(!info.within_hours) return fail('تسجيل الحضور متاح فقط خلال الدوام من '+info.open_from+' صباحاً حتى '+info.open_to+' عصراً');
+    const tr = await fetch('/api/public/talent-attendance/ticket',{method:'POST',headers:H,body:JSON.stringify({a:ACT,t:TOK})});
     const td = await tr.json();
     if(!tr.ok) return fail(td.error||'تعذّر التحقق من الرمز');
     TICKET = td.ticket;
     box.innerHTML = `<h1>تسجيل الحضور — ${esc(info.activity)}</h1>
-      <p class="sub">${esc(info.title?info.title+' — ':'')}${esc(info.day)} ${esc(info.date)}<br>أدخل رقمك الجامعي لتسجيل حضورك.</p>
+      <p class="sub">${esc(info.day)} ${esc(info.date)}<br>أدخل رقمك الجامعي لتسجيل حضورك.</p>
       <label>الرقم الجامعي</label>
       <input id="uid" type="text" inputmode="numeric" placeholder="أدخل رقمك الجامعي" autofocus>
       <button id="btn" onclick="submitIt()">✅ تسجيل الحضور</button><div id="res"></div>`;
@@ -58,10 +60,10 @@ async function submitIt(){
   if(!uid){ res.innerHTML='<div class="err">يرجى إدخال الرقم الجامعي</div>'; return; }
   btn.disabled = true; btn.textContent = 'جارٍ التسجيل...'; res.innerHTML='';
   try{
-    const r = await fetch('/api/public/talent-attendance/'+encodeURIComponent(SID)+'/check-in',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uni_id:uid,ticket:TICKET})});
+    const r = await fetch('/api/public/talent-attendance/check-in',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a:ACT,uni_id:uid,ticket:TICKET})});
     const d = await r.json();
     if(!r.ok){ res.innerHTML='<div class="err">❌ '+esc(d.error||'تعذّر التسجيل')+'</div>'; btn.disabled=false; btn.textContent='✅ تسجيل الحضور'; return; }
-    box.innerHTML = `<div class="ok"><div class="icon">✅</div><div class="t">${d.already?'حضورك مسجَّل مسبقاً':'تم تسجيل حضورك'}</div>
+    box.innerHTML = `<div class="ok"><div class="icon">✅</div><div class="t">${d.already?'حضورك مسجَّل مسبقاً اليوم':'تم تسجيل حضورك'}</div>
       <div class="n">${esc(d.name)}</div><div class="m">${esc(d.day)} ${esc(d.date)} — الساعة ${esc(d.time)}</div></div>`;
   }catch(e){ res.innerHTML='<div class="err">تعذّر الاتصال بالخادم</div>'; btn.disabled=false; btn.textContent='✅ تسجيل الحضور'; }
 }

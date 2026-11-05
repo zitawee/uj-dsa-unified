@@ -1,148 +1,194 @@
 // ══════════════════════════════════════════════════════════════
-// حضور طلبة التفوق الفني — جلسات + رمز QR متجدد + كشف الحضور (admin/editor)
+// حضور طلبة التفوق الفني — زيارات مستمرة (دوام ٨:٠٠–١٥:٠٠) برمز QR متجدد لكل نشاط + تقرير شهري (admin/editor)
 // ══════════════════════════════════════════════════════════════
-let ATT_LIST = [], ATT_CUR = null, ATT_TIMER = null;
+let ATT_TAB = 'today', ATT_TIMER = null, ATT_REP = null;
 const attEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const attActs = () => (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
+const attMonthNow = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Amman' }).slice(0, 7);
 
-async function loadTalentAttendance() {
+function loadTalentAttendance() {
   const panel = document.getElementById('panel-talent_attendance');
   if (!panel) return;
-  panel.innerHTML = `<div class="ph"><div><div class="pt">حضور طلبة التفوق الفني</div></div></div><div class="card"><div class="center" style="padding:24px">جارٍ التحميل...</div></div>`;
-  const r = await api('/api/talent-attendance');
-  if (!Array.isArray(r)) { panel.innerHTML = `<div class="card"><div class="center">تعذّر تحميل البيانات</div></div>`; return; }
-  ATT_LIST = r; ATT_CUR = null;
-  attRenderList();
-}
-
-function attRenderList() {
-  const panel = document.getElementById('panel-talent_attendance');
   panel.innerHTML = `
-  <div class="ph"><div><div class="pt">حضور طلبة التفوق الفني</div><div class="ps">جلسة لكل نشاط — يعرض المشرف رمزاً متجدداً ويمسحه الطالب ليُسجَّل حضوره بالتاريخ واليوم والوقت</div></div></div>
-  <div class="card"><button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="attNewSession()"><i class="ti ti-plus"></i> جلسة حضور جديدة</button></div>
-  <div class="card"><div class="tw"><table>
-    <thead><tr><th>#</th><th>التاريخ</th><th>اليوم</th><th>الوقت</th><th>النشاط</th><th>العنوان</th><th>الحضور</th><th>الحالة</th><th></th></tr></thead>
-    <tbody>${ATT_LIST.length ? ATT_LIST.map((s,i) => `<tr>
-      <td>${i+1}</td><td>${attEsc(s.date)}</td><td>${attEsc(s.day)}</td><td>${attEsc(s.start_time)}</td>
-      <td>${typeof badge==='function'?badge(s.activity):attEsc(s.activity)}</td><td>${attEsc(s.title||'-')}</td>
-      <td><b>${s.count}</b></td><td>${s.status==='open'?'🟢 مفتوحة':'⚪ مغلقة'}</td>
-      <td style="white-space:nowrap">
-        ${s.status==='open'?`<button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="openAttendQR('${s.id}')"><i class="ti ti-qrcode"></i> عرض الرمز</button>`:''}
-        <button class="btn btn-sm" onclick="attOpen('${s.id}')"><i class="ti ti-list-check"></i> الكشف</button>
-        <button class="btn btn-sm" style="color:#c0392b" onclick="attDelete('${s.id}')"><i class="ti ti-trash"></i></button>
-      </td></tr>`).join('') : `<tr><td colspan="9" class="center">لا توجد جلسات بعد</td></tr>`}</tbody>
-  </table></div></div>`;
+  <div class="ph"><div><div class="pt">حضور طلبة التفوق الفني</div><div class="ps">زيارة مستمرة خلال الدوام ٨:٠٠ صباحاً – ٣:٠٠ عصراً — يمسح الطالب الرمز المعروض على الشاشة فتُسجَّل زيارته بالتاريخ واليوم والوقت</div></div></div>
+  <div class="card" style="display:flex;gap:8px">
+    <button class="btn btn-sm" id="att-t-today" onclick="attTab('today')">📺 الزيارات والشاشات</button>
+    <button class="btn btn-sm" id="att-t-report" onclick="attTab('report')">📊 التقرير الشهري</button>
+  </div>
+  <div id="att-body"></div>`;
+  attTab(ATT_TAB);
+}
+function attTab(t) {
+  ATT_TAB = t;
+  ['today','report'].forEach(k => { const b = document.getElementById('att-t-' + k); if (b) { b.style.background = k === t ? 'var(--g)' : ''; b.style.color = k === t ? '#fff' : ''; } });
+  t === 'today' ? attRenderToday() : attRenderReport();
 }
 
-function attNewSession() {
-  const acts = (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
+// ── الزيارات اليوم + أزرار فتح شاشة الرمز لكل نشاط ──
+async function attRenderToday() {
+  const body = document.getElementById('att-body');
+  body.innerHTML = `
+  <div class="card"><div style="font-weight:700;margin-bottom:8px">فتح شاشة الرمز (اختاري النشاط وجهّزي الشاشة في مكانه)</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${attActs().map(a => `<button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="openAttendQR('${attEsc(a)}')"><i class="ti ti-qrcode"></i> ${attEsc(a)}</button>`).join('')}</div></div>
+  <div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+    <b id="att-today-title">زيارات اليوم</b>
+    <select id="att-today-act" onchange="attLoadToday()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">كل الأنشطة</option>${attActs().map(a => `<option>${attEsc(a)}</option>`).join('')}</select>
+    <button class="btn btn-sm" onclick="attLoadToday()"><i class="ti ti-refresh"></i> تحديث</button>
+    <span style="flex:1"></span>
+    <input id="att-man-id" type="text" inputmode="numeric" placeholder="تسجيل يدوي: الرقم الجامعي" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);min-width:190px">
+    <button class="btn btn-sm" onclick="attManual()">إضافة</button></div>
+    <div class="tw"><table><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>النشاط</th><th>الوقت</th><th></th></tr></thead><tbody id="att-today-body"><tr><td colspan="6" class="center">جارٍ التحميل...</td></tr></tbody></table></div></div>`;
+  attLoadToday();
+}
+async function attLoadToday() {
+  const act = (document.getElementById('att-today-act') || {}).value || '';
+  const r = await api('/api/talent-attendance/today' + (act ? '?activity=' + encodeURIComponent(act) : ''));
+  const tb = document.getElementById('att-today-body'); if (!tb) return;
+  if (!r || !r.visits) { tb.innerHTML = '<tr><td colspan="6" class="center">تعذّر التحميل</td></tr>'; return; }
+  document.getElementById('att-today-title').textContent = `زيارات اليوم — ${r.day} ${r.date} (${r.visits.length})`;
+  tb.innerHTML = r.visits.length ? r.visits.map((v, i) => `<tr><td>${i + 1}</td><td><b>${attEsc(v.student_id)}</b></td><td>${attEsc(v.name)}</td><td>${attEsc(v.activity)}</td><td>${attEsc(v.time)}${v.manual ? ' <small>(يدوي)</small>' : ''}</td>
+    <td><button class="btn btn-sm" style="color:#c0392b" onclick="attDelVisit('${v.id}')"><i class="ti ti-x"></i></button></td></tr>`).join('') : '<tr><td colspan="6" class="center">لا توجد زيارات مسجَّلة بعد</td></tr>';
+}
+async function attManual() {
+  const el = document.getElementById('att-man-id'); const v = el.value.trim(); if (!v) return;
+  const r = await api('/api/talent-attendance/manual', 'POST', { student_id: v });
+  if (r && r.error) { alert(r.error); return; }
+  el.value = ''; attLoadToday();
+}
+async function attDelVisit(id) {
+  if (!confirm('حذف هذه الزيارة؟')) return;
+  await api('/api/talent-attendance/visit/delete', 'POST', { id });
+  attLoadToday();
+}
+
+// ── التقرير الشهري ──
+async function attRenderReport() {
+  const body = document.getElementById('att-body');
+  const colSel = typeof colOpts === 'function' ? colOpts() : '';
+  body.innerHTML = `
+  <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input id="ar-month" type="month" value="${attMonthNow()}" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)">
+    <select id="ar-act" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">جميع الأنشطة</option>${attActs().map(a => `<option>${attEsc(a)}</option>`).join('')}</select>
+    <select id="ar-col" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">جميع الكليات</option>${colSel}</select>
+    <select id="ar-gen" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">كل الجنسين</option><option>ذكر</option><option>أنثى</option></select>
+    <input id="ar-q" type="text" placeholder="بحث بالاسم أو الرقم..." oninput="attDrawReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r);flex:1;min-width:160px">
+  </div>
+  <div id="ar-sum" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
+  <div class="card"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+    <button class="btn btn-sm" onclick="attPrintSummary()"><i class="ti ti-printer"></i> طباعة الكشف الإجمالي</button>
+    <button class="btn btn-sm" onclick="attPrintAllDetails()"><i class="ti ti-files"></i> طباعة تفصيلية لكل طالب</button>
+    <button class="btn btn-sm" onclick="attExport()"><i class="ti ti-download"></i> تصدير Excel</button></div>
+    <div class="tw"><table><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>أيام الزيارة</th><th>آخر زيارة</th><th></th></tr></thead><tbody id="ar-body"></tbody></table></div></div>`;
+  attLoadReport();
+}
+async function attLoadReport() {
+  const g = id => (document.getElementById(id) || {}).value || '';
+  const p = new URLSearchParams({ month: g('ar-month') });
+  ['act:activity', 'col:college', 'gen:gender'].forEach(x => { const [i, k] = x.split(':'); if (g('ar-' + i)) p.set(k, g('ar-' + i)); });
+  const tb = document.getElementById('ar-body'); if (tb) tb.innerHTML = '<tr><td colspan="8" class="center">جارٍ التحميل...</td></tr>';
+  const r = await api('/api/talent-attendance/report?' + p);
+  if (!r || !r.rows) { if (tb) tb.innerHTML = '<tr><td colspan="8" class="center">تعذّر التحميل</td></tr>'; return; }
+  ATT_REP = r; attDrawReport();
+}
+function attFiltered() {
+  const q = ((document.getElementById('ar-q') || {}).value || '').trim();
+  return !ATT_REP ? [] : (q ? ATT_REP.rows.filter(r => String(r.name).includes(q) || String(r.student_id).includes(q)) : ATT_REP.rows);
+}
+function attDrawReport() {
+  if (!ATT_REP) return;
+  const rows = attFiltered(), s = ATT_REP.summary;
+  const chip = (t, v, c) => `<div class="card" style="margin:0;padding:10px 16px;min-width:130px"><div style="font-size:11px;color:var(--muted)">${t}</div><div style="font-size:22px;font-weight:800;color:${c || 'var(--g)'}">${v}</div></div>`;
+  document.getElementById('ar-sum').innerHTML = chip('عدد الطلبة', s.students) + chip('زاروا هذا الشهر', s.visited) + chip('لم يزوروا', s.not_visited, '#c0392b') + chip('إجمالي الزيارات', s.visits);
+  document.getElementById('ar-body').innerHTML = rows.length ? rows.map((r, i) => `<tr><td>${i + 1}</td><td><b>${attEsc(r.student_id)}</b></td><td>${attEsc(r.name)}</td><td style="font-size:11px">${attEsc(r.college || '-')}</td><td>${attEsc(r.activity)}</td>
+    <td><b style="color:${r.days ? 'var(--g)' : '#c0392b'}">${r.days}</b></td><td>${attEsc(r.last || '-')}</td>
+    <td><button class="btn btn-sm" onclick="attStudentDetail('${attEsc(r.student_id)}')">تفاصيل</button></td></tr>`).join('') : '<tr><td colspan="8" class="center">لا توجد نتائج</td></tr>';
+}
+async function attStudentDetail(sid) {
+  const month = document.getElementById('ar-month').value;
+  const r = await api('/api/talent-attendance/student/' + encodeURIComponent(sid) + '?month=' + month);
+  if (!r || !r.visits) { alert('تعذّر التحميل'); return; }
+  window.ATT_DET = { sid, month, r };
   const m = document.getElementById('mod-attend');
-  m.querySelector('.modal').innerHTML = `
-    <h3>جلسة حضور جديدة</h3>
-    <label style="font-size:12.5px;font-weight:600">النشاط</label>
-    <select id="at-act" style="width:100%;padding:9px;margin:6px 0 12px;border:1px solid var(--border);border-radius:var(--r)">${acts.map(a=>`<option>${a}</option>`).join('')}</select>
-    <label style="font-size:12.5px;font-weight:600">عنوان الجلسة (اختياري)</label>
-    <input id="at-title" type="text" placeholder="مثال: التدريب الأسبوعي" style="width:100%;padding:9px;margin:6px 0 12px;border:1px solid var(--border);border-radius:var(--r)">
-    <p style="font-size:12px;color:var(--muted)">يُسجَّل التاريخ واليوم ووقت البدء تلقائياً بتوقيت عمّان.</p>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" style="background:var(--g);color:#fff" onclick="attCreate()">إنشاء وعرض الرمز</button><button class="btn" onclick="document.getElementById('mod-attend').classList.remove('open')">إلغاء</button></div>`;
+  m.querySelector('.modal').innerHTML = `<h3>${attEsc(r.student ? r.student.name : sid)} <small style="color:var(--muted)">(${attEsc(sid)})</small></h3>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">${attEsc(r.student ? r.student.activity : '')} — شهر ${attEsc(month)} — عدد الزيارات: <b>${r.visits.length}</b></div>
+    <div class="tw" style="max-height:50vh;overflow:auto"><table><thead><tr><th>#</th><th>اليوم</th><th>التاريخ</th><th>الوقت</th></tr></thead><tbody>
+    ${r.visits.length ? r.visits.map((v, i) => `<tr><td>${i + 1}</td><td>${attEsc(v.day)}</td><td>${attEsc(v.date)}</td><td>${attEsc(v.time)}${v.manual ? ' (يدوي)' : ''}</td></tr>`).join('') : '<tr><td colspan="4" class="center">لا زيارات في هذا الشهر</td></tr>'}</tbody></table></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" onclick="attPrintStudent()">🖨️ طباعة</button><button class="btn" onclick="document.getElementById('mod-attend').classList.remove('open')">إغلاق</button></div>`;
   m.classList.add('open');
 }
-async function attCreate() {
-  const r = await api('/api/talent-attendance', 'POST', { activity: document.getElementById('at-act').value, title: document.getElementById('at-title').value });
-  if (!r || !r.id) { alert((r && r.error) || 'تعذّر الإنشاء'); return; }
-  document.getElementById('mod-attend').classList.remove('open');
-  await loadTalentAttendance();
-  openAttendQR(r.id);
+const attStudentSheet = (st, sid, month, visits) => `<div style="page-break-after:always">
+  <h2 style="text-align:center">كشف زيارات طالب — شهر ${attEsc(month)}</h2>
+  <p style="text-align:center">${attEsc(st ? st.name : sid)} — الرقم الجامعي ${attEsc(sid)} — ${attEsc(st ? st.activity : '')}${st && st.college ? ' — ' + attEsc(st.college) : ''}</p>
+  <p style="text-align:center">عدد أيام الزيارة: <b>${visits.length}</b></p>
+  <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th>#</th><th>اليوم</th><th>التاريخ</th><th>الوقت</th></tr></thead>
+  <tbody>${visits.map((v, i) => `<tr><td>${i + 1}</td><td>${attEsc(v.day)}</td><td>${attEsc(v.date)}</td><td>${attEsc(v.time)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center">لا زيارات</td></tr>'}</tbody></table></div>`;
+function attPrintStudent() { const d = window.ATT_DET; if (d) openPrint(attStudentSheet(d.r.student, d.sid, d.month, d.r.visits)); }
+function attPrintSummary() {
+  if (!ATT_REP) return;
+  const rows = attFiltered(), act = document.getElementById('ar-act').value;
+  openPrint(`<h2 style="text-align:center">تقرير زيارات طلبة التفوق الفني — ${attEsc(act || 'جميع الأنشطة')}</h2>
+    <p style="text-align:center">شهر ${attEsc(ATT_REP.month)} — عدد الطلبة ${rows.length} — زاروا ${rows.filter(r => r.days).length} — إجمالي الزيارات ${rows.reduce((n, r) => n + r.days, 0)}</p>
+    <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>أيام الزيارة</th><th>آخر زيارة</th></tr></thead>
+    <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${attEsc(r.student_id)}</td><td>${attEsc(r.name)}</td><td>${attEsc(r.college)}</td><td>${attEsc(r.activity)}</td><td>${r.days}</td><td>${attEsc(r.last || '-')}</td></tr>`).join('')}</tbody></table>`);
 }
-async function attDelete(id) {
-  if (!confirm('حذف هذه الجلسة وكشف حضورها نهائياً؟')) return;
-  await api('/api/talent-attendance/' + id, 'DELETE');
-  loadTalentAttendance();
+async function attPrintAllDetails() {
+  if (!ATT_REP) return;
+  const rows = attFiltered();
+  if (!rows.length) return;
+  if (rows.length > 15 && !confirm(`سيتم إعداد ${rows.length} ورقة (ورقة لكل طالب). متابعة؟`)) return;
+  const month = ATT_REP.month; let html = '';
+  for (const r of rows) {
+    const d = await api('/api/talent-attendance/student/' + encodeURIComponent(r.student_id) + '?month=' + month);
+    html += attStudentSheet(d && d.student, r.student_id, month, (d && d.visits) || []);
+  }
+  openPrint(html);
 }
-
-async function attOpen(id) {
-  const panel = document.getElementById('panel-talent_attendance');
-  const d = await api('/api/talent-attendance/' + id);
-  if (!d || !d.id) { alert((d && d.error) || 'تعذّر التحميل'); return; }
-  ATT_CUR = d;
-  const recs = d.records || [];
-  panel.innerHTML = `
-  <div class="ph"><div><div class="pt">كشف الحضور — ${attEsc(d.activity)}${d.title?' / '+attEsc(d.title):''}</div>
-    <div class="ps">${attEsc(d.day)} ${attEsc(d.date)} — حضر <b>${recs.length}</b> من <b>${d.registered}</b> طالب مسجَّل في النشاط — ${d.status==='open'?'🟢 مفتوحة':'⚪ مغلقة'}</div></div></div>
-  <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <button class="btn btn-sm" onclick="loadTalentAttendance()"><i class="ti ti-arrow-right"></i> رجوع</button>
-    ${d.status==='open'?`<button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="openAttendQR('${d.id}')"><i class="ti ti-qrcode"></i> عرض الرمز</button>`:''}
-    <button class="btn btn-sm" onclick="attToggle('${d.id}','${d.status==='open'?'closed':'open'}')">${d.status==='open'?'إغلاق التسجيل':'إعادة فتح التسجيل'}</button>
-    <button class="btn btn-sm" onclick="attPrint()"><i class="ti ti-printer"></i> طباعة</button>
-    <button class="btn btn-sm" onclick="attCsv()"><i class="ti ti-download"></i> تصدير CSV</button>
-    <span style="flex:1"></span>
-    <input id="at-manual" type="text" inputmode="numeric" placeholder="تسجيل يدوي: الرقم الجامعي" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);min-width:180px">
-    <button class="btn btn-sm" onclick="attManual()">إضافة</button>
-  </div>
-  <div class="card"><div class="tw"><table>
-    <thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>اليوم</th><th>التاريخ</th><th>الوقت</th><th></th></tr></thead>
-    <tbody>${recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td><b>${attEsc(r.student_id)}</b></td><td>${attEsc(r.name)}</td><td>${attEsc(r.college||'-')}</td><td>${attEsc(r.activity)}</td><td>${attEsc(r.day)}</td><td>${attEsc(r.date)}</td><td>${attEsc(r.time)}${r.manual?' <small>(يدوي)</small>':''}</td>
-      <td><button class="btn btn-sm" style="color:#c0392b" onclick="attRemove('${attEsc(r.student_id)}')"><i class="ti ti-x"></i></button></td></tr>`).join('') : `<tr><td colspan="9" class="center">لم يُسجَّل أي حضور بعد</td></tr>`}</tbody>
-  </table></div></div>
-  ${d.absent && d.absent.length ? `<div class="card"><div style="font-weight:700;margin-bottom:8px">لم يحضروا بعد (${d.absent.length})</div>
-    <div style="font-size:12.5px;line-height:2">${d.absent.map(a=>`${attEsc(a.name)} <span style="color:var(--muted)">(${attEsc(a.student_id)})</span>`).join(' • ')}</div></div>` : ''}`;
-}
-async function attToggle(id, status) { await api('/api/talent-attendance/' + id + '/status', 'POST', { status }); attOpen(id); }
-async function attManual() {
-  const v = document.getElementById('at-manual').value.trim();
-  if (!v) return;
-  const r = await api('/api/talent-attendance/' + ATT_CUR.id + '/manual', 'POST', { student_id: v });
-  if (r && r.error) { alert(r.error); return; }
-  attOpen(ATT_CUR.id);
-}
-async function attRemove(sid) {
-  if (!confirm('إزالة تسجيل حضور هذا الطالب؟')) return;
-  await api('/api/talent-attendance/' + ATT_CUR.id + '/remove', 'POST', { student_id: sid });
-  attOpen(ATT_CUR.id);
-}
-function attPrint() {
-  const d = ATT_CUR; if (!d) return;
-  openPrint(`<h2 style="text-align:center">كشف حضور — ${attEsc(d.activity)}${d.title?' / '+attEsc(d.title):''}</h2>
-    <p style="text-align:center">${attEsc(d.day)} ${attEsc(d.date)} — عدد الحاضرين: ${(d.records||[]).length}</p>
-    <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>اليوم</th><th>التاريخ</th><th>الوقت</th></tr></thead>
-    <tbody>${(d.records||[]).map((r,i)=>`<tr><td>${i+1}</td><td>${attEsc(r.student_id)}</td><td>${attEsc(r.name)}</td><td>${attEsc(r.college||'')}</td><td>${attEsc(r.day)}</td><td>${attEsc(r.date)}</td><td>${attEsc(r.time)}</td></tr>`).join('')}</tbody></table>`);
-}
-function attCsv() {
-  const d = ATT_CUR; if (!d) return;
-  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const rows = [['#','الرقم الجامعي','الاسم','الكلية','النشاط','اليوم','التاريخ','الوقت']].concat((d.records||[]).map((r,i)=>[i+1,r.student_id,r.name,r.college,r.activity,r.day,r.date,r.time]));
-  const blob = new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `attendance_${d.activity}_${d.date}.csv`; a.click();
+function attExport() {
+  if (!ATT_REP) return;
+  const rows = attFiltered();
+  const data = [['#', 'الرقم الجامعي', 'الاسم', 'الكلية', 'النشاط', 'أيام الزيارة', 'آخر زيارة']].concat(rows.map((r, i) => [i + 1, r.student_id, r.name, r.college, r.activity, r.days, r.last]));
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'الزيارات');
+    XLSX.writeFile(wb, `زيارات_التفوق_${ATT_REP.month}.xlsx`);
+  } else {
+    const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const blob = new Blob(['﻿' + data.map(r => r.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `زيارات_التفوق_${ATT_REP.month}.csv`; a.click();
+  }
 }
 
-// ── شاشة الرمز المتجدد ──
+// ── شاشة الرمز المتجدد لنشاط (مع قائمة زيارات اليوم مباشرة) ──
 function closeAttendQR() {
   clearInterval(ATT_TIMER); ATT_TIMER = null;
   const o = document.getElementById('att-qr-ov'); if (o) o.remove();
-  if (document.getElementById('panel-talent_attendance') && !ATT_CUR) loadTalentAttendance();
-  else if (ATT_CUR) attOpen(ATT_CUR.id);
+  if (ATT_TAB === 'today') attLoadToday();
 }
-function openAttendQR(id) {
+function openAttendQR(activity) {
   clearInterval(ATT_TIMER);
   const old = document.getElementById('att-qr-ov'); if (old) old.remove();
-  const s = ATT_LIST.find(x => x.id === id) || ATT_CUR || {};
   const ov = document.createElement('div');
   ov.id = 'att-qr-ov';
-  ov.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Tajawal,sans-serif;direction:rtl;text-align:center;padding:16px';
-  ov.innerHTML = `<button onclick="closeAttendQR()" style="position:absolute;top:14px;left:14px;padding:8px 16px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;font-size:14px">✕ إغلاق</button>
-    <div style="font-size:26px;font-weight:800;color:#0F5132">تسجيل الحضور — ${attEsc(s.activity||'')}</div>
-    <div style="font-size:15px;color:#666;margin:4px 0 14px">امسح الرمز بكاميرا هاتفك ثم أدخل رقمك الجامعي</div>
-    <img id="att-qr-img" style="width:min(70vh,80vw);height:min(70vh,80vw);image-rendering:pixelated" alt="">
-    <div style="margin-top:14px;font-size:22px;font-weight:700">الحاضرون: <span id="att-qr-count" style="color:#0F5132">0</span></div>
-    <div style="font-size:13px;color:#888;margin-top:4px">يتجدد الرمز تلقائياً كل ثوانٍ</div>`;
+  ov.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;display:flex;font-family:Tajawal,sans-serif;direction:rtl;text-align:center;overflow:auto';
+  ov.innerHTML = `<button onclick="closeAttendQR()" style="position:absolute;top:12px;left:12px;padding:8px 16px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;z-index:2">✕ إغلاق</button>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;min-width:0">
+      <div style="font-size:26px;font-weight:800;color:#0F5132">تسجيل الحضور — ${attEsc(activity)}</div>
+      <div style="font-size:15px;color:#666;margin:4px 0 14px">امسح الرمز بكاميرا هاتفك ثم أدخل رقمك الجامعي (الدوام ٨:٠٠ – ٣:٠٠)</div>
+      <img id="att-qr-img" style="width:min(64vh,50vw);height:min(64vh,50vw);image-rendering:pixelated" alt="">
+      <div style="font-size:13px;color:#888;margin-top:8px">يتجدد الرمز تلقائياً كل ثوانٍ</div></div>
+    <div style="width:min(340px,38vw);border-right:1px solid #e3e6e0;background:#f8faf8;padding:56px 12px 12px;overflow:auto">
+      <div style="font-size:18px;font-weight:700">زيارات اليوم: <span id="att-qr-count" style="color:#0F5132">0</span></div>
+      <div id="att-qr-list" style="margin-top:10px;font-size:14px;text-align:right"></div></div>`;
   document.body.appendChild(ov);
   let last = '';
   const tick = async () => {
-    const r = await api('/api/talent-attendance/' + id + '/qr-token');
+    const r = await api('/api/talent-attendance/qr-token?activity=' + encodeURIComponent(activity));
     if (!r || !r.token) return;
-    document.getElementById('att-qr-count').textContent = r.count;
+    const c = document.getElementById('att-qr-count'); if (!c) return;
+    c.textContent = r.count;
+    document.getElementById('att-qr-list').innerHTML = r.visits.map(v => `<div style="padding:6px 4px;border-bottom:1px solid #e3e6e0;display:flex;justify-content:space-between;gap:8px"><span>${attEsc(v.name)}</span><span style="color:#0F5132;font-weight:700;direction:ltr">${attEsc(v.time.slice(0, 5))}</span></div>`).join('') || '<div style="color:#888">لا زيارات بعد</div>';
     if (r.token === last) return;
     last = r.token;
-    const url = `${location.origin}/talent-attend.html?s=${id}&t=${r.token}`;
+    const url = `${location.origin}/talent-attend.html?a=${encodeURIComponent(activity)}&t=${r.token}`;
     QRCode.toDataURL(url, { width: 640, margin: 1 }, (e, data) => { const im = document.getElementById('att-qr-img'); if (!e && im) im.src = data; });
   };
   tick(); ATT_TIMER = setInterval(tick, 3000);
