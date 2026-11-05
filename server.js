@@ -1501,13 +1501,18 @@ app.get('/api/talent-attendance/qr-token', auth(ATT_ROLES), async (req, res) => 
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// زيارات اليوم (كل الأنشطة أو نشاط محدد)
+// زيارات يوم محدد أو فترة (from..to؛ بلا to يُعتبر يوماً واحداً) — كل الأنشطة أو نشاط محدد، مع فلاتر الكلية والجنس
 app.get('/api/talent-attendance/today', auth(ATT_ROLES), async (req, res) => {
   try {
-    const q = { date: String(req.query.date || ammanParts().date) };
+    const isD = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+    const from = isD(req.query.from) ? req.query.from : ammanParts().date;
+    let to = isD(req.query.to) ? req.query.to : from;
+    if (to < from) to = from;
+    const q = { date: { $gte: from, $lte: to } };
     if (req.query.activity) q.activity = String(req.query.activity);
-    const visits = await TalentVisit.find(q).sort({ time: -1 }).lean();
-    res.json({ date: q.date, day: dayNameOf(q.date), visits: visits.map(visitDto) });
+    ['college','gender'].forEach(k => { if (req.query[k]) q[k] = String(req.query[k]); });
+    const visits = await TalentVisit.find(q).sort({ date: 1, time: 1 }).lean();
+    res.json({ from, to, day: dayNameOf(from), visits: visits.map(visitDto) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
