@@ -34,7 +34,7 @@ function attRenderList() {
 }
 
 function attNewSession() {
-  const acts = (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي']);
+  const acts = (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
   const m = document.getElementById('mod-attend');
   m.querySelector('.modal').innerHTML = `
     <h3>جلسة حضور جديدة</h3>

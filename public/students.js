@@ -192,7 +192,7 @@ async function goEditQ(table, id) {
 // الطلبة
 // ══════════════════════════════════════════
 // أنشطة التفوق الفني المعتمدة لهذه اللوحة (الموسيقى مفصولة إلى غناء وعزف)
-const TALENT_ACTS = ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي'];
+const TALENT_ACTS = ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي'];
 const talentActOpts = (val='') => {
   const list = (val && !TALENT_ACTS.includes(val)) ? [...TALENT_ACTS, val] : TALENT_ACTS; // يُبقي نشاطاً قديماً ظاهراً عند تعديل سجل سابق
   return list.map(a=>`<option${a===val?' selected':''}>${a}</option>`).join('');
@@ -406,24 +406,17 @@ async function importStudentsCSV(input){
     return;
   }
   const get=(r,f)=> idx[f]!==undefined ? String(r[idx[f]]==null?'':r[idx[f]]).trim() : '';
-  let ok=0, skipped=0; const errs=[];
+  const payload=[];
   for(let i=hRow+1;i<rows.length;i++){
     const r=rows[i];
-    const rec={
-      name:get(r,'name'), student_id:get(r,'student_id'),
-      gender:get(r,'gender'),
-      college:get(r,'college'), major:get(r,'major'),
-      activity:get(r,'activity'), excellence_year:get(r,'excellence_year'),
-      phone:get(r,'phone'), admission_basis:'التفوق الفني'
-    };
-    if(!rec.name || !rec.student_id){ skipped++; continue; }
-    try{
-      const res=await api('/api/students','POST',rec);
-      if(res && res.error){ skipped++; errs.push(res.error); } else ok++;
-    }catch(e){ skipped++; errs.push('خطأ اتصال'); }
+    payload.push({ student_id:get(r,'student_id'), name:get(r,'name'), gender:get(r,'gender'), college:get(r,'college'),
+      major:get(r,'major'), activity:get(r,'activity'), excellence_year:get(r,'excellence_year'), phone:get(r,'phone') });
   }
-  let msg=`تم استيراد ${ok} طالب بنجاح.`;
-  if(skipped) msg+=`\nتم تخطّي ${skipped} صفاً (فارغ أو بلا اسم/رقم جامعي).`+(errs.length?'\nسبب الخطأ: '+errs[0]:'');
+  let res;
+  try{ res=await api('/api/students/bulk','POST',{rows:payload}); }catch(e){ res={error:'تعذّر الاتصال بالخادم'}; }
+  if(!res || res.error){ alert('فشل الاستيراد: '+((res&&res.error)||'استجابة غير متوقعة من الخادم (تأكدي من رفع server.js الجديد)')); return; }
+  let msg=`تمت إضافة ${res.inserted} طالب جديد، وتحديث ${res.updated} موجودين مسبقاً (من أصل ${payload.length} صفاً).`;
+  if(res.failed&&res.failed.length) msg+=`\nتم تخطّي ${res.failed.length}: `+res.failed.slice(0,5).map(f=>`سطر ${f.row} (${f.reason})`).join('، ');
   alert(msg);
   filterStudents(); loadDash();
 }
