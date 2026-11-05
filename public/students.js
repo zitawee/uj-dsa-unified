@@ -320,8 +320,29 @@ const STUD_HMAP = {
   'الهاتف':'phone','رقم الهاتف':'phone'
 };
 
+// توحيد نص العنوان: إزالة التشكيل/التطويل/المسافات الزائدة وتوحيد الألف والياء والتاء المربوطة
+function normHdr(h){
+  return String(h==null?'':h).replace(/[\u064B-\u0652\u0640]/g,'').replace(/[\u00A0\u200B-\u200F\uFEFF]/g,' ')
+    .replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
+}
+const STUD_HMAP_N = (()=>{
+  const m={}; Object.keys(STUD_HMAP).forEach(k=>m[normHdr(k)]=STUD_HMAP[k]);
+  ['اسم الطالب','اسم الطالبه','اسم','الاسم الرباعي','الطالب'].forEach(k=>m[normHdr(k)]='name');
+  ['رقم الطالب','الرقم الجامعي للطالب','رقم جامعي','الرقم الجامعى','رقم الجامعه','الرقم الدراسي'].forEach(k=>m[normHdr(k)]='student_id');
+  ['الجنس','النوع'].forEach(k=>m[normHdr(k)]='gender');
+  ['اسم الكليه'].forEach(k=>m[normHdr(k)]='college');
+  ['اسم التخصص'].forEach(k=>m[normHdr(k)]='major');
+  ['نوع النشاط','النشاط','اسم النشاط'].forEach(k=>m[normHdr(k)]='activity');
+  ['رقم الجوال','الجوال','الموبايل','رقم الموبايل','هاتف'].forEach(k=>m[normHdr(k)]='phone');
+  return m;
+})();
+
 function parseCSV(text){
   text = text.replace(/^\uFEFF/,''); // إزالة BOM
+  // اكتشاف الفاصل (فاصلة أو فاصلة منقوطة أو Tab) حسب إعدادات Excel الإقليمية
+  const firstLine = text.split('\n')[0] || '';
+  const cnt = c => (firstLine.match(new RegExp(c==='\t'?'\t':'\\'+c,'g'))||[]).length;
+  const DELIM = cnt(';')>cnt(',') && cnt(';')>=cnt('\t') ? ';' : (cnt('\t')>cnt(',') ? '\t' : ',');
   const rows=[]; let cur=[]; let field=''; let inQ=false;
   for(let i=0;i<text.length;i++){
     const ch=text[i];
@@ -330,7 +351,7 @@ function parseCSV(text){
       else field+=ch;
     } else {
       if(ch==='"') inQ=true;
-      else if(ch===','){ cur.push(field); field=''; }
+      else if(ch===DELIM){ cur.push(field); field=''; }
       else if(ch==='\n'){ cur.push(field); rows.push(cur); cur=[]; field=''; }
       else if(ch==='\r'){ /* تجاهل */ }
       else field+=ch;
@@ -375,15 +396,18 @@ async function importStudentsCSV(input){
 
   rows=(rows||[]).filter(r=>Array.isArray(r) && r.some(c=>String(c==null?'':c).trim()!==''));
   if(rows.length<2){ alert('الملف فارغ أو لا يحتوي على بيانات كافية.'); return; }
-  const headers=rows[0].map(h=>String(h==null?'':h).trim());
-  const idx={}; headers.forEach((h,i)=>{ const f=STUD_HMAP[h]; if(f && idx[f]===undefined) idx[f]=i; });
-  if(idx.name===undefined || idx.student_id===undefined){
-    alert('تعذّر التعرّف على الأعمدة.\nتأكّدي أن الصف الأول يحتوي على عناوين الأعمدة، وأن من بينها «الاسم» و«الرقم الجامعي».\n\nيمكنكِ تنزيل القالب الجاهز من زر «قالب» ثم تعبئته.');
+  let hRow=-1, idx={};
+  for(let k=0;k<Math.min(rows.length,6);k++){
+    const t={}; rows[k].forEach((h,i)=>{ const f=STUD_HMAP_N[normHdr(h)]; if(f && t[f]===undefined) t[f]=i; });
+    if(t.name!==undefined && t.student_id!==undefined){ hRow=k; idx=t; break; }
+  }
+  if(hRow<0){
+    alert('تعذّر التعرّف على الأعمدة.\nيجب أن يحتوي صف العناوين على «الاسم» و«الرقم الجامعي».\n\nالعناوين التي قرأتُها من الملف:\n'+rows[0].map(h=>String(h==null?'':h).trim()).join(' | ')+'\n\nيمكنكِ تنزيل القالب الجاهز من زر «قالب» ثم تعبئته.');
     return;
   }
   const get=(r,f)=> idx[f]!==undefined ? String(r[idx[f]]==null?'':r[idx[f]]).trim() : '';
-  let ok=0, skipped=0;
-  for(let i=1;i<rows.length;i++){
+  let ok=0, skipped=0; const errs=[];
+  for(let i=hRow+1;i<rows.length;i++){
     const r=rows[i];
     const rec={
       name:get(r,'name'), student_id:get(r,'student_id'),
@@ -395,11 +419,11 @@ async function importStudentsCSV(input){
     if(!rec.name || !rec.student_id){ skipped++; continue; }
     try{
       const res=await api('/api/students','POST',rec);
-      if(res && res.error) skipped++; else ok++;
-    }catch(e){ skipped++; }
+      if(res && res.error){ skipped++; errs.push(res.error); } else ok++;
+    }catch(e){ skipped++; errs.push('خطأ اتصال'); }
   }
   let msg=`تم استيراد ${ok} طالب بنجاح.`;
-  if(skipped) msg+=`\nتم تخطّي ${skipped} صفاً (فارغ أو بلا اسم/رقم جامعي).`;
+  if(skipped) msg+=`\nتم تخطّي ${skipped} صفاً (فارغ أو بلا اسم/رقم جامعي).`+(errs.length?'\nسبب الخطأ: '+errs[0]:'');
   alert(msg);
   filterStudents(); loadDash();
 }
