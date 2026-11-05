@@ -1437,162 +1437,178 @@ app.post('/api/installment_plan/clear-all', auth(['admin']), async (req, res) =>
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// استيراد دفعة طلبة (Excel/CSV) دفعة واحدة: تنظيف القيم + تحديث السجل إن وُجد الرقم الجامعي + إرجاع تفاصيل الفشل
+app.post('/api/students/bulk', auth(['admin','editor']), async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ error: 'لا توجد صفوف للاستيراد' });
+    const clean = v => String(v == null ? '' : v).replace(/[\u00A0\u200B-\u200F]/g, ' ').replace(/\s+/g, ' ').trim();
+    const ops = []; const failed = []; const seen = new Set();
+    rows.forEach((r, i) => {
+      const rec = {};
+      ['student_id','name','gender','college','major','activity','excellence_year','phone'].forEach(k => rec[k] = clean(r[k]));
+      if (!rec.student_id || !rec.name) { failed.push({ row: i + 2, reason: 'بلا اسم أو رقم جامعي' }); return; }
+      if (seen.has(rec.student_id)) { failed.push({ row: i + 2, reason: 'رقم جامعي مكرر داخل الملف' }); return; }
+      seen.add(rec.student_id);
+      rec.admission_basis = 'التفوق الفني';
+      ops.push({ updateOne: { filter: { student_id: rec.student_id }, update: { $set: rec, $setOnInsert: { created_by: req.user.username } }, upsert: true } });
+    });
+    let inserted = 0, updated = 0;
+    if (ops.length) { const r = await models['students'].bulkWrite(ops, { ordered: false }); inserted = r.upsertedCount || 0; updated = r.modifiedCount || 0; }
+    res.json({ inserted, updated, matched: ops.length, failed });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══════════════════════════════════════════════════════════════
-// نظام حضور طلبة التفوق الفني — جلسة لكل نشاط، رمز QR متجدد على الشاشة، والطالب يسجّل حضوره برقمه الجامعي
-// يعيد استخدام آلية الرمز المتجدد (qrTokenFor/qrCurrentBucket/qrSignTicket) بنطاق مستقل 'att:'
+// حضور طلبة التفوق الفني (نمط الزيارة المستمرة): رمز QR متجدد لكل نشاط يُعرض على شاشة في مكان النشاط،
+// والطالب يمسحه في أي وقت خلال الدوام (٨:٠٠–١٥:٠٠) فتُسجَّل زيارة واحدة له في اليوم بتاريخها ويومها ووقتها.
 // ══════════════════════════════════════════════════════════════
-const TalentAttendance = mongoose.model('talent_attendance', new mongoose.Schema({}, { strict:false, timestamps:true }));
+const TalentVisit = mongoose.model('talent_visit', new mongoose.Schema({}, { strict:false, timestamps:true }));
+const TalentAttendCfg = mongoose.model('talent_attend_cfg', new mongoose.Schema({}, { strict:false }));
+const ATT_OPEN = '08:00:00', ATT_CLOSE = '15:00:00';
 const ATT_TICKET_MINUTES = 2;
+const ATT_ROLES = ['admin','editor'];
 function ammanParts(d = new Date()) {
   const date = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Amman', year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
   const time = new Intl.DateTimeFormat('en-GB', { timeZone:'Asia/Amman', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(d);
   const day = new Intl.DateTimeFormat('ar-JO', { timeZone:'Asia/Amman', weekday:'long' }).format(d);
   return { date, time, day };
 }
-function attDto(d, withRecords) {
-  const o = d.toObject ? d.toObject() : d;
-  const recs = Array.isArray(o.records) ? o.records : [];
-  const out = { id: String(o._id), activity: o.activity || '', title: o.title || '', date: o.date || '', day: o.day || '',
-    start_time: o.start_time || '', status: o.status || 'open', count: recs.length };
-  if (withRecords) out.records = recs;
-  return out;
+function dayNameOf(dateStr) {
+  return new Intl.DateTimeFormat('ar-JO', { timeZone:'UTC', weekday:'long' }).format(new Date(dateStr + 'T12:00:00Z'));
 }
-async function attSecret(doc) {
-  let secret = doc.get ? doc.get('qr_secret') : doc.qr_secret;
-  if (secret) return secret;
-  await TalentAttendance.updateOne({ _id: doc._id, qr_secret: { $exists: false } }, { $set: { qr_secret: crypto.randomBytes(16).toString('hex') } });
-  const fresh = await TalentAttendance.findById(doc._id).lean();
-  return fresh && fresh.qr_secret;
+async function attSecretFor(activity) {
+  let cfg = await TalentAttendCfg.findOne({ activity }).lean();
+  if (cfg && cfg.qr_secret) return cfg.qr_secret;
+  await TalentAttendCfg.updateOne({ activity }, { $setOnInsert: { activity, qr_secret: crypto.randomBytes(16).toString('hex') } }, { upsert: true });
+  cfg = await TalentAttendCfg.findOne({ activity }).lean();
+  return cfg && cfg.qr_secret;
 }
-const ATT_ROLES = ['admin','editor'];
+const visitDto = v => ({ id: String(v._id), student_id: v.student_id, name: v.name, college: v.college || '', activity: v.activity, date: v.date, day: v.day, time: v.time, manual: !!v.manual });
 
-app.get('/api/talent-attendance', auth(ATT_ROLES), async (req, res) => {
+// شاشة الرمز: الرمز الحالي + زيارات اليوم لهذا النشاط (تحديث مباشر)
+app.get('/api/talent-attendance/qr-token', auth(ATT_ROLES), async (req, res) => {
   try {
-    const list = await TalentAttendance.find({}).sort({ createdAt: -1 }).lean();
-    res.json(list.map(d => attDto(d, false)));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/talent-attendance', auth(ATT_ROLES), async (req, res) => {
-  try {
-    const activity = String(req.body.activity || '').trim();
-    if (!activity) return res.status(400).json({ error: 'يرجى اختيار النشاط' });
-    const p = ammanParts();
-    const doc = await TalentAttendance.create({ activity, title: String(req.body.title || '').trim(), date: p.date, day: p.day,
-      start_time: p.time.slice(0,5), status: 'open', records: [], created_by: req.user && (req.user.name || req.user.username) || '' });
-    res.json(attDto(doc, false));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/talent-attendance/:id', auth(ATT_ROLES), async (req, res) => {
-  try {
-    const doc = await TalentAttendance.findById(req.params.id);
-    if (!doc) return res.status(404).json({ error: 'غير موجود' });
-    const dto = attDto(doc, true);
-    const regs = await models['students'].find({ activity: dto.activity }).lean();
-    const present = new Set(dto.records.map(r => String(r.student_id)));
-    dto.registered = regs.length;
-    dto.absent = regs.filter(s => !present.has(String(s.student_id))).map(s => ({ student_id: s.student_id, name: s.name, college: s.college }));
-    res.json(dto);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/talent-attendance/:id/qr-token', auth(ATT_ROLES), async (req, res) => {
-  try {
-    const doc = await TalentAttendance.findById(req.params.id);
-    if (!doc) return res.status(404).json({ error: 'غير موجود' });
-    const secret = await attSecret(doc);
+    const activity = String(req.query.activity || '').trim();
+    if (!activity) return res.status(400).json({ error: 'يرجى تحديد النشاط' });
+    const secret = await attSecretFor(activity);
     if (!secret) return res.status(500).json({ error: 'تعذّر إنشاء مفتاح الرمز' });
     const token = qrTokenFor(secret, qrCurrentBucket());
     const ttl = QR_WINDOW_SECONDS - (Math.floor(Date.now() / 1000) % QR_WINDOW_SECONDS);
-    const recs = doc.get('records');
-    res.json({ token, ttl, window: QR_WINDOW_SECONDS, count: Array.isArray(recs) ? recs.length : 0, status: doc.get('status') || 'open' });
+    const today = ammanParts().date;
+    const visits = await TalentVisit.find({ activity, date: today }).sort({ time: -1 }).lean();
+    res.json({ token, ttl, window: QR_WINDOW_SECONDS, count: visits.length, visits: visits.map(visitDto) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/talent-attendance/:id/status', auth(ATT_ROLES), async (req, res) => {
+// زيارات اليوم (كل الأنشطة أو نشاط محدد)
+app.get('/api/talent-attendance/today', auth(ATT_ROLES), async (req, res) => {
   try {
-    const status = req.body.status === 'closed' ? 'closed' : 'open';
-    await TalentAttendance.updateOne({ _id: req.params.id }, { $set: { status } });
-    res.json({ message: 'تم', status });
+    const q = { date: String(req.query.date || ammanParts().date) };
+    if (req.query.activity) q.activity = String(req.query.activity);
+    const visits = await TalentVisit.find(q).sort({ time: -1 }).lean();
+    res.json({ date: q.date, day: dayNameOf(q.date), visits: visits.map(visitDto) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/talent-attendance/:id', auth(ATT_ROLES), async (req, res) => {
-  try { await TalentAttendance.findByIdAndDelete(req.params.id); res.json({ message: 'تم الحذف' }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+// التقرير الشهري: كل طالب (بحسب الفلاتر) مع عدد أيام زيارته خلال الشهر
+app.get('/api/talent-attendance/report', auth(ATT_ROLES), async (req, res) => {
+  try {
+    const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : ammanParts().date.slice(0, 7);
+    const sq = {};
+    ['activity','college','gender'].forEach(k => { if (req.query[k]) sq[k] = String(req.query[k]); });
+    const studs = await models['students'].find(sq).lean();
+    const vq = { date: { $regex: '^' + month } };
+    if (req.query.activity) vq.activity = String(req.query.activity);
+    const visits = await TalentVisit.find(vq).sort({ date: 1, time: 1 }).lean();
+    const by = {};
+    visits.forEach(v => { (by[v.student_id] = by[v.student_id] || []).push(v); });
+    const rows = studs.map(s => {
+      const vs = by[String(s.student_id)] || [];
+      const last = vs[vs.length - 1];
+      return { student_id: s.student_id, name: s.name, college: s.college || '', gender: s.gender || '', activity: s.activity || '',
+        days: vs.length, last: last ? last.date + ' ' + last.time.slice(0, 5) : '' };
+    }).sort((a, b) => b.days - a.days || String(a.name).localeCompare(String(b.name), 'ar'));
+    const totalVisits = rows.reduce((n, r) => n + r.days, 0);
+    res.json({ month, rows, summary: { students: rows.length, visited: rows.filter(r => r.days > 0).length, not_visited: rows.filter(r => !r.days).length, visits: totalVisits } });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// تسجيل يدوي (لطالب نسي هاتفه مثلاً)
-app.post('/api/talent-attendance/:id/manual', auth(ATT_ROLES), async (req, res) => {
+// تفاصيل زيارات طالب واحد (شهر محدد أو كل الأشهر)
+app.get('/api/talent-attendance/student/:sid', auth(ATT_ROLES), async (req, res) => {
+  try {
+    const q = { student_id: String(req.params.sid) };
+    if (/^\d{4}-\d{2}$/.test(req.query.month || '')) q.date = { $regex: '^' + req.query.month };
+    const st = await models['students'].findOne({ student_id: q.student_id }).lean();
+    const visits = await TalentVisit.find(q).sort({ date: 1, time: 1 }).lean();
+    res.json({ student: st ? { student_id: st.student_id, name: st.name, college: st.college, activity: st.activity } : null, visits: visits.map(visitDto) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// تسجيل يدوي (طالب نسي هاتفه، أو تصحيح) — يتجاوز قيد الدوام
+app.post('/api/talent-attendance/manual', auth(ATT_ROLES), async (req, res) => {
   try {
     const sid = String(req.body.student_id || '').trim();
-    const doc = await TalentAttendance.findById(req.params.id);
-    if (!doc) return res.status(404).json({ error: 'غير موجود' });
-    const st = await models['students'].findOne({ student_id: sid, activity: doc.get('activity') }).lean();
-    if (!st) return res.status(404).json({ error: 'الرقم الجامعي غير مسجَّل ضمن نشاط «' + doc.get('activity') + '»' });
-    const recs = doc.get('records') || [];
-    if (recs.some(r => String(r.student_id) === sid)) return res.status(400).json({ error: 'الطالب مسجَّل حضوره مسبقاً' });
+    const st = await models['students'].findOne({ student_id: sid }).lean();
+    if (!st) return res.status(404).json({ error: 'الرقم الجامعي غير مسجَّل ضمن طلبة التفوق الفني' });
     const p = ammanParts();
-    const rec = { student_id: sid, name: st.name, college: st.college || '', major: st.major || '', activity: st.activity, at: new Date().toISOString(), day: p.day, date: p.date, time: p.time, manual: true };
-    await TalentAttendance.updateOne({ _id: doc._id }, { $push: { records: rec } });
-    res.json({ message: 'تم', record: rec });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/talent-attendance/:id/remove', auth(ATT_ROLES), async (req, res) => {
-  try {
-    await TalentAttendance.updateOne({ _id: req.params.id }, { $pull: { records: { student_id: String(req.body.student_id || '') } } });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : p.date;
+    const time = /^\d{2}:\d{2}(:\d{2})?$/.test(req.body.time || '') ? (req.body.time.length === 5 ? req.body.time + ':00' : req.body.time) : p.time;
+    const rec = { student_id: sid, name: st.name, college: st.college || '', major: st.major || '', gender: st.gender || '', activity: st.activity, date, day: dayNameOf(date), time, at: new Date().toISOString(), manual: true };
+    const r = await TalentVisit.updateOne({ student_id: sid, date }, { $setOnInsert: rec }, { upsert: true });
+    if (!r.upsertedCount) return res.status(400).json({ error: 'للطالب زيارة مسجَّلة في هذا اليوم مسبقاً' });
     res.json({ message: 'تم' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── عام (بدون دخول): صفحة الطالب ──
-app.get('/api/public/talent-attendance/:id/info', async (req, res) => {
-  try {
-    const doc = await TalentAttendance.findById(req.params.id).lean();
-    if (!doc) return res.status(404).json({ error: 'رابط غير صالح' });
-    res.json({ activity: doc.activity, title: doc.title || '', date: doc.date, day: doc.day, status: doc.status || 'open' });
-  } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
+app.post('/api/talent-attendance/visit/delete', auth(ATT_ROLES), async (req, res) => {
+  try { await TalentVisit.findByIdAndDelete(String(req.body.id || '')); res.json({ message: 'تم' }); }
+  catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/public/talent-attendance/:id/ticket', async (req, res) => {
+// ── عام (بدون دخول): صفحة الطالب ──
+app.get('/api/public/talent-attendance/info', async (req, res) => {
+  const activity = String(req.query.a || '').trim();
+  if (!activity) return res.status(400).json({ error: 'رابط غير صالح' });
+  const p = ammanParts();
+  res.json({ activity, day: p.day, date: p.date, open_from: ATT_OPEN.slice(0, 5), open_to: ATT_CLOSE.slice(0, 5), within_hours: p.time >= ATT_OPEN && p.time < ATT_CLOSE });
+});
+
+app.post('/api/public/talent-attendance/ticket', async (req, res) => {
   try {
-    const doc = await TalentAttendance.findById(req.params.id).lean();
-    if (!doc) return res.status(404).json({ error: 'رابط غير صالح' });
-    if ((doc.status || 'open') !== 'open') return res.status(403).json({ error: 'تم إغلاق تسجيل الحضور لهذه الجلسة' });
-    if (!doc.qr_secret) return res.status(403).json({ error: 'لم تُفتح شاشة الرمز بعد' });
+    const activity = String(req.body.a || '').trim();
+    const cfg = activity && await TalentAttendCfg.findOne({ activity }).lean();
+    if (!cfg || !cfg.qr_secret) return res.status(403).json({ error: 'لم تُفتح شاشة الرمز لهذا النشاط بعد' });
     const sent = String(req.body.t || '').trim();
     const b = qrCurrentBucket();
-    if (!sent || ![qrTokenFor(doc.qr_secret, b), qrTokenFor(doc.qr_secret, b - 1)].includes(sent))
+    if (!sent || ![qrTokenFor(cfg.qr_secret, b), qrTokenFor(cfg.qr_secret, b - 1)].includes(sent))
       return res.status(403).json({ error: '⏱️ انتهت صلاحية الرمز، يرجى مسح الرمز المعروض حالياً على الشاشة مباشرة' });
     const exp = Date.now() + ATT_TICKET_MINUTES * 60 * 1000;
-    res.json({ ticket: exp + '.' + qrSignTicket(doc.qr_secret, 'att:' + doc._id, exp) });
+    res.json({ ticket: exp + '.' + qrSignTicket(cfg.qr_secret, 'att:' + activity, exp) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/public/talent-attendance/:id/check-in', async (req, res) => {
+app.post('/api/public/talent-attendance/check-in', async (req, res) => {
   try {
+    const activity = String(req.body.a || '').trim();
     const sid = String(req.body.uni_id || '').trim();
+    if (!activity) return res.status(400).json({ error: 'رابط غير صالح' });
     if (!sid) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
-    const doc = await TalentAttendance.findById(req.params.id);
-    if (!doc) return res.status(404).json({ error: 'رابط غير صالح' });
-    if ((doc.get('status') || 'open') !== 'open') return res.status(403).json({ error: 'تم إغلاق تسجيل الحضور لهذه الجلسة' });
-    const secret = doc.get('qr_secret');
+    const cfg = await TalentAttendCfg.findOne({ activity }).lean();
     const [expS, sig] = String(req.body.ticket || '').split('.');
     const exp = Number(expS);
-    if (!secret || !exp || exp < Date.now() || sig !== qrSignTicket(secret, 'att:' + doc._id, exp))
+    if (!cfg || !cfg.qr_secret || !exp || exp < Date.now() || sig !== qrSignTicket(cfg.qr_secret, 'att:' + activity, exp))
       return res.status(403).json({ error: '⏱️ انتهت صلاحية الجلسة، يرجى مسح الرمز المعروض على الشاشة من جديد' });
-    const activity = doc.get('activity');
+    const p = ammanParts();
+    if (p.time < ATT_OPEN || p.time >= ATT_CLOSE)
+      return res.status(403).json({ error: `تسجيل الحضور متاح فقط خلال الدوام من ${ATT_OPEN.slice(0,5)} صباحاً حتى ${ATT_CLOSE.slice(0,5)} عصراً` });
     const st = await models['students'].findOne({ student_id: sid, activity }).lean();
     if (!st) return res.status(404).json({ error: 'الرقم الجامعي غير مسجَّل ضمن نشاط «' + activity + '»' });
-    const recs = doc.get('records') || [];
-    const prev = recs.find(r => String(r.student_id) === sid);
-    if (prev) return res.json({ already: true, name: st.name, time: prev.time, day: prev.day, date: prev.date });
-    const p = ammanParts();
-    const rec = { student_id: sid, name: st.name, college: st.college || '', major: st.major || '', activity, at: new Date().toISOString(), day: p.day, date: p.date, time: p.time };
-    const r = await TalentAttendance.updateOne({ _id: doc._id, 'records.student_id': { $ne: sid } }, { $push: { records: rec } });
-    res.json({ already: !r.modifiedCount, name: st.name, time: p.time, day: p.day, date: p.date });
+    const rec = { student_id: sid, name: st.name, college: st.college || '', major: st.major || '', gender: st.gender || '', activity, date: p.date, day: p.day, time: p.time, at: new Date().toISOString() };
+    const r = await TalentVisit.updateOne({ student_id: sid, date: p.date }, { $setOnInsert: rec }, { upsert: true });
+    if (r.upsertedCount) return res.json({ already: false, name: st.name, time: p.time, day: p.day, date: p.date });
+    const prev = await TalentVisit.findOne({ student_id: sid, date: p.date }).lean();
+    res.json({ already: true, name: st.name, time: prev ? prev.time : p.time, day: p.day, date: p.date });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
