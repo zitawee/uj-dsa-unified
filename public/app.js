@@ -68,7 +68,7 @@ const EVAL_QUESTIONS = [
   'مكان الفعالية مناسب',
   'أنا راضٍ عن الفعالية بشكل عام',
 ];
-const ACOLORS = {'المرسم الجامعي':['#EEEDFE','#3C3489'],'الموسيقى':['#E1F5EE','#085041'],'الخط العربي':['#FAEEDA','#633806'],'الحرف اليدوية':['#FAECE7','#712B13'],'المسرح الجامعي':['#FBE8F5','#5D1A4A'],'الأداء الحركي':['#EAF3DE','#27500A'],'المناظرات':['#E8F4FD','#0A4A6B'],'الأنشطة الحزبية':['#FBEAF0','#72243E']};
+const ACOLORS = {'المرسم الجامعي':['#EEEDFE','#3C3489'],'الموسيقى':['#E1F5EE','#085041'],'الغناء':['#E1F5EE','#085041'],'العزف':['#E6F1FB','#0C447C'],'الخط العربي':['#FAEEDA','#633806'],'الحرف اليدوية':['#FAECE7','#712B13'],'المسرح الجامعي':['#FBE8F5','#5D1A4A'],'الأداء الحركي':['#EAF3DE','#27500A'],'المناظرات':['#E8F4FD','#0A4A6B'],'الأنشطة الحزبية':['#FBEAF0','#72243E']};
 const RLABELS = {admin:'مدير النظام',editor:'مدخل بيانات',viewer:'عرض فقط',coordinator:'رئيس شعبة',manager:'مدير الدائرة',dean:'العميد',sports_reviewer:'مدقق بيانات التفوق الرياضي',fitness_coach:'مدرّب / مدخل قياسات اللياقة'};
 const RCLS = {admin:'r-admin',editor:'r-editor',viewer:'r-viewer',coordinator:'r-editor',manager:'r-admin',dean:'r-admin',sports_reviewer:'r-editor',fitness_coach:'r-editor'};
 // التصنيفات التسعة للأنشطة (يختارها مدير النظام عند الاعتماد) — قابلة للإضافة عليها لاحقاً
@@ -271,6 +271,7 @@ function buildSidebar() {
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('room_booking',this)"><i class="ti ti-bed"></i>نظام حجز الغرف</div>` : ''}
     ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('training_courses',this)"><i class="ti ti-school"></i>الدورات التدريبية</div>` : ''}
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('finance',this)"><i class="ti ti-cash"></i>النظام المالي</div>` : ''}
+    ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('talent_attendance',this)"><i class="ti ti-qrcode"></i>حضور طلبة التفوق الفني</div>` : ''}
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('installment_plan',this)"><i class="ti ti-calendar-dollar"></i>نظام تقسيط الرسوم</div>` : ''}
   </div>
 
@@ -327,7 +328,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','installment_plan','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
+  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','installment_plan','talent_attendance','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
 }
 
@@ -459,7 +460,7 @@ function go(name, el) {
   if (el) el.classList.add('active');
   if (window.innerWidth <= 768) closeSidebar();
   const loaders = {
-    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, students:loadStudents, achievements:loadAchievements,
+    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, talent_attendance:loadTalentAttendance, students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1B6B3A">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<title>تسجيل الحضور — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px}
+  .wrap{max-width:480px;margin:0 auto;padding:18px 14px 32px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.6}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:16px;margin-bottom:14px;min-height:44px}
+  button{width:100%;padding:13px;border:none;border-radius:var(--r);background:var(--g);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px}
+  button:disabled{opacity:.6}
+  .ok{background:#EAF7EE;border:1px solid #BFE5CB;border-radius:var(--r);padding:16px;text-align:center}
+  .ok .icon{font-size:34px}.ok .t{font-weight:800;color:var(--g);font-size:16px;margin:6px 0}
+  .ok .n{font-size:15px;font-weight:700;margin:6px 0}.ok .m{font-size:13px;color:var(--muted)}
+  .err{font-size:13px;background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5;border-radius:var(--r);padding:12px;text-align:center;line-height:1.7;margin-top:12px}
+</style>
+</head>
+<body>
+<header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap"><div class="card" id="box"><div style="text-align:center;color:#888">جارٍ التحقق...</div></div></div>
+<script>
+const P = new URLSearchParams(location.search), SID = P.get('s'), TOK = P.get('t');
+let TICKET = '';
+const box = document.getElementById('box');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function fail(msg){ box.innerHTML = '<h1>تسجيل الحضور</h1><div class="err">'+esc(msg)+'</div>'; }
+async function init(){
+  if(!SID || !TOK) return fail('يرجى مسح رمز QR المعروض على الشاشة لتسجيل الحضور.');
+  try{
+    const ir = await fetch('/api/public/talent-attendance/'+encodeURIComponent(SID)+'/info');
+    const info = await ir.json();
+    if(!ir.ok) return fail(info.error||'رابط غير صالح');
+    const tr = await fetch('/api/public/talent-attendance/'+encodeURIComponent(SID)+'/ticket',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({t:TOK})});
+    const td = await tr.json();
+    if(!tr.ok) return fail(td.error||'تعذّر التحقق من الرمز');
+    TICKET = td.ticket;
+    box.innerHTML = `<h1>تسجيل الحضور — ${esc(info.activity)}</h1>
+      <p class="sub">${esc(info.title?info.title+' — ':'')}${esc(info.day)} ${esc(info.date)}<br>أدخل رقمك الجامعي لتسجيل حضورك.</p>
+      <label>الرقم الجامعي</label>
+      <input id="uid" type="text" inputmode="numeric" placeholder="أدخل رقمك الجامعي" autofocus>
+      <button id="btn" onclick="submitIt()">✅ تسجيل الحضور</button><div id="res"></div>`;
+    document.getElementById('uid').addEventListener('keydown',e=>{ if(e.key==='Enter') submitIt(); });
+  }catch(e){ fail('تعذّر الاتصال بالخادم، يرجى المحاولة لاحقاً'); }
+}
+async function submitIt(){
+  const uid = document.getElementById('uid').value.trim(), res = document.getElementById('res'), btn = document.getElementById('btn');
+  if(!uid){ res.innerHTML='<div class="err">يرجى إدخال الرقم الجامعي</div>'; return; }
+  btn.disabled = true; btn.textContent = 'جارٍ التسجيل...'; res.innerHTML='';
+  try{
+    const r = await fetch('/api/public/talent-attendance/'+encodeURIComponent(SID)+'/check-in',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uni_id:uid,ticket:TICKET})});
+    const d = await r.json();
+    if(!r.ok){ res.innerHTML='<div class="err">❌ '+esc(d.error||'تعذّر التسجيل')+'</div>'; btn.disabled=false; btn.textContent='✅ تسجيل الحضور'; return; }
+    box.innerHTML = `<div class="ok"><div class="icon">✅</div><div class="t">${d.already?'حضورك مسجَّل مسبقاً':'تم تسجيل حضورك'}</div>
+      <div class="n">${esc(d.name)}</div><div class="m">${esc(d.day)} ${esc(d.date)} — الساعة ${esc(d.time)}</div></div>`;
+  }catch(e){ res.innerHTML='<div class="err">تعذّر الاتصال بالخادم</div>'; btn.disabled=false; btn.textContent='✅ تسجيل الحضور'; }
+}
+init();
+</script>
+</body>
+</html>

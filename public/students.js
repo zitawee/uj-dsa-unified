@@ -191,11 +191,18 @@ async function goEditQ(table, id) {
 // ══════════════════════════════════════════
 // الطلبة
 // ══════════════════════════════════════════
+// أنشطة التفوق الفني المعتمدة لهذه اللوحة (الموسيقى مفصولة إلى غناء وعزف)
+const TALENT_ACTS = ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي'];
+const talentActOpts = (val='') => {
+  const list = (val && !TALENT_ACTS.includes(val)) ? [...TALENT_ACTS, val] : TALENT_ACTS; // يُبقي نشاطاً قديماً ظاهراً عند تعديل سجل سابق
+  return list.map(a=>`<option${a===val?' selected':''}>${a}</option>`).join('');
+};
+
 async function loadStudents() {
   const canEdit = canEditGlobal();
   document.getElementById('panel-students').innerHTML = `
   <div class="ph">
-    <div><div class="pt"><i class="ti ti-users"></i> الطلبة المسجلون في الأنشطة</div></div>
+    <div><div class="pt"><i class="ti ti-users"></i> الطلبة المسجلون في الأنشطة</div><div class="ps">الطلبة المقبولون على أساس التفوق الفني</div></div>
     <div style="display:flex;gap:6px">
       ${canEdit ? `<button class="btn btn-g" onclick="showStudForm()"><i class="ti ti-plus"></i>تسجيل طالب</button>` : ''}
       ${canEdit ? `<button class="btn" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="document.getElementById('stud-import-file').click()"><i class="ti ti-upload"></i>استيراد Excel/CSV</button><input type="file" id="stud-import-file" accept=".csv,.xlsx,.xls,text/csv" style="display:none" onchange="importStudentsCSV(this)"><button class="btn" onclick="downloadStudentTemplate()"><i class="ti ti-file-download"></i>قالب</button>` : ''}
@@ -210,14 +217,11 @@ async function loadStudents() {
         <div class="fg"><label>الرقم الجامعي *</label><input id="fs-id" type="text"></div>
         <div class="fg"><label>الاسم الكامل *</label><input id="fs-name" type="text"></div>
         <div class="fg"><label>الجنس *</label><select id="fs-gender"><option value="">اختر...</option><option>ذكر</option><option>أنثى</option></select></div>
-        <div class="fg"><label>الجنسية</label>${sselHTML('fs-nat', '', 'fs-nat')}</div>
         <div class="fg"><label>الكلية *</label><select id="fs-col"><option value="">اختر الكلية...</option>${colOpts()}</select></div>
         <div class="fg"><label>التخصص *</label><input id="fs-major" type="text"></div>
-        <div class="fg"><label>سنة القبول *</label><input id="fs-year" type="number" placeholder="2024"></div>
-        <div class="fg"><label>نوع القبول</label><select id="fs-admit"><option value="">اختر...</option>${selOpts(ADMIT)}</select></div>
+        <div class="fg"><label>نوع النشاط *</label><select id="fs-act"><option value="">اختر النشاط...</option>${talentActOpts()}</select></div>
+        <div class="fg"><label>سنة الالتحاق بالتفوق *</label><input id="fs-exyear" type="number" placeholder="2026"></div>
         <div class="fg"><label>رقم الهاتف</label><input id="fs-phone" type="tel"></div>
-        <div class="fg"><label>نوع النشاط *</label><select id="fs-act"><option value="">اختر النشاط...</option>${actOpts()}</select></div>
-        <div class="fg"><label>تاريخ الالتحاق *</label><input id="fs-join" type="date"></div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
         <button class="btn" onclick="document.getElementById('stud-form').style.display='none'">إلغاء</button>
@@ -227,16 +231,14 @@ async function loadStudents() {
   </div>
   <div class="fb">
     <input type="text" id="sf-q" placeholder="بحث بالاسم أو الرقم..." oninput="filterStudents()">
-    <select id="sf-act" onchange="filterStudents()"><option value="">جميع الأنشطة</option>${actOpts()}</select>
+    <select id="sf-act" onchange="filterStudents()"><option value="">جميع الأنشطة</option>${talentActOpts()}</select>
     <select id="sf-col" onchange="filterStudents()"><option value="">جميع الكليات</option>${colOpts()}</select>
     <select id="sf-gen" onchange="filterStudents()"><option value="">كل الجنسين</option><option>ذكر</option><option>أنثى</option></select>
   </div>
   <div id="stud-cnt" style="font-size:11px;color:var(--muted);margin-bottom:5px"></div>
   <div class="tw"><table><thead><tr>
-    <th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الجنس</th><th>الجنسية</th><th>الكلية</th><th>التخصص</th><th>نوع القبول</th><th>نوع النشاط</th><th>تاريخ الالتحاق</th><th>الهاتف</th>${canEdit?'<th></th>':''}
+    <th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الجنس</th><th>الكلية</th><th>التخصص</th><th>نوع النشاط</th><th>سنة الالتحاق بالتفوق</th><th>الهاتف</th>${canEdit?'<th></th>':''}
   </tr></thead><tbody id="tbl-students"></tbody></table></div>`;
-  document.getElementById('fs-join').valueAsDate = new Date();
-  initSsel(document.getElementById('stud-form'), NATIONALITIES);
   filterStudents();
 }
 
@@ -246,7 +248,7 @@ function showStudForm() {
   delete f.dataset.editId;
   const t=document.getElementById('stud-form-title'); if(t) t.innerHTML='<i class="ti ti-user-plus"></i>تسجيل طالب جديد';
   const b=document.getElementById('stud-save-btn'); if(b) b.textContent='✔ تسجيل';
-  document.getElementById('fs-join').valueAsDate = new Date();
+  document.getElementById('fs-exyear').value = new Date().getFullYear();
   f.scrollIntoView({behavior:'smooth'});
 }
 
@@ -255,11 +257,10 @@ function editStudent(r) {
   f.querySelectorAll('input:not([type=file]),select').forEach(el=>el.value='');
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v!==undefined&&v!==null)?v:''; };
   set('fs-id',r.student_id); set('fs-name',r.name); set('fs-gender',r.gender);
-  set('fs-nat',r.nationality); set('fs-col',r.college); set('fs-major',r.major);
-  set('fs-year',r.admit_year); set('fs-admit',r.admit_type); set('fs-phone',r.phone);
-  set('fs-act',r.activity); set('fs-join',r.join_date);
-  const natSearch = document.getElementById('fs-nat')?.closest('.ssel')?.querySelector('.ssel-input');
-  if(natSearch) natSearch.value = r.nationality||'';
+  set('fs-col',r.college); set('fs-major',r.major); set('fs-phone',r.phone);
+  const actSel=document.getElementById('fs-act');
+  if(actSel){ actSel.innerHTML='<option value="">اختر النشاط...</option>'+talentActOpts(r.activity||''); actSel.value=r.activity||''; }
+  set('fs-exyear', r.excellence_year || (r.join_date ? String(r.join_date).slice(0,4) : ''));
   f.dataset.editId = String(r.id || r._id || '');
   const t=document.getElementById('stud-form-title'); if(t) t.innerHTML='<i class="ti ti-edit"></i>تعديل بيانات الطالب';
   const b=document.getElementById('stud-save-btn'); if(b) b.textContent='✔ حفظ التعديل';
@@ -277,20 +278,19 @@ async function filterStudents() {
   document.getElementById('tbl-students').innerHTML = (rows||[]).map((r,i)=>`<tr>
     <td style="color:var(--muted)">${i+1}</td>
     <td><strong>${r.student_id||'-'}</strong></td><td>${r.name||'-'}</td>
-    <td>${r.gender||'-'}</td><td>${r.nationality||'-'}</td>
+    <td>${r.gender||'-'}</td>
     <td style="font-size:11px">${r.college||'-'}</td><td>${r.major||'-'}</td>
-    <td>${r.admit_type||'-'}</td>
-    <td>${badge(r.activity||'')}</td><td>${r.join_date||'-'}</td><td>${r.phone||'-'}</td>
+    <td>${badge(r.activity||'')}</td><td>${r.excellence_year || (r.join_date ? String(r.join_date).slice(0,4) : '-')}</td><td>${r.phone||'-'}</td>
     ${canEdit?`<td><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm btn-b" onclick='editStudent(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️ تعديل</button><button class="btn btn-r" onclick="delRec('students','${r.id}',filterStudents)">🗑</button></div></td>`:''}
-  </tr>`).join('') || `<tr class="erow"><td colspan="12">لا توجد نتائج</td></tr>`;
+  </tr>`).join('') || `<tr class="erow"><td colspan="10">لا توجد نتائج</td></tr>`;
   const cnt = document.getElementById('c-students'); if(cnt) cnt.textContent=rows?.length||0;
 }
 
 async function saveStudent() {
   const f=document.getElementById('stud-form');
   const editId=f?.dataset.editId;
-  const data = {student_id:g('fs-id'),name:g('fs-name'),gender:g('fs-gender'),nationality:g('fs-nat'),college:g('fs-col'),major:g('fs-major'),admit_year:g('fs-year'),admit_type:g('fs-admit'),phone:g('fs-phone'),activity:g('fs-act'),join_date:g('fs-join')};
-  if (!data.student_id||!data.name||!data.gender||!data.college||!data.major||!data.admit_year||!data.activity||!data.join_date)
+  const data = {student_id:g('fs-id'),name:g('fs-name'),gender:g('fs-gender'),college:g('fs-col'),major:g('fs-major'),phone:g('fs-phone'),activity:g('fs-act'),excellence_year:g('fs-exyear'),admission_basis:'التفوق الفني'};
+  if (!data.student_id||!data.name||!data.gender||!data.college||!data.major||!data.activity||!data.excellence_year)
     {showMsg('msg-students','يرجى ملء جميع الحقول الإلزامية',true);return;}
   let r;
   if(editId){
@@ -312,11 +312,9 @@ const STUD_HMAP = {
   'الاسم':'name','الاسم الكامل':'name',
   'الرقم الجامعي':'student_id','الرقم':'student_id',
   'الجنس':'gender',
-  'الجنسية':'nationality',
   'الكلية':'college',
   'التخصص':'major',
-  'سنة القبول':'admit_year',
-  'نوع القبول':'admit_type',
+  'سنة الالتحاق بالتفوق':'excellence_year','سنة الالتحاق':'excellence_year',
   'نوع النشاط':'activity','النشاط':'activity',
   'تاريخ الالتحاق بالنشاط':'join_date','تاريخ الالتحاق':'join_date',
   'الهاتف':'phone','رقم الهاتف':'phone'
@@ -389,11 +387,10 @@ async function importStudentsCSV(input){
     const r=rows[i];
     const rec={
       name:get(r,'name'), student_id:get(r,'student_id'),
-      gender:get(r,'gender'), nationality:get(r,'nationality'),
+      gender:get(r,'gender'),
       college:get(r,'college'), major:get(r,'major'),
-      admit_year:get(r,'admit_year'), admit_type:get(r,'admit_type'),
-      activity:get(r,'activity'), join_date:normDate(get(r,'join_date')),
-      phone:get(r,'phone')
+      activity:get(r,'activity'), excellence_year:get(r,'excellence_year'),
+      phone:get(r,'phone'), admission_basis:'التفوق الفني'
     };
     if(!rec.name || !rec.student_id){ skipped++; continue; }
     try{
@@ -408,7 +405,7 @@ async function importStudentsCSV(input){
 }
 
 function downloadStudentTemplate(){
-  const headers=['الاسم','الرقم الجامعي','الجنس','الجنسية','الكلية','التخصص','سنة القبول','نوع القبول','نوع النشاط','تاريخ الالتحاق بالنشاط','الهاتف'];
+  const headers=['الرقم الجامعي','الاسم','الجنس','الكلية','التخصص','نوع النشاط','سنة الالتحاق بالتفوق','الهاتف'];
   const csv='\uFEFF'+headers.join(',')+'\n';
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
