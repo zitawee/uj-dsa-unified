@@ -24,30 +24,68 @@ function attTab(t) {
   t === 'today' ? attRenderToday() : attRenderReport();
 }
 
-// ── الزيارات اليوم + أزرار فتح شاشة الرمز لكل نشاط ──
+// ── الزيارات (يوم محدد أو فترة) + أزرار فتح شاشة الرمز لكل نشاط ──
+let ATT_DAY = null;
+const attTodayStr = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Amman' });
 async function attRenderToday() {
   const body = document.getElementById('att-body');
+  const sel = 'padding:7px;border:1px solid var(--border);border-radius:var(--r)';
   body.innerHTML = `
   <div class="card"><div style="font-weight:700;margin-bottom:8px">فتح شاشة الرمز (اختاري النشاط وجهّزي الشاشة في مكانه)</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${attActs().map(a => `<button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="openAttendQR('${attEsc(a)}')"><i class="ti ti-qrcode"></i> ${attEsc(a)}</button>`).join('')}</div></div>
-  <div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-    <b id="att-today-title">زيارات اليوم</b>
-    <select id="att-today-act" onchange="attLoadToday()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">كل الأنشطة</option>${attActs().map(a => `<option>${attEsc(a)}</option>`).join('')}</select>
-    <button class="btn btn-sm" onclick="attLoadToday()"><i class="ti ti-refresh"></i> تحديث</button>
-    <span style="flex:1"></span>
-    <input id="att-man-id" type="text" inputmode="numeric" placeholder="تسجيل يدوي: الرقم الجامعي" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);min-width:190px">
-    <button class="btn btn-sm" onclick="attManual()">إضافة</button></div>
-    <div class="tw"><table><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>النشاط</th><th>الوقت</th><th></th></tr></thead><tbody id="att-today-body"><tr><td colspan="6" class="center">جارٍ التحميل...</td></tr></tbody></table></div></div>`;
+  <div class="card"><b id="att-today-title">الزيارات</b>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0">
+      <label style="font-size:12px">من <input id="att-from" type="date" value="${attTodayStr()}" onchange="attLoadToday()" style="${sel}"></label>
+      <label style="font-size:12px">إلى <input id="att-to" type="date" onchange="attLoadToday()" style="${sel}"></label>
+      <button class="btn btn-sm" onclick="document.getElementById('att-from').value='${attTodayStr()}';document.getElementById('att-to').value='';attLoadToday()">اليوم</button>
+      <select id="att-today-act" onchange="attLoadToday()" style="${sel}"><option value="">كل الأنشطة</option>${attActs().map(a => `<option>${attEsc(a)}</option>`).join('')}</select>
+      <select id="att-today-col" onchange="attLoadToday()" style="${sel}"><option value="">جميع الكليات</option>${typeof colOpts === 'function' ? colOpts() : ''}</select>
+      <select id="att-today-gen" onchange="attLoadToday()" style="${sel}"><option value="">كل الجنسين</option><option>ذكر</option><option>أنثى</option></select>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px">اتركي «إلى» فارغاً لعرض يوم «من» فقط.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <button class="btn btn-sm" onclick="attPrintDay()"><i class="ti ti-printer"></i> طباعة الكشف</button>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="att-sign"> إضافة عمود توقيع</label>
+      <button class="btn btn-sm" onclick="attExportDay()"><i class="ti ti-download"></i> تصدير Excel</button>
+      <span style="flex:1"></span>
+      <input id="att-man-id" type="text" inputmode="numeric" placeholder="تسجيل يدوي (اليوم): الرقم الجامعي" style="padding:8px;border:1px solid var(--border);border-radius:var(--r);min-width:200px">
+      <button class="btn btn-sm" onclick="attManual()">إضافة</button></div>
+    <div class="tw"><table><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>اليوم</th><th>التاريخ</th><th>الوقت</th><th></th></tr></thead><tbody id="att-today-body"><tr><td colspan="9" class="center">جارٍ التحميل...</td></tr></tbody></table></div></div>`;
   attLoadToday();
 }
 async function attLoadToday() {
-  const act = (document.getElementById('att-today-act') || {}).value || '';
-  const r = await api('/api/talent-attendance/today' + (act ? '?activity=' + encodeURIComponent(act) : ''));
+  const g = id => (document.getElementById(id) || {}).value || '';
+  const p = new URLSearchParams();
+  if (g('att-from')) p.set('from', g('att-from'));
+  if (g('att-to')) p.set('to', g('att-to'));
+  ['today-act:activity', 'today-col:college', 'today-gen:gender'].forEach(x => { const [i, k] = x.split(':'); if (g('att-' + i)) p.set(k, g('att-' + i)); });
+  const r = await api('/api/talent-attendance/today?' + p);
   const tb = document.getElementById('att-today-body'); if (!tb) return;
-  if (!r || !r.visits) { tb.innerHTML = '<tr><td colspan="6" class="center">تعذّر التحميل</td></tr>'; return; }
-  document.getElementById('att-today-title').textContent = `زيارات اليوم — ${r.day} ${r.date} (${r.visits.length})`;
-  tb.innerHTML = r.visits.length ? r.visits.map((v, i) => `<tr><td>${i + 1}</td><td><b>${attEsc(v.student_id)}</b></td><td>${attEsc(v.name)}</td><td>${attEsc(v.activity)}</td><td>${attEsc(v.time)}${v.manual ? ' <small>(يدوي)</small>' : ''}</td>
-    <td><button class="btn btn-sm" style="color:#c0392b" onclick="attDelVisit('${v.id}')"><i class="ti ti-x"></i></button></td></tr>`).join('') : '<tr><td colspan="6" class="center">لا توجد زيارات مسجَّلة بعد</td></tr>';
+  if (!r || !r.visits) { tb.innerHTML = '<tr><td colspan="9" class="center">تعذّر التحميل</td></tr>'; return; }
+  ATT_DAY = r;
+  document.getElementById('att-today-title').textContent = (r.from === r.to ? `زيارات ${r.day} ${r.from}` : `زيارات الفترة ${r.from} → ${r.to}`) + ` (${r.visits.length})`;
+  tb.innerHTML = r.visits.length ? r.visits.map((v, i) => `<tr><td>${i + 1}</td><td><b>${attEsc(v.student_id)}</b></td><td>${attEsc(v.name)}</td><td style="font-size:11px">${attEsc(v.college || '-')}</td><td>${attEsc(v.activity)}</td><td>${attEsc(v.day)}</td><td>${attEsc(v.date)}</td><td>${attEsc(v.time)}${v.manual ? ' <small>(يدوي)</small>' : ''}</td>
+    <td><button class="btn btn-sm" style="color:#c0392b" onclick="attDelVisit('${v.id}')"><i class="ti ti-x"></i></button></td></tr>`).join('') : '<tr><td colspan="9" class="center">لا توجد زيارات مسجَّلة</td></tr>';
+}
+function attDayTitle() {
+  const r = ATT_DAY, act = (document.getElementById('att-today-act') || {}).value || 'جميع الأنشطة';
+  return { act, when: r.from === r.to ? `${r.day} ${r.from}` : `من ${r.from} إلى ${r.to}` };
+}
+function attPrintDay() {
+  const r = ATT_DAY; if (!r) return;
+  const sign = document.getElementById('att-sign').checked, multi = r.from !== r.to, t = attDayTitle();
+  openPrint(`<h2 style="text-align:center">كشف حضور طلبة التفوق الفني — ${attEsc(t.act)}</h2>
+    <p style="text-align:center">${attEsc(t.when)} — عدد الحاضرين: ${r.visits.length}</p>
+    <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th>${t.act === 'جميع الأنشطة' ? '<th>النشاط</th>' : ''}${multi ? '<th>اليوم</th><th>التاريخ</th>' : ''}<th>وقت الوصول</th>${sign ? '<th style="min-width:90px">التوقيع</th>' : ''}</tr></thead>
+    <tbody>${r.visits.map((v, i) => `<tr><td>${i + 1}</td><td>${attEsc(v.student_id)}</td><td>${attEsc(v.name)}</td><td>${attEsc(v.college)}</td>${t.act === 'جميع الأنشطة' ? `<td>${attEsc(v.activity)}</td>` : ''}${multi ? `<td>${attEsc(v.day)}</td><td>${attEsc(v.date)}</td>` : ''}<td>${attEsc(v.time)}</td>${sign ? '<td></td>' : ''}</tr>`).join('')}</tbody></table>`);
+}
+function attExportDay() {
+  const r = ATT_DAY; if (!r) return;
+  const data = [['#', 'الرقم الجامعي', 'الاسم', 'الكلية', 'النشاط', 'اليوم', 'التاريخ', 'الوقت']].concat(r.visits.map((v, i) => [i + 1, v.student_id, v.name, v.college, v.activity, v.day, v.date, v.time]));
+  if (typeof XLSX !== 'undefined') {
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'الحضور');
+    XLSX.writeFile(wb, `حضور_${r.from}${r.from === r.to ? '' : '_' + r.to}.xlsx`);
+  }
 }
 async function attManual() {
   const el = document.getElementById('att-man-id'); const v = el.value.trim(); if (!v) return;
