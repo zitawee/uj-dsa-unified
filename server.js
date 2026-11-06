@@ -916,7 +916,7 @@ const QR_WINDOW_SECONDS = 15;
 function qrTokenFor(secret, bucket) {
   return crypto.createHmac('sha256', secret).update(String(bucket)).digest('hex').slice(0, 8);
 }
-function qrCurrentBucket() { return Math.floor(Date.now() / 1000 / QR_WINDOW_SECONDS); }
+function qrCurrentBucket(win = QR_WINDOW_SECONDS) { return Math.floor(Date.now() / 1000 / win); }
 
 // توليد/جلب رمز QR الحالي لكشف مشاركين معيّن — لعرضه مباشرة على شاشة/بروجكتور داخل القاعة (admin/editor فقط)
 app.get('/api/participants/:id/qr-token', auth(['admin','editor','coordinator','manager']), async (req, res) => {
@@ -1467,6 +1467,7 @@ const TalentVisit = mongoose.model('talent_visit', new mongoose.Schema({}, { str
 const TalentAttendCfg = mongoose.model('talent_attend_cfg', new mongoose.Schema({}, { strict:false }));
 const ATT_OPEN = '08:00:00', ATT_CLOSE = '15:00:00';
 const ATT_TICKET_MINUTES = 2;
+const ATT_WINDOW_SECONDS = 10;   // مدة تجدد رمز الحضور (مستقلة عن رمز التسجيل داخل القاعة)
 const ATT_ROLES = ['admin','editor'];
 function ammanParts(d = new Date()) {
   const date = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Amman', year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
@@ -1493,11 +1494,11 @@ app.get('/api/talent-attendance/qr-token', auth(ATT_ROLES), async (req, res) => 
     if (!activity) return res.status(400).json({ error: 'يرجى تحديد النشاط' });
     const secret = await attSecretFor(activity);
     if (!secret) return res.status(500).json({ error: 'تعذّر إنشاء مفتاح الرمز' });
-    const token = qrTokenFor(secret, qrCurrentBucket());
-    const ttl = QR_WINDOW_SECONDS - (Math.floor(Date.now() / 1000) % QR_WINDOW_SECONDS);
+    const token = qrTokenFor(secret, qrCurrentBucket(ATT_WINDOW_SECONDS));
+    const ttl = ATT_WINDOW_SECONDS - (Math.floor(Date.now() / 1000) % ATT_WINDOW_SECONDS);
     const today = ammanParts().date;
     const visits = await TalentVisit.find({ activity, date: today }).sort({ time: -1 }).lean();
-    res.json({ token, ttl, window: QR_WINDOW_SECONDS, count: visits.length, visits: visits.map(visitDto) });
+    res.json({ token, ttl, window: ATT_WINDOW_SECONDS, count: visits.length, visits: visits.map(visitDto) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1585,7 +1586,7 @@ app.post('/api/public/talent-attendance/ticket', async (req, res) => {
     const cfg = activity && await TalentAttendCfg.findOne({ activity }).lean();
     if (!cfg || !cfg.qr_secret) return res.status(403).json({ error: 'لم تُفتح شاشة الرمز لهذا النشاط بعد' });
     const sent = String(req.body.t || '').trim();
-    const b = qrCurrentBucket();
+    const b = qrCurrentBucket(ATT_WINDOW_SECONDS);
     if (!sent || ![qrTokenFor(cfg.qr_secret, b), qrTokenFor(cfg.qr_secret, b - 1)].includes(sent))
       return res.status(403).json({ error: '⏱️ انتهت صلاحية الرمز، يرجى مسح الرمز المعروض حالياً على الشاشة مباشرة' });
     const exp = Date.now() + ATT_TICKET_MINUTES * 60 * 1000;
