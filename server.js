@@ -1213,6 +1213,9 @@ function auth(roles = []) {
     if (!u) return res.status(401).json({ error: 'يرجى تسجيل الدخول' });
     if (roles.length && !roles.includes(u.role))
       return res.status(403).json({ error: 'ليس لديك صلاحية' });
+    // حساب «شاشة الحضور» محصور بالمسارات التي تذكره صراحةً فقط (لا يدخل مسارات auth() المفتوحة لكل مستخدم)
+    if (u.role === 'attendance_screen' && !roles.includes('attendance_screen'))
+      return res.status(403).json({ error: 'ليس لديك صلاحية' });
     req.user = u; next();
   };
 }
@@ -1469,6 +1472,7 @@ const ATT_OPEN = '08:00:00', ATT_CLOSE = '15:00:00';
 const ATT_TICKET_MINUTES = 2;
 const ATT_WINDOW_SECONDS = 10;   // مدة تجدد رمز الحضور (مستقلة عن رمز التسجيل داخل القاعة)
 const ATT_ROLES = ['admin','editor'];
+const ATT_SCREEN_ROLES = ['admin','editor','attendance_screen'];   // شاشة الرمز + زيارات اليوم فقط
 function ammanParts(d = new Date()) {
   const date = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Amman', year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
   const time = new Intl.DateTimeFormat('en-GB', { timeZone:'Asia/Amman', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(d);
@@ -1488,9 +1492,10 @@ async function attSecretFor(activity) {
 const visitDto = v => ({ id: String(v._id), student_id: v.student_id, name: v.name, college: v.college || '', activity: v.activity, date: v.date, day: v.day, time: v.time, manual: !!v.manual });
 
 // شاشة الرمز: الرمز الحالي + زيارات اليوم لهذا النشاط (تحديث مباشر)
-app.get('/api/talent-attendance/qr-token', auth(ATT_ROLES), async (req, res) => {
+app.get('/api/talent-attendance/qr-token', auth(ATT_SCREEN_ROLES), async (req, res) => {
   try {
-    const activity = String(req.query.activity || '').trim();
+    let activity = String(req.query.activity || '').trim();
+    if (req.user.role === 'attendance_screen' && req.user.department) activity = req.user.department;   // الحساب المرتبط بنشاط لا يستطيع تغييره
     if (!activity) return res.status(400).json({ error: 'يرجى تحديد النشاط' });
     const secret = await attSecretFor(activity);
     if (!secret) return res.status(500).json({ error: 'تعذّر إنشاء مفتاح الرمز' });
@@ -1502,9 +1507,15 @@ app.get('/api/talent-attendance/qr-token', auth(ATT_ROLES), async (req, res) => 
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/talent-attendance/activities', auth(ATT_SCREEN_ROLES), (req, res) => {
+  if (req.user.role === 'attendance_screen' && req.user.department) return res.json([req.user.department]);
+  res.json(['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
+});
+
 // زيارات يوم محدد أو فترة (from..to؛ بلا to يُعتبر يوماً واحداً) — كل الأنشطة أو نشاط محدد، مع فلاتر الكلية والجنس
-app.get('/api/talent-attendance/today', auth(ATT_ROLES), async (req, res) => {
+app.get('/api/talent-attendance/today', auth(ATT_SCREEN_ROLES), async (req, res) => {
   try {
+    if (req.user.role === 'attendance_screen') { req.query.date = undefined; req.query.from = undefined; req.query.to = undefined; req.query.college = undefined; req.query.gender = undefined; if (req.user.department) req.query.activity = req.user.department; }
     const isD = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
     const from = isD(req.query.from) ? req.query.from : ammanParts().date;
     let to = isD(req.query.to) ? req.query.to : from;
