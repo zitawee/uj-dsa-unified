@@ -229,5 +229,5 @@ function openAttendQR(activity) {
     const url = `${location.origin}/talent-attend.html?a=${encodeURIComponent(activity)}&t=${r.token}`;
     QRCode.toDataURL(url, { width: 640, margin: 1 }, (e, data) => { const im = document.getElementById('att-qr-img'); if (!e && im) im.src = data; });
   };
-  tick(); ATT_TIMER = setInterval(tick, 3000);
+  tick(); ATT_TIMER = setInterval(tick, 2000);
 }
