@@ -1292,11 +1292,16 @@ async function loadUsers() {
       <div class="fg"><label>اسم المستخدم *</label><input id="u-un" type="text" placeholder="username"></div>
       <div class="fg"><label>الاسم الكامل *</label><input id="u-fn" type="text"></div>
       <div class="fg"><label>كلمة المرور *</label><input id="u-pw" type="password"></div>
-      <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">رئيس شعبة</option><option value="manager">مدير الدائرة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option><option value="sports_reviewer">مدقق بيانات التفوق الرياضي</option><option value="fitness_coach">مدرّب / مدخل قياسات اللياقة</option></select></div>
+      <div class="fg"><label>الصلاحية *</label><select id="u-role" onchange="toggleUserDept()"><option value="viewer">عرض فقط</option><option value="editor">مدخل بيانات</option><option value="coordinator">رئيس شعبة</option><option value="manager">مدير الدائرة</option><option value="dean">العميد</option><option value="admin">مدير النظام</option><option value="sports_reviewer">مدقق بيانات التفوق الرياضي</option><option value="fitness_coach">مدرّب / مدخل قياسات اللياقة</option><option value="attendance_screen">شاشة حضور التفوق الفني</option></select></div>
       <div class="fg full" id="u-dept-wrap" style="display:none">
         <label>الجهة المنظمة المرتبطة (للمنسّق أو المدير)</label>
         <select id="u-dept"><option value="">— بدون تقييد (يرى كل الطلبات) —</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select>
         <div style="font-size:11px;color:var(--muted);margin-top:4px">عند تحديد جهة، سيرى هذا المستخدم فقط طلبات إقامة النشاط (الداخلية والخارجية) الخاصة بهذه الجهة تحديداً.</div>
+      </div>
+      <div class="fg full" id="u-act-wrap" style="display:none">
+        <label>النشاط المرتبط (لحساب شاشة الحضور)</label>
+        <select id="u-act"><option value="">— بدون ربط (يختار النشاط عند الدخول) —</option>${['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي'].map(d=>`<option>${d}</option>`).join('')}</select>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">الحساب المرتبط يفتح مباشرة على رمز هذا النشاط ولا يستطيع تغييره. رابط الصفحة: /talent-screen.html</div>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end"><button class="btn btn-g" onclick="addUser()">✔ إضافة</button></div>
@@ -1319,6 +1324,7 @@ async function saveSysSettings() {
 function toggleUserDept() {
   const show = ['coordinator','manager'].includes(g('u-role'));
   document.getElementById('u-dept-wrap').style.display = show ? 'block' : 'none';
+  const aw = document.getElementById('u-act-wrap'); if (aw) aw.style.display = g('u-role')==='attendance_screen' ? 'block' : 'none';
 }
 
 async function refreshUsers() {
@@ -1345,7 +1351,7 @@ async function changeUserPassword(id, username) {
 }
 
 async function addUser() {
-  const data={username:g('u-un'),fullName:g('u-fn'),password:g('u-pw'),role:g('u-role'),department:g('u-dept')};
+  const data={username:g('u-un'),fullName:g('u-fn'),password:g('u-pw'),role:g('u-role'),department:(g('u-role')==='attendance_screen' ? g('u-act') : g('u-dept'))};
   if(!data.username||!data.fullName||!data.password){showMsg('msg-users','يرجى ملء جميع الحقول',true);return;}
   const r=await api('/api/users','POST',data);
   if(r.error){showMsg('msg-users',r.error,true);return;}
