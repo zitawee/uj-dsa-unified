@@ -207,6 +207,7 @@ async function loadStudents() {
       ${canEdit ? `<button class="btn btn-g" onclick="showStudForm()"><i class="ti ti-plus"></i>تسجيل طالب</button>` : ''}
       ${canEdit ? `<button class="btn" style="background:#8B6914;color:#fff;border-color:#8B6914" onclick="document.getElementById('stud-import-file').click()"><i class="ti ti-upload"></i>استيراد Excel/CSV</button><input type="file" id="stud-import-file" accept=".csv,.xlsx,.xls,text/csv" style="display:none" onchange="importStudentsCSV(this)"><button class="btn" onclick="downloadStudentTemplate()"><i class="ti ti-file-download"></i>قالب</button>` : ''}
       <button class="btn" onclick="exportCSV('students')"><i class="ti ti-download"></i>CSV</button>
+      <button class="btn btn-b" onclick="printStudents()"><i class="ti ti-printer"></i>طباعة</button>
     </div>
   </div>
   <div id="stud-form" style="display:none">
@@ -268,11 +269,24 @@ function editStudent(r) {
   f.scrollIntoView({behavior:'smooth'});
 }
 
+let STUD_ROWS = [];
+function printStudents() {
+  const rows = STUD_ROWS; if (!rows.length) { alert('لا توجد نتائج للطباعة'); return; }
+  const gv = id => (document.getElementById(id) || {}).value || '';
+  const parts = [gv('sf-act') || 'جميع الأنشطة', gv('sf-col'), gv('sf-gen')].filter(Boolean);
+  const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  openPrint(`<h2 style="text-align:center">كشف الطلبة المقبولين على أساس التفوق الفني</h2>
+    <p style="text-align:center">${e(parts.join(' — '))} — العدد: ${rows.length}</p>
+    <table border="1" cellspacing="0" cellpadding="5" style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الجنس</th><th>الكلية</th><th>التخصص</th><th>النشاط</th><th>سنة الالتحاق</th><th>الهاتف</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${e(r.student_id)}</td><td>${e(r.name)}</td><td>${e(r.gender)}</td><td>${e(r.college)}</td><td>${e(r.major)}</td><td>${e(r.activity)}</td><td>${e(r.excellence_year || (r.join_date ? String(r.join_date).slice(0,4) : ''))}</td><td>${e(r.phone)}</td></tr>`).join('')}</tbody></table>`);
+}
+
 async function filterStudents() {
   const q=g('sf-q'), act=g('sf-act'), col=g('sf-col'), gen=g('sf-gen');
   const p = new URLSearchParams();
   if(q) p.set('q',q); if(act) p.set('activity',act); if(col) p.set('college',col); if(gen) p.set('gender',gen);
   const rows = await api('/api/students?'+p);
+  STUD_ROWS = rows || [];
   const canEdit = canEditGlobal();
   document.getElementById('stud-cnt').textContent = `النتائج: ${rows?.length||0} طالب`;
   document.getElementById('tbl-students').innerHTML = (rows||[]).map((r,i)=>`<tr>
