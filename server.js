@@ -324,8 +324,22 @@ mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('✅ MongoDB متصل — dsa_unified');
     await initAdmin();
+    await migrateSingingMerge().catch(e => console.error('⚠️ migrateSingingMerge:', e.message));
   })
   .catch(err => console.error('❌ خطأ في الاتصال:', err));
+
+// دمج نشاطَي «الغناء» و«العزف» في نشاط واحد «الغناء والعزف» (يُنفَّذ عند كل إقلاع، وهو آمن للتكرار)
+const MERGED_ACT = 'الغناء والعزف';
+const OLD_SING_ACT = /^\s*(الغناء|العزف)\s*$/;
+async function migrateSingingMerge() {
+  const q = { activity: { $regex: OLD_SING_ACT } };
+  const a = await models['students'].updateMany(q, { $set: { activity: MERGED_ACT } });
+  const b = await TalentVisit.updateMany(q, { $set: { activity: MERGED_ACT } });
+  await TalentAttendCfg.deleteMany(q);   // يُنشأ مفتاح جديد للنشاط المدمج عند أول عرض للشاشة
+  const c = await User.updateMany({ role: 'attendance_screen', department: { $regex: OLD_SING_ACT } }, { $set: { department: MERGED_ACT } });
+  const n = (a.modifiedCount || 0) + (b.modifiedCount || 0) + (c.modifiedCount || 0);
+  if (n) console.log(`✅ دمج الغناء والعزف: طلبة ${a.modifiedCount||0}، زيارات ${b.modifiedCount||0}، حسابات ${c.modifiedCount||0}`);
+}
 
 async function initAdmin() {
   const exists = await User.findOne({ username: 'admin' });
@@ -1450,6 +1464,7 @@ app.post('/api/students/bulk', auth(['admin','editor']), async (req, res) => {
     rows.forEach((r, i) => {
       const rec = {};
       ['student_id','name','gender','college','major','activity','excellence_year','phone'].forEach(k => rec[k] = clean(r[k]));
+      if (OLD_SING_ACT.test(rec.activity)) rec.activity = MERGED_ACT;   // الاستيراد القديم بأسماء الغناء/العزف يُدمَج تلقائياً
       if (!rec.student_id || !rec.name) { failed.push({ row: i + 2, reason: 'بلا اسم أو رقم جامعي' }); return; }
       if (seen.has(rec.student_id)) { failed.push({ row: i + 2, reason: 'رقم جامعي مكرر داخل الملف' }); return; }
       seen.add(rec.student_id);
@@ -1509,7 +1524,7 @@ app.get('/api/talent-attendance/qr-token', auth(ATT_SCREEN_ROLES), async (req, r
 
 app.get('/api/talent-attendance/activities', auth(ATT_SCREEN_ROLES), (req, res) => {
   if (req.user.role === 'attendance_screen' && req.user.department) return res.json([req.user.department]);
-  res.json(['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
+  res.json(['المرسم الجامعي','الغناء والعزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
 });
 
 // زيارات يوم محدد أو فترة (from..to؛ بلا to يُعتبر يوماً واحداً) — كل الأنشطة أو نشاط محدد، مع فلاتر الكلية والجنس
