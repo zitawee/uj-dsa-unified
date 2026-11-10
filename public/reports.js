@@ -1300,7 +1300,7 @@ async function loadUsers() {
       </div>
       <div class="fg full" id="u-act-wrap" style="display:none">
         <label>النشاط المرتبط (لحساب شاشة الحضور)</label>
-        <select id="u-act"><option value="">— بدون ربط (يختار النشاط عند الدخول) —</option>${['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي'].map(d=>`<option>${d}</option>`).join('')}</select>
+        <select id="u-act"><option value="">— بدون ربط (يختار النشاط عند الدخول) —</option>${['المرسم الجامعي','الغناء والعزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي'].map(d=>`<option>${d}</option>`).join('')}</select>
         <div style="font-size:11px;color:var(--muted);margin-top:4px">الحساب المرتبط يفتح مباشرة على رمز هذا النشاط ولا يستطيع تغييره. رابط الصفحة: /talent-screen.html</div>
       </div>
     </div>

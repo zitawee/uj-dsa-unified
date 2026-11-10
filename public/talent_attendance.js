@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════
 let ATT_TAB = 'today', ATT_TIMER = null, ATT_REP = null;
 const attEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const attActs = () => (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء','العزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
+const attActs = () => (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء والعزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
 const attMonthNow = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Amman' }).slice(0, 7);
 
 function loadTalentAttendance() {
