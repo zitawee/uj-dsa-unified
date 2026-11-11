@@ -981,6 +981,7 @@ app.get('/api/public/participants-info/:id', async (req, res) => {
       max_capacity: doc.max_capacity || null,
       registered_count: Array.isArray(doc.students) ? doc.students.length : 0,
       level_field_type: doc.level_field_type || 'level',
+      show_birth_date: !!doc.show_birth_date,
       reg_expiry: doc.reg_expiry || doc.date || null,
       require_live_qr: !!doc.require_live_qr,
     });
@@ -1031,8 +1032,13 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
     if (students.some(s => (s.id || '').trim() === uniId))
       return res.status(400).json({ error: 'أنت مسجَّل مسبقاً في هذا النشاط بنفس الرقم الجامعي' });
 
+    const wantBirth = !!doc.get('show_birth_date');
+    const birth = String(req.body.birth_date || '').trim();
+    if (wantBirth && !/^\d{4}-\d{2}-\d{2}$/.test(birth))
+      return res.status(400).json({ error: 'يرجى إدخال تاريخ الميلاد' });
     students.push({
       name, id: uniId,
+      ...(wantBirth ? { birth_date: birth } : {}),
       gender: req.body.gender || '', nationality: req.body.nationality || '',
       college: req.body.college || '', major: req.body.major || '',
       year: req.body.year || '', phone: req.body.phone || '', email: req.body.email || '',
@@ -1042,6 +1048,58 @@ app.post('/api/public/participants/:id/register', async (req, res) => {
     await doc.save();
 
     res.json({ ok: true, message: 'تم تسجيل حضورك بنجاح ضمن قائمة المشاركين', count: students.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══ إدخال تاريخ الميلاد ذاتياً للمسجَّلين مسبقاً (نشاط مفعَّل فيه تاريخ الميلاد): بحث بالرقم الجامعي ثم إدخال التاريخ لمرة واحدة ══
+const birthTickets = {};   // ticket -> { pid, uni_id, expires }
+app.get('/api/public/participants/:id/birth-info', async (req, res) => {
+  try {
+    const doc = await models['participants'].findById(req.params.id).lean();
+    if (!doc || !doc.show_birth_date) return res.status(404).json({ error: 'الرابط غير صالح أو غير مفعَّل لهذا النشاط' });
+    res.json({ activity: doc.activity || '', date: doc.date || '' });
+  } catch(e) { res.status(404).json({ error: 'رابط غير صالح' }); }
+});
+app.post('/api/public/participants/:id/birth-lookup', async (req, res) => {
+  try {
+    const cap = publicCaptchas[req.body.captcha_token];
+    if (!cap || Date.now() > cap.expires || Number(req.body.captcha_answer) !== cap.answer)
+      return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[req.body.captcha_token];
+    const doc = await models['participants'].findById(req.params.id).lean();
+    if (!doc || !doc.show_birth_date) return res.status(404).json({ error: 'الرابط غير صالح أو غير مفعَّل لهذا النشاط' });
+    const uniId = String(req.body.uni_id || '').trim();
+    if (!uniId) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    const st = (doc.students || []).find(x => String(x.id || '').trim() === uniId);
+    if (!st) return res.status(404).json({ error: 'الرقم الجامعي غير مسجَّل في كشف هذا النشاط' });
+    if (st.birth_date) return res.json({ name: st.name, done: true, message: 'تاريخ ميلادك مسجَّل مسبقاً، وللتعديل يرجى مراجعة الإدارة' });
+    const ticket = crypto.randomBytes(16).toString('hex');
+    birthTickets[ticket] = { pid: String(doc._id), uni_id: uniId, expires: Date.now() + 10 * 60 * 1000 };
+    res.json({ name: st.name, done: false, ticket });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/public/participants/:id/birth-save', async (req, res) => {
+  try {
+    const t = birthTickets[req.body.ticket];
+    if (!t || t.pid !== String(req.params.id) || Date.now() > t.expires)
+      return res.status(403).json({ error: 'انتهت صلاحية الجلسة، يرجى إدخال الرقم الجامعي من جديد' });
+    const birth = String(req.body.birth_date || '').trim();
+    const bd = new Date(birth + 'T00:00:00Z');
+    const yr = Number(birth.slice(0, 4));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || isNaN(bd) || yr < 1950 || yr > new Date().getFullYear() - 10)
+      return res.status(400).json({ error: 'يرجى إدخال تاريخ ميلاد صحيح' });
+    const doc = await models['participants'].findById(req.params.id);
+    if (!doc || !doc.get('show_birth_date')) return res.status(404).json({ error: 'الرابط غير صالح' });
+    const students = Array.isArray(doc.students) ? doc.students : [];
+    const idx = students.findIndex(x => String(x.id || '').trim() === t.uni_id);
+    if (idx === -1) return res.status(404).json({ error: 'الرقم الجامعي غير مسجَّل في الكشف' });
+    if (students[idx].birth_date) { delete birthTickets[req.body.ticket]; return res.json({ ok: true, already: true, message: 'تاريخ ميلادك مسجَّل مسبقاً' }); }
+    students[idx].birth_date = birth;
+    doc.students = students;
+    doc.markModified('students');
+    await doc.save();
+    delete birthTickets[req.body.ticket];
+    res.json({ ok: true, name: students[idx].name, message: 'تم تسجيل تاريخ ميلادك بنجاح' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
