@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1B6B3A">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
+<title>إدخال تاريخ الميلاد — عمادة شؤون الطلبة</title>
+<style>
+  :root{--g:#0F5132;--border:#e3e6e0;--muted:#6b7280;--r:10px}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:#f4f6f4;color:#222}
+  header{background:var(--g);color:#fff;padding:14px 16px;font-weight:600;font-size:14px}
+  .wrap{max-width:480px;margin:0 auto;padding:18px 14px 32px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  h1{font-size:16px;margin:0 0 4px;color:var(--g)}
+  p.sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.6}
+  label{font-size:12.5px;font-weight:600;display:block;margin-bottom:6px}
+  input{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:16px;margin-bottom:14px;min-height:44px;font-family:inherit}
+  button{width:100%;padding:13px;border:none;border-radius:var(--r);background:var(--g);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;min-height:46px;font-family:inherit}
+  button:disabled{opacity:.6}
+  .err{margin-top:12px;font-size:13px;background:#FCEBEB;color:#791F1F;border:1px solid #F3C5C5;border-radius:var(--r);padding:12px;text-align:center;line-height:1.7}
+  .who{background:#EAF7EE;border:1px solid #BFE5CB;border-radius:var(--r);padding:12px;text-align:center;margin-bottom:14px;font-weight:700;color:var(--g)}
+  .ok{background:#EAF7EE;border:1px solid #BFE5CB;border-radius:var(--r);padding:18px;text-align:center}
+  .ok .i{font-size:34px}.ok .t{font-weight:800;color:var(--g);font-size:16px;margin-top:6px}
+</style>
+</head>
+<body>
+<header>🎓 الجامعة الأردنية — عمادة شؤون الطلبة</header>
+<div class="wrap"><div class="card" id="box"><div style="text-align:center;color:#888">جارٍ التحميل...</div></div></div>
+<script>
+const PID = new URLSearchParams(location.search).get('id');
+const box = document.getElementById('box');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const H = {'Content-Type':'application/json'};
+let CAP = '', TICKET = '', ACT = '';
+function fail(m){ box.innerHTML = '<h1>إدخال تاريخ الميلاد</h1><div class="err">'+esc(m)+'</div>'; }
+async function loadCaptcha(){ const r = await fetch('/api/public/captcha'); const d = await r.json(); CAP = d.token; const q = document.getElementById('cq'); if(q) q.textContent = d.question + ' = ؟'; }
+async function init(){
+  if(!PID) return fail('رابط غير صالح');
+  try{
+    const r = await fetch('/api/public/participants/'+encodeURIComponent(PID)+'/birth-info'); const d = await r.json();
+    if(!r.ok) return fail(d.error||'رابط غير صالح');
+    ACT = d.activity; stepLookup();
+  }catch(e){ fail('تعذّر الاتصال بالخادم'); }
+}
+function stepLookup(){
+  box.innerHTML = `<h1>إدخال تاريخ الميلاد</h1>
+    <p class="sub">النشاط: <b>${esc(ACT)}</b><br>أدخل رقمك الجامعي للتحقق من تسجيلك ثم أضف تاريخ ميلادك.</p>
+    <label>الرقم الجامعي</label><input id="uid" type="text" inputmode="numeric" placeholder="أدخل رقمك الجامعي">
+    <label>سؤال التحقق: <span id="cq"></span></label><input id="cap" type="number" inputmode="numeric">
+    <button id="b1" onclick="lookup()">متابعة</button><div id="m"></div>`;
+  loadCaptcha();
+}
+async function lookup(){
+  const uid = document.getElementById('uid').value.trim(), cap = document.getElementById('cap').value.trim(), m = document.getElementById('m'), b = document.getElementById('b1');
+  m.innerHTML=''; if(!uid||!cap){ m.innerHTML='<div class="err">يرجى إدخال الرقم الجامعي والإجابة عن سؤال التحقق</div>'; return; }
+  b.disabled = true;
+  try{
+    const r = await fetch('/api/public/participants/'+encodeURIComponent(PID)+'/birth-lookup',{method:'POST',headers:H,body:JSON.stringify({uni_id:uid,captcha_token:CAP,captcha_answer:cap})});
+    const d = await r.json();
+    if(!r.ok){ m.innerHTML='<div class="err">'+esc(d.error||'تعذّر التحقق')+'</div>'; loadCaptcha(); document.getElementById('cap').value=''; return; }
+    if(d.done){ box.innerHTML = '<h1>إدخال تاريخ الميلاد</h1><div class="who">'+esc(d.name)+'</div><div class="ok"><div class="i">✅</div><div class="t">'+esc(d.message)+'</div></div>'; return; }
+    TICKET = d.ticket;
+    box.innerHTML = `<h1>إدخال تاريخ الميلاد</h1><div class="who">${esc(d.name)}</div>
+      <p class="sub">تأكد أن الاسم أعلاه اسمك، ثم أدخل تاريخ ميلادك. لا يمكن تعديله بعد الحفظ إلا عبر الإدارة.</p>
+      <label>تاريخ الميلاد</label><input id="bd" type="date" max="${new Date().toISOString().slice(0,10)}">
+      <button id="b2" onclick="save()">حفظ</button><div id="m2"></div>`;
+  }catch(e){ m.innerHTML='<div class="err">تعذّر الاتصال بالخادم</div>'; }
+  finally{ b.disabled=false; }
+}
+async function save(){
+  const bd = document.getElementById('bd').value, m = document.getElementById('m2'), b = document.getElementById('b2');
+  if(!bd){ m.innerHTML='<div class="err">يرجى إدخال تاريخ الميلاد</div>'; return; }
+  if(!confirm('تأكيد حفظ تاريخ الميلاد: '+bd+' ؟ لا يمكن تعديله بعد ذلك.')) return;
+  b.disabled = true;
+  try{
+    const r = await fetch('/api/public/participants/'+encodeURIComponent(PID)+'/birth-save',{method:'POST',headers:H,body:JSON.stringify({ticket:TICKET,birth_date:bd})});
+    const d = await r.json();
+    if(!r.ok){ m.innerHTML='<div class="err">'+esc(d.error||'تعذّر الحفظ')+'</div>'; b.disabled=false; return; }
+    box.innerHTML = '<div class="ok"><div class="i">✅</div><div class="t">'+esc(d.message)+'</div></div>';
+  }catch(e){ m.innerHTML='<div class="err">تعذّر الاتصال بالخادم</div>'; b.disabled=false; }
+}
+init();
+</script>
+</body>
+</html>

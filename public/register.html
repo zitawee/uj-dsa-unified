@@ -206,6 +206,9 @@ async function init(){
     if(r.level_field_type==='national_id'){
       document.getElementById('f-year-wrap').innerHTML = `<label>الرقم الوطني</label><input id="f-year" type="text" inputmode="numeric" placeholder="الرقم الوطني الأردني">`;
     }
+    if(r.show_birth_date){
+      document.getElementById('f-year-wrap').insertAdjacentHTML('afterend','<div id="f-birth-wrap"><label>تاريخ الميلاد *</label><input id="f-birth" type="date"></div>');
+    }
     const todayStr = new Date().toISOString().slice(0,10);
     const isExpired = r.reg_expiry && r.reg_expiry < todayStr;
     if(isExpired){
@@ -242,11 +245,12 @@ init();
 async function submitReg(){
   const name=v('f-name'), uniId=v('f-id');
   if(!name || !uniId){ showMsg('يرجى إدخال الاسم الكامل والرقم الجامعي', true); return; }
+  if(document.getElementById('f-birth') && !v('f-birth')){ showMsg('يرجى إدخال تاريخ الميلاد', true); return; }
   if(!v('f-captcha')){ showMsg('يرجى الإجابة على سؤال التحقق', true); return; }
 
   const data = {
     name, uni_id: uniId, phone: v('f-phone'), email: v('f-email'), gender: v('f-gender'),
-    nationality: v('f-nat'), college: v('f-col'), major: v('f-major'), year: v('f-year'),
+    nationality: v('f-nat'), college: v('f-col'), major: v('f-major'), year: v('f-year'), birth_date: document.getElementById('f-birth') ? v('f-birth') : '',
     captcha_token: CAPTCHA_TOKEN, captcha_answer: v('f-captcha'), qr_ticket: QR_TICKET
   };
 

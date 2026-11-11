@@ -543,6 +543,7 @@ function showPForm() {
   document.getElementById('part-rows').innerHTML='';
   document.getElementById('pf-cnt').textContent='';
   const btn=document.getElementById('pf-savebtn'); if(btn) btn.innerHTML='<i class="ti ti-device-floppy"></i>حفظ فقط';
+  f.dataset.showBirth='';
   renderRegLink(null);
   addPartRow(); f.scrollIntoView({behavior:'smooth'});
 }
@@ -629,6 +630,21 @@ async function toggleLevelField(id, newValue) {
   filterPart();
 }
 
+// ═ تفعيل/إيقاف عمود «تاريخ الميلاد» لنشاط معيّن فقط (يظهر في الإدخال، رابط التسجيل الذاتي، الكشف المطبوع وExcel) ═
+async function toggleBirthField(id, enable) {
+  if(!confirm(enable ? 'تفعيل «تاريخ الميلاد» لهذا النشاط تحديداً؟ (سيظهر في الكشف المطبوع وExcel ونموذج التسجيل الذاتي لهذا النشاط فقط)' : 'إيقاف «تاريخ الميلاد» لهذا النشاط؟ (تبقى التواريخ المُدخلة محفوظة ولا تُحذف)')) return;
+  const r = await api('/api/participants/'+id, 'PUT', { show_birth_date: !!enable });
+  if(r.error){ alert(r.error); return; }
+  filterPart();
+}
+
+function copyBirthLink(id) {
+  const link = `${location.origin}/birth.html?id=${id}`;
+  navigator.clipboard.writeText(link)
+    .then(()=>alert('✅ تم نسخ رابط إدخال تاريخ الميلاد:\n'+link+'\n\nأرسله للطلبة المسجَّلين في هذا النشاط (مثلاً في مجموعة واتساب).'))
+    .catch(()=>prompt('انسخ الرابط يدوياً:', link));
+}
+
 // ═ نافذة اختيار نوع بيانات التصدير: كل المسجَّلين أم الحاضرين فقط ═
 function exportPartExcelChoice(id) {
   const existing=document.getElementById('excel-choice-modal'); if(existing) existing.remove();
@@ -657,7 +673,7 @@ async function exportPartExcel(id, mode='all') {
   const sheetRows = students.map((s,i)=>({
     '#': i+1, 'اسم الطالب': s.name||'', 'الرقم الجامعي': s.id||'', 'الجنس': s.gender||'',
     'الجنسية': s.nationality||'', 'الكلية': s.college||'', 'التخصص': s.major||'',
-    [levelLabel]: s.year||'', 'رقم الهاتف': s.phone||'', 'البريد الإلكتروني': s.email||'', 'الحضور': s.attended?'حاضر':''
+    [levelLabel]: s.year||'', ...(r.show_birth_date ? {'تاريخ الميلاد': s.birth_date||''} : {}), 'رقم الهاتف': s.phone||'', 'البريد الإلكتروني': s.email||'', 'الحضور': s.attended?'حاضر':''
   }));
   const ws = XLSX.utils.json_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();
@@ -672,6 +688,7 @@ async function editPart(id) {
   const f=document.getElementById('part-form'); f.style.display='block';
   f.dataset.editId=id;
   f.dataset.levelFieldType=r.level_field_type||'level';
+  f.dataset.showBirth=r.show_birth_date?'1':'';
   const rowSearch=document.getElementById('pf-rowsearch'); if(rowSearch) rowSearch.value='';
   const rowSearchNote=document.getElementById('pf-rowsearch-note'); if(rowSearchNote) rowSearchNote.style.display='none';
   document.getElementById('pf-act').value=r.activity||'';
@@ -709,6 +726,7 @@ function partRowHTML(s={}, levelFieldType='level') {
     <div class="fg"><label>الكلية</label><select class="pr-col"><option value="">اختر...</option>${colSel}</select></div>
     <div class="fg"><label>التخصص</label><select class="pr-major" data-initial="${s.major||''}"><option value="">اختر الكلية أولاً...</option></select></div>
     ${levelField}
+    ${document.getElementById('part-form')?.dataset.showBirth==='1' ? `<div class="fg"><label>تاريخ الميلاد</label><input type="date" class="pr-birth" value="${s.birth_date||''}"></div>` : ''}
     <div class="fg"><label>رقم الهاتف</label><input type="text" class="pr-phone" value="${s.phone||''}"></div>
     <div class="fg"><label>البريد الإلكتروني</label><input type="email" class="pr-email" value="${s.email||''}"></div>
     <div class="fg" style="align-self:flex-end;display:flex;gap:6px">
@@ -803,6 +821,7 @@ function getPartStudents() {
       year:r.querySelector('.pr-year')?.value||'',phone:r.querySelector('.pr-phone')?.value||'',
       email:r.querySelector('.pr-email')?.value||'',
     };
+    { const bi=r.querySelector('.pr-birth'); if(bi) s.birth_date=bi.value||''; }
     // الحفاظ على حالة الحضور المُسجَّلة مسبقاً (عبر QR الحضور) — كانت تُفقَد سابقاً عند أي حفظ لهذا النموذج
     if(r.dataset.attended==='1') s.attended=true;
     if(r.dataset.attendTime) s.attend_time=r.dataset.attendTime;
@@ -810,9 +829,18 @@ function getPartStudents() {
   }).filter(s=>s.name||s.id);
 }
 
-const COLMAP={name:['الاسم','اسم الطالب','الاسم الكامل','name','full_name'],id:['الرقم الجامعي','الرقم','student_id','id'],gender:['الجنس','gender'],nationality:['الجنسية','nationality'],college:['الكلية','college'],major:['التخصص','major'],year:['المستوى','المستوى الدراسي','year','level'],phone:['رقم الهاتف','الهاتف','phone'],email:['البريد الإلكتروني','البريد','email']};
+const COLMAP={birth_date:['تاريخ الميلاد','الميلاد','birth_date','birthdate','dob'],name:['الاسم','اسم الطالب','الاسم الكامل','name','full_name'],id:['الرقم الجامعي','الرقم','student_id','id'],gender:['الجنس','gender'],nationality:['الجنسية','nationality'],college:['الكلية','college'],major:['التخصص','major'],year:['المستوى','المستوى الدراسي','year','level'],phone:['رقم الهاتف','الهاتف','phone'],email:['البريد الإلكتروني','البريد','email']};
 function findC(headers,field){const cands=COLMAP[field]||[];for(const h of headers){const hl=h.trim().toLowerCase();for(const c of cands){if(hl===c.toLowerCase()||hl.includes(c.toLowerCase()))return h;}}return null;}
 function parseCSV(text){text=text.replace(/^\uFEFF/,'');const lines=text.split(/\r?\n/).filter(l=>l.trim());if(lines.length<2)return null;const headers=lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());const rows=[];for(let i=1;i<lines.length;i++){const vals=[];let cur='',inQ=false;for(const ch of lines[i]+','){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur.trim());cur='';}else cur+=ch;}if(vals.some(v=>v)){const row={};headers.forEach((h,idx)=>row[h]=vals[idx]||'');rows.push(row);}}return{headers,rows};}
+
+// توحيد صيغة تاريخ الميلاد المستورَد إلى yyyy-mm-dd (يقبل dd/mm/yyyy و yyyy-mm-dd وأرقام Excel التسلسلية)
+function normBirth(v){
+  v=String(v||'').trim(); if(!v) return '';
+  let m=v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/); if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  m=v.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  if(/^\d{5}$/.test(v)){ const d=new Date(Math.round((Number(v)-25569)*86400*1000)); if(!isNaN(d)) return d.toISOString().slice(0,10); }
+  return v;
+}
 
 async function importPart(input) {
   const file=input.files[0]; if(!file) return; input.value='';
@@ -833,7 +861,7 @@ async function importPart(input) {
   const c=document.getElementById('part-rows'); let added=0;
   parsed.rows.forEach(row=>{
     const get=f=>{const col=findC(parsed.headers,f);return col?(row[col]||''):'';};
-    const s={name:get('name'),id:get('id'),gender:get('gender'),nationality:get('nationality'),college:get('college'),major:get('major'),year:get('year'),phone:get('phone'),email:get('email')};
+    const s={name:get('name'),id:get('id'),gender:get('gender'),nationality:get('nationality'),college:get('college'),major:get('major'),year:get('year'),phone:get('phone'),email:get('email'),birth_date:normBirth(get('birth_date'))};
     if(s.name||s.id){const div=document.createElement('div');div.innerHTML=partRowHTML(s, document.getElementById('part-form')?.dataset.levelFieldType);c.appendChild(div.firstElementChild);added++;}
   });
   initSsel(c, NATIONALITIES);
@@ -923,6 +951,7 @@ function copyRegLink(link) {
 async function refreshPartStudents(id) {
   const r = await api('/api/participants/'+id);
   if(!r||r.error){alert('تعذر تحديث القائمة');return;}
+  const pfm=document.getElementById('part-form'); if(pfm) pfm.dataset.showBirth=r.show_birth_date?'1':'';
   const c=document.getElementById('part-rows'); c.innerHTML='';
   (r.students&&r.students.length?r.students:[{}]).forEach(s=>{
     const div=document.createElement('div'); div.innerHTML=partRowHTML(s, r.level_field_type); c.appendChild(div.firstElementChild);
@@ -972,10 +1001,12 @@ async function filterPart() {
     return `<tr>
     <td><input type="checkbox" class="part-select-cb" value="${r.id}"></td>
     <td>${i+1}</td><td><strong>${r.activity||'-'}</strong></td><td>${r.date||'-'}</td>
-    <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div>${r.email_sent?`<div style="font-size:10px;color:#27500A">✅ تم إرسال بريد (${r.email_sent_count||0})</div>`:''}</td>
+    <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div>${r.show_birth_date?`<div style="font-size:10px;color:#7A3E8E">🎂 ${(r.students||[]).filter(s=>s.birth_date).length} من ${total||0}</div>`:''}${r.email_sent?`<div style="font-size:10px;color:#27500A">✅ تم إرسال بريد (${r.email_sent_count||0})</div>`:''}</td>
     <td><div class="rb">
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
       ${canEditPart?`<button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="toggleLevelField('${r.id}','${r.level_field_type==='national_id'?'level':'national_id'}')">${r.level_field_type==='national_id'?'🪪 الحقل: الرقم الوطني':'🎓 الحقل: المستوى'}</button>`:''}
+      ${canEditPart?`<button class="btn btn-sm" style="color:#7A3E8E;border-color:#7A3E8E" onclick="toggleBirthField('${r.id}',${r.show_birth_date?'false':'true'})">${r.show_birth_date?'🎂 تاريخ الميلاد: مفعّل':'🎂 تاريخ الميلاد: إيقاف'}</button>`:''}
+      ${(canEditPart&&r.show_birth_date)?`<button class="btn btn-sm" style="color:#7A3E8E;border-color:#7A3E8E" onclick="copyBirthLink('${r.id}')">🔗 رابط تاريخ الميلاد</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ المسجلين</button>
       <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ الحاضرين</button>
       <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcelChoice('${r.id}')">📊 Excel</button>
