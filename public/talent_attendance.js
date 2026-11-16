@@ -4,6 +4,7 @@
 let ATT_TAB = 'today', ATT_TIMER = null, ATT_REP = null;
 const attEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const attActs = () => (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء والعزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
+const AR_MONTHS = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
 const attMonthNow = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Amman' }).slice(0, 7);
 
 function loadTalentAttendance() {
@@ -105,7 +106,9 @@ async function attRenderReport() {
   const colSel = typeof colOpts === 'function' ? colOpts() : '';
   body.innerHTML = `
   <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <input id="ar-month" type="month" value="${attMonthNow()}" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)">
+    <input id="ar-month" type="hidden" value="${attMonthNow()}">
+    <select id="ar-m" onchange="attMonthChanged()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)">${AR_MONTHS.map((n, i) => `<option value="${String(i + 1).padStart(2, '0')}"${attMonthNow().slice(5) === String(i + 1).padStart(2, '0') ? ' selected' : ''}>${n}</option>`).join('')}</select>
+    <select id="ar-y" onchange="attMonthChanged()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)">${[0, 1, 2, 3].map(k => { const y = Number(attMonthNow().slice(0, 4)) - k; return `<option${k === 0 ? ' selected' : ''}>${y}</option>`; }).join('')}</select>
     <select id="ar-act" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">جميع الأنشطة</option>${attActs().map(a => `<option>${attEsc(a)}</option>`).join('')}</select>
     <select id="ar-col" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">جميع الكليات</option>${colSel}</select>
     <select id="ar-gen" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">كل الجنسين</option><option>ذكر</option><option>أنثى</option></select>
@@ -120,6 +123,10 @@ async function attRenderReport() {
     <button class="btn btn-sm" onclick="attCopyNotMet()"><i class="ti ti-copy"></i> نسخ أرقام غير المستوفين</button>
     <button class="btn btn-sm" style="color:#7A3E8E;border-color:#7A3E8E" onclick="attExcusesModal()">📝 سجل الأعذار</button></div>
     <div class="tw"><table><thead id="ar-head"></thead><tbody id="ar-body"></tbody></table></div></div>`;
+  attLoadReport();
+}
+function attMonthChanged() {
+  document.getElementById('ar-month').value = document.getElementById('ar-y').value + '-' + document.getElementById('ar-m').value;
   attLoadReport();
 }
 async function attLoadReport() {

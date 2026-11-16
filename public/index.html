@@ -18,6 +18,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap">
 <style>
+/* جداول الإدارة على الهاتف: خط وهوامش أصغر + تمرير أفقي سلس بدل قصّ الأعمدة */
+@media (max-width:700px){
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tw table{font-size:11.5px}
+  .tw th,.tw td{padding:6px 5px!important}
+  .card{padding:12px!important}
+  .ph{flex-wrap:wrap;gap:8px}
+}
+</style>
+<style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--g:#1B6B3A;--g2:#145229;--bg:#F3F4F6;--card:#fff;--text:#1A1A1A;--muted:#6B7280;--border:#E5E7EB;--r:8px;--rl:12px;--blue:#1B5E9A}
 body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
@@ -273,6 +283,7 @@ tr:hover td{background:#FAFAFA}
 <script src="/installment.js"></script>
 <script src="/talent_attendance.js"></script>
 <script src="/security.js"></script>
+<script src="/student_profile.js"></script>
 <script src="/reports.js"></script>
 <script src="/talent.js"></script>
 <script src="/sports.js"></script>

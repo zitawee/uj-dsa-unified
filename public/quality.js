@@ -529,7 +529,7 @@ async function loadParticipants() {
       <button class="btn btn-g" id="pf-savebtn" onclick="savePart()"><i class="ti ti-device-floppy"></i>حفظ فقط</button>
     </div>
   </div>
-  <div class="fb"><input type="text" id="ptf-q" placeholder="بحث..." oninput="filterPart()"><button class="btn btn-b" onclick="printSelected('tbl-part')">🖨️ طباعة المحدَّد</button></div>
+  <div class="fb"><input type="text" id="ptf-q" placeholder="بحث..." oninput="filterPart()"><select id="ptf-when" onchange="filterPart()"><option value="recent">القادمة والحديثة (آخر ٧ أيام)</option><option value="past">السابقة</option><option value="all">الكل</option></select><button class="btn btn-b" onclick="printSelected('tbl-part')">🖨️ طباعة المحدَّد</button></div>
   <div class="tw"><table><thead><tr><th><input type="checkbox" onchange="toggleSelectAll('tbl-part', this.checked)"></th><th>#</th><th>اسم النشاط</th><th>التاريخ</th><th>الجهة</th><th>عدد المشاركين</th><th></th></tr></thead>
   <tbody id="tbl-part"></tbody></table></div>`;
   addPartRow(); filterPart();
@@ -995,7 +995,13 @@ async function filterPart() {
   }
   const canEdit=canEditGlobal();
   const canEditPart = canEdit || (['coordinator','manager'].includes(ME?.role) && !!ME.department);
-  document.getElementById('tbl-part').innerHTML=(rows||[]).map((r,i)=>{
+  const allRows = rows || [];
+  // فلتر الفترة: الافتراضي = القادمة والحديثة (آخر ٧ أيام) حتى لا تزدحم القائمة بالأنشطة المنتهية
+  const when = (document.getElementById('ptf-when') || {}).value || 'recent';
+  const cut = new Date(Date.now() - 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Amman' });
+  const shown = when === 'all' ? allRows : allRows.filter(r => { const d = String(r.date || ''); return when === 'past' ? (d && d < cut) : (!d || d >= cut); });
+  window.PART_ROWS = {}; allRows.forEach(r => { window.PART_ROWS[r.id] = r; });
+  document.getElementById('tbl-part').innerHTML=shown.map((r,i)=>{
     const total=(r.students||[]).length;
     const attended=(r.students||[]).filter(s=>s.attended).length;
     return `<tr>
@@ -1004,20 +1010,47 @@ async function filterPart() {
     <td>${r.organizer||'-'}</td><td>${total||0}<div style="font-size:10px;color:var(--muted)">حاضر: ${attended}</div>${r.show_birth_date?`<div style="font-size:10px;color:#7A3E8E">🎂 ${(r.students||[]).filter(s=>s.birth_date).length} من ${total||0}</div>`:''}${r.email_sent?`<div style="font-size:10px;color:#27500A">✅ تم إرسال بريد (${r.email_sent_count||0})</div>`:''}</td>
     <td><div class="rb">
       ${canEditPart?`<button class="btn btn-sm" onclick="editPart('${r.id}')">✏️ تعديل</button>`:''}
-      ${canEditPart?`<button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="toggleLevelField('${r.id}','${r.level_field_type==='national_id'?'level':'national_id'}')">${r.level_field_type==='national_id'?'🪪 الحقل: الرقم الوطني':'🎓 الحقل: المستوى'}</button>`:''}
-      ${canEditPart?`<button class="btn btn-sm" style="color:#7A3E8E;border-color:#7A3E8E" onclick="toggleBirthField('${r.id}',${r.show_birth_date?'false':'true'})">${r.show_birth_date?'🎂 تاريخ الميلاد: مفعّل':'🎂 تاريخ الميلاد: إيقاف'}</button>`:''}
-      ${(canEditPart&&r.show_birth_date)?`<button class="btn btn-sm" style="color:#7A3E8E;border-color:#7A3E8E" onclick="copyBirthLink('${r.id}')">🔗 رابط تاريخ الميلاد</button>`:''}
       <button class="btn btn-sm btn-b" onclick="printPart('${r.id}')">🖨️ المسجلين</button>
       <button class="btn btn-sm btn-g" onclick="printPartAttended('${r.id}')">✅ الحاضرين</button>
-      <button class="btn btn-sm" style="color:#1B6B3A;border-color:#1B6B3A" onclick="exportPartExcelChoice('${r.id}')">📊 Excel</button>
       <button class="btn btn-sm btn-b" onclick="printPartQR('${r.id}')">🔳 QR</button>
-      ${ME?.role==='admin'?`<button class="btn btn-sm" style="color:#8A2A22;border-color:#8A2A22" onclick="openSendEmailModal('${r.id}')">📧 Email</button>`:''}
-      ${ME?.role==='admin'?`<button class="btn btn-sm" style="color:#1B5E9A;border-color:#1B5E9A" onclick="openInstructionsModal('${r.id}')">📋 تعليمات</button>`:''}
-      <button class="btn btn-sm" style="color:#5B4636;border-color:#5B4636" onclick="openHistoryModal('participants','${r.id}')">🕐 سجل</button>
-      ${canEdit?`<button class="btn btn-r" onclick="delRec('participants','${r.id}',filterPart)">🗑</button>`:''}
+      <button class="btn btn-sm" onclick="partMore(this,'${r.id}')" title="المزيد من الخيارات">⋯ المزيد</button>
     </div></td>
-  </tr>`;}).join('')||`<tr class="erow"><td colspan="7">لا توجد نماذج</td></tr>`;
-  const cnt=document.getElementById('c-participants'); if(cnt) cnt.textContent=rows?.length||0;
+  </tr>`;}).join('')||`<tr class="erow"><td colspan="7">${allRows.length ? 'لا توجد نماذج ضمن هذا الفلتر — غيّر «القادمة والحديثة» إلى «الكل» أو «السابقة»' : 'لا توجد نماذج'}</td></tr>`;
+  const cnt=document.getElementById('c-participants'); if(cnt) cnt.textContent=allRows.length;
+}
+
+// قائمة «المزيد» العائمة: تبقى الأزرار الأربعة الأساسية ظاهرة وبقية الخيارات هنا (تُرسم فوق الجدول فلا يقصّها تمريره)
+function closePartMore() { const m = document.getElementById('part-more-menu'); if (m) m.remove(); document.removeEventListener('click', partMoreOutside, true); document.removeEventListener('keydown', partMoreEsc, true); }
+function partMoreOutside(e) { const m = document.getElementById('part-more-menu'); if (m && !m.contains(e.target)) { closePartMore(); } }
+function partMoreEsc(e) { if (e.key === 'Escape') closePartMore(); }
+function partMore(btn, id) {
+  const wasOpen = document.getElementById('part-more-menu') && document.getElementById('part-more-menu').dataset.id === id;
+  closePartMore(); if (wasOpen) return;
+  const r = (window.PART_ROWS || {})[id]; if (!r) return;
+  const canEdit = canEditGlobal();
+  const canEditPart = canEdit || (['coordinator','manager'].includes(ME?.role) && !!ME.department);
+  const items = [];
+  const add = (label, fn, color) => items.push({ label, fn, color });
+  add('📊 Excel', `exportPartExcelChoice('${id}')`, '#1B6B3A');
+  if (canEditPart) add(r.level_field_type==='national_id' ? '🪪 الحقل: الرقم الوطني (تبديل إلى المستوى)' : '🎓 الحقل: المستوى (تبديل إلى الرقم الوطني)', `toggleLevelField('${id}','${r.level_field_type==='national_id'?'level':'national_id'}')`, '#5B4636');
+  if (canEditPart) add(r.show_birth_date ? '🎂 تاريخ الميلاد: مفعّل (إيقاف)' : '🎂 تاريخ الميلاد: إيقاف (تفعيل)', `toggleBirthField('${id}',${r.show_birth_date?'false':'true'})`, '#7A3E8E');
+  if (canEditPart && r.show_birth_date) add('🔗 نسخ رابط تاريخ الميلاد', `copyBirthLink('${id}')`, '#7A3E8E');
+  if (ME?.role === 'admin') add('📧 Email', `openSendEmailModal('${id}')`, '#8A2A22');
+  if (ME?.role === 'admin') add('📋 تعليمات', `openInstructionsModal('${id}')`, '#1B5E9A');
+  add('🕐 سجل التعديلات', `openHistoryModal('participants','${id}')`, '#5B4636');
+  if (canEdit) add('🗑 حذف النموذج', `delRec('participants','${id}',filterPart)`, '#C0392B');
+  const m = document.createElement('div');
+  m.id = 'part-more-menu'; m.dataset.id = id;
+  m.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:6px;min-width:250px;max-width:92vw;direction:rtl';
+  m.innerHTML = items.map((it, i) => `<button type="button" data-i="${i}" style="display:block;width:100%;text-align:right;padding:9px 10px;border:none;background:transparent;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;color:${it.color};${it.label.startsWith('🗑') ? 'border-top:1px solid var(--border);margin-top:4px;padding-top:11px' : ''}" onmouseover="this.style.background='#f3f5f2'" onmouseout="this.style.background='transparent'">${it.label}</button>`).join('');
+  document.body.appendChild(m);
+  m.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { const fn = items[Number(b.dataset.i)].fn; closePartMore(); new Function(fn)(); }));
+  const rc = btn.getBoundingClientRect(), mh = m.offsetHeight, mw = m.offsetWidth;
+  let top = rc.bottom + 4; if (top + mh > window.innerHeight - 8) top = Math.max(8, rc.top - mh - 4);
+  let left = rc.left; if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8; if (left < 8) left = 8;
+  m.style.top = top + 'px'; m.style.left = left + 'px';
+  setTimeout(() => { document.addEventListener('click', partMoreOutside, true); document.addEventListener('keydown', partMoreEsc, true); }, 0);
+  window.addEventListener('scroll', closePartMore, { once: true, capture: true });
 }
 
 // ══ إرسال بريد إلكتروني جماعي للمشاركين/الحاضرين (بند مستقل قابل للإزالة بسهولة) ══
