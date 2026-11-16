@@ -2829,6 +2829,180 @@ app.post('/api/admin/reset-data', auth(['admin']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════
+// مهرجان الجامعات الأردنية للفن والثقافة — وحدة مستقلة (تسجيل المشاركات + قرارات اللجنة)
+// ═══════════════════════════════════════════════════════════
+const FestivalSettings = mongoose.model('festival_settings', new mongoose.Schema({}, { strict:false }));
+const FestivalSubmission = mongoose.model('festival_submissions', new mongoose.Schema({}, { strict:false }));
+const FEST_FIELDS = ['موسيقى','مسرح','رسم','تصوير','نحت','شعر','أخرى'];
+const FEST_STATUSES = ['جديدة','قيد الدراسة','مقبولة','معتذر عنها'];
+const festHits = {};   // ip -> [timestamps]
+function festStr(v, max) { return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, max); }
+async function festGetSettings() {
+  const d = await FestivalSettings.findOne({ key: 'main' });
+  const g = k => d ? d.get(k) : undefined;
+  return {
+    title: g('title') || 'مهرجان الجامعات الأردنية للفن والثقافة',
+    subtitle: g('subtitle') || 'استمارة تسجيل المشاركات',
+    intro: g('intro') || '',
+    logo: g('logo') || '',
+    color: g('color') || '#0F5132',
+    open_date: g('open_date') || '',
+    close_date: g('close_date') || '',
+    universities: g('universities') || [],
+  };
+}
+function festState(s) {
+  const today = ammanParts().date;
+  if (!s.open_date || !s.close_date) return 'closed';
+  if (today < s.open_date) return 'not_yet';
+  if (today > s.close_date) return 'closed';
+  return 'open';
+}
+function festCleanParts(arr, old) {
+  const out = [];
+  for (const p of (Array.isArray(arr) ? arr : []).slice(0, 20)) {
+    const field = FEST_FIELDS.includes(p.field) ? p.field : null;
+    if (!field) throw new Error('يرجى اختيار مجال لكل مشاركة');
+    const title = festStr(p.title, 200);
+    if (!title) throw new Error('يرجى كتابة عنوان لكل مشاركة');
+    const other_text = festStr(p.other_text, 120);
+    if (field === 'أخرى' && !other_text) throw new Error('يرجى كتابة نوع المشاركة عند اختيار "أخرى"');
+    const sc = Math.round(Number(p.students_count));
+    if (!(sc >= 1 && sc <= 500)) throw new Error('عدد الطلبة يجب أن يكون بين 1 و 500');
+    const dur = Math.round(Number(p.duration_min));
+    if (!(dur >= 1 && dur <= 600)) throw new Error('مدة المشاركة (بالدقائق) غير صحيحة');
+    const prev = old && old.find(o => o.pid && o.pid === p.pid);
+    out.push({
+      pid: prev ? prev.pid : crypto.randomBytes(5).toString('hex'),
+      field, other_text: field === 'أخرى' ? other_text : '',
+      title, description: festStr(p.description, 1500),
+      duration_min: dur, students_count: sc, tech_needs: festStr(p.tech_needs, 800),
+      status: prev ? prev.status : 'جديدة', committee_note: prev ? (prev.committee_note || '') : '',
+    });
+  }
+  if (!out.length) throw new Error('أضف مشاركة واحدة على الأقل');
+  return out;
+}
+function festValidate(b, s) {
+  const uni = festStr(b.university, 120);
+  if (!uni || !s.universities.includes(uni)) throw new Error('يرجى اختيار الجامعة من القائمة');
+  const c = b.contact || {};
+  const contact = { name: festStr(c.name, 120), title: festStr(c.title, 120), phone: festStr(c.phone, 30), email: festStr(c.email, 160).toLowerCase() };
+  if (!contact.name) throw new Error('يرجى كتابة اسم المسؤول عن التواصل');
+  if (!contact.title) throw new Error('يرجى كتابة المسمى الوظيفي');
+  if (!/^[0-9+\-\s()]{7,20}$/.test(contact.phone)) throw new Error('رقم الهاتف غير صحيح');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) throw new Error('البريد الإلكتروني غير صحيح');
+  return { university: uni, contact, notes: festStr(b.notes, 1500) };
+}
+function festSubView(d) {
+  return { ref: d.get('ref'), university: d.get('university'), contact: d.get('contact'), participations: d.get('participations') || [], notes: d.get('notes') || '' };
+}
+async function festNextRef() {
+  const last = await FestivalSubmission.findOne({}).sort({ seq: -1 });
+  const seq = (last && last.get('seq') || 0) + 1;
+  return { seq, ref: 'FEST-' + String(seq).padStart(4, '0') };
+}
+
+app.get('/api/public/festival/info', async (req, res) => {
+  try {
+    const s = await festGetSettings();
+    res.json({ title: s.title, subtitle: s.subtitle, intro: s.intro, logo: s.logo, color: s.color, open_date: s.open_date, close_date: s.close_date, universities: s.universities, fields: FEST_FIELDS, state: festState(s) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/public/festival/submit', async (req, res) => {
+  try {
+    const ip = req.ip || 'x', now = Date.now();
+    festHits[ip] = (festHits[ip] || []).filter(t => now - t < 3600000);
+    if (festHits[ip].length >= 10) return res.status(429).json({ error: 'محاولات كثيرة، يرجى المحاولة لاحقاً' });
+    const cap = publicCaptchas[req.body.captcha_token];
+    if (!cap || now > cap.expires || Number(req.body.captcha_answer) !== cap.answer)
+      return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[req.body.captcha_token];
+    festHits[ip].push(now);
+    const s = await festGetSettings();
+    if (festState(s) !== 'open') return res.status(400).json({ error: 'باب التسجيل غير مفتوح حالياً' });
+    const base = festValidate(req.body, s);
+    const parts = festCleanParts(req.body.participations, null);
+    const exist = await FestivalSubmission.findOne({ university: base.university });
+    if (exist) return res.status(400).json({ error: 'تم تسجيل طلب لهذه الجامعة مسبقاً. استخدموا رابط التعديل الذي وصلكم بعد التسجيل (أو راسلونا عبر البريد المرسل إليكم).' });
+    const { seq, ref } = await festNextRef();
+    const token = crypto.randomBytes(16).toString('hex');
+    await FestivalSubmission.create({ seq, ref, ...base, participations: parts, edit_token: token, created_at: new Date(), updated_at: new Date() });
+    let emailed = false;
+    try {
+      const link = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host') + '/festival.html?t=' + token;
+      await sendBrevoEmail(base.contact.email, base.contact.name, 'تأكيد استلام طلب المشاركة — ' + s.title,
+        `<div dir="rtl" style="font-family:Tahoma,Arial"><p>مرحباً ${base.contact.name}،</p><p>تم استلام طلب مشاركة <b>${base.university}</b> برقم مرجعي <b>${ref}</b> (${parts.length} مشاركة).</p><p>يمكنكم تعديل الطلب حتى إغلاق باب التسجيل عبر الرابط التالي (احتفظوا به):<br><a href="${link}">${link}</a></p><p>ستُعلمكم اللجنة بقرارها لاحقاً.</p></div>`);
+      emailed = true;
+    } catch (e) { /* البريد اختياري */ }
+    res.json({ ok: true, ref, edit_token: token, emailed });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get('/api/public/festival/submission/:token', async (req, res) => {
+  try {
+    const d = await FestivalSubmission.findOne({ edit_token: festStr(req.params.token, 64) });
+    if (!d) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const s = await festGetSettings();
+    res.json({ ...festSubView(d), state: festState(s) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/public/festival/submission/:token', async (req, res) => {
+  try {
+    const d = await FestivalSubmission.findOne({ edit_token: festStr(req.params.token, 64) });
+    if (!d) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const s = await festGetSettings();
+    if (festState(s) !== 'open') return res.status(400).json({ error: 'انتهى باب التسجيل، لا يمكن التعديل' });
+    const base = festValidate({ ...req.body, university: d.get('university') }, s);
+    const parts = festCleanParts(req.body.participations, d.get('participations') || []);
+    await FestivalSubmission.updateOne({ _id: d._id }, { $set: { contact: base.contact, notes: base.notes, participations: parts, updated_at: new Date() } });
+    res.json({ ok: true, ref: d.get('ref') });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── الإدارة ──
+app.get('/api/festival/settings', auth(['admin','editor']), async (req, res) => {
+  try { const s = await festGetSettings(); res.json({ ...s, state: festState(s), fields: FEST_FIELDS }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/festival/settings', auth(['admin']), async (req, res) => {
+  try {
+    const b = req.body || {}, set = {};
+    ['title','subtitle','intro'].forEach(k => { if (b[k] !== undefined) set[k] = festStr(b[k], k === 'intro' ? 2000 : 200); });
+    if (b.color !== undefined) set.color = /^#[0-9a-fA-F]{6}$/.test(b.color) ? b.color : '#0F5132';
+    ['open_date','close_date'].forEach(k => { if (b[k] !== undefined) { if (b[k] && !/^\d{4}-\d{2}-\d{2}$/.test(b[k])) throw new Error('تاريخ غير صحيح'); set[k] = b[k] || ''; } });
+    if (b.logo !== undefined) { if (b.logo && (!/^data:image\/(png|jpeg|webp|svg\+xml);base64,/.test(b.logo) || b.logo.length > 1500000)) throw new Error('الشعار غير صالح أو كبير الحجم (الحد 1MB)'); set.logo = b.logo || ''; }
+    if (b.universities !== undefined) set.universities = [...new Set((Array.isArray(b.universities) ? b.universities : []).map(u => festStr(u, 120)).filter(Boolean))].slice(0, 200);
+    if ((set.open_date || (await festGetSettings()).open_date) && set.close_date && set.open_date && set.close_date < set.open_date) throw new Error('تاريخ الإغلاق قبل تاريخ الفتح');
+    await FestivalSettings.updateOne({ key: 'main' }, { $set: set }, { upsert: true });
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/festival/submissions', auth(['admin','editor']), async (req, res) => {
+  try {
+    const docs = await FestivalSubmission.find({}).sort({ seq: 1 });
+    res.json(docs.map(d => ({ id: String(d._id), ...festSubView(d), edit_token: d.get('edit_token'), created_at: d.get('created_at'), updated_at: d.get('updated_at') })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/festival/decision', auth(['admin','editor']), async (req, res) => {
+  try {
+    const { id, pid, status, committee_note } = req.body || {};
+    if (!FEST_STATUSES.includes(status)) return res.status(400).json({ error: 'حالة غير صحيحة' });
+    const d = await FestivalSubmission.findById(id);
+    if (!d) return res.status(404).json({ error: 'غير موجود' });
+    const parts = (d.get('participations') || []).map(p => ({ ...(p.toObject ? p.toObject() : p) }));
+    const p = parts.find(x => x.pid === pid);
+    if (!p) return res.status(404).json({ error: 'المشاركة غير موجودة' });
+    p.status = status; p.committee_note = festStr(committee_note, 600);
+    await FestivalSubmission.updateOne({ _id: d._id }, { $set: { participations: parts } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/festival/delete', auth(['admin']), async (req, res) => {
+  try { await FestivalSubmission.deleteOne({ _id: req.body.id }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log('\n  ══════════════════════════════════════════');
   console.log('  الجامعة الأردنية — عمادة شؤون الطلبة');
