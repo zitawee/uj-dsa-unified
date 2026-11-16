@@ -4,6 +4,7 @@
 let ATT_TAB = 'today', ATT_TIMER = null, ATT_REP = null;
 const attEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const attActs = () => (typeof TALENT_ACTS !== 'undefined' ? TALENT_ACTS : ['المرسم الجامعي','الغناء والعزف','الأداء الحركي','الحرف اليدوية','الخط العربي','المسرح الجامعي']);
+const AR_MONTHS = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
 const attMonthNow = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Amman' }).slice(0, 7);
 
 function loadTalentAttendance() {
@@ -105,18 +106,27 @@ async function attRenderReport() {
   const colSel = typeof colOpts === 'function' ? colOpts() : '';
   body.innerHTML = `
   <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <input id="ar-month" type="month" value="${attMonthNow()}" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)">
+    <input id="ar-month" type="hidden" value="${attMonthNow()}">
+    <select id="ar-m" onchange="attMonthChanged()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)">${AR_MONTHS.map((n, i) => `<option value="${String(i + 1).padStart(2, '0')}"${attMonthNow().slice(5) === String(i + 1).padStart(2, '0') ? ' selected' : ''}>${n}</option>`).join('')}</select>
+    <select id="ar-y" onchange="attMonthChanged()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)">${[0, 1, 2, 3].map(k => { const y = Number(attMonthNow().slice(0, 4)) - k; return `<option${k === 0 ? ' selected' : ''}>${y}</option>`; }).join('')}</select>
     <select id="ar-act" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">جميع الأنشطة</option>${attActs().map(a => `<option>${attEsc(a)}</option>`).join('')}</select>
     <select id="ar-col" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">جميع الكليات</option>${colSel}</select>
     <select id="ar-gen" onchange="attLoadReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">كل الجنسين</option><option>ذكر</option><option>أنثى</option></select>
+    <select id="ar-st" onchange="attDrawReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r)"><option value="">كل الحالات</option><option value="met">مستوفٍ</option><option value="not_met">غير مستوفٍ</option><option value="excused">معذور</option></select>
     <input id="ar-q" type="text" placeholder="بحث بالاسم أو الرقم..." oninput="attDrawReport()" style="padding:7px;border:1px solid var(--border);border-radius:var(--r);flex:1;min-width:160px">
   </div>
   <div id="ar-sum" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
   <div class="card"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
     <button class="btn btn-sm" onclick="attPrintSummary()"><i class="ti ti-printer"></i> طباعة الكشف الإجمالي</button>
     <button class="btn btn-sm" onclick="attPrintAllDetails()"><i class="ti ti-files"></i> طباعة تفصيلية لكل طالب</button>
-    <button class="btn btn-sm" onclick="attExport()"><i class="ti ti-download"></i> تصدير Excel</button></div>
-    <div class="tw"><table><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>أيام الزيارة</th><th>آخر زيارة</th><th></th></tr></thead><tbody id="ar-body"></tbody></table></div></div>`;
+    <button class="btn btn-sm" onclick="attExport()"><i class="ti ti-download"></i> تصدير Excel</button>
+    <button class="btn btn-sm" onclick="attCopyNotMet()"><i class="ti ti-copy"></i> نسخ أرقام غير المستوفين</button>
+    <button class="btn btn-sm" style="color:#7A3E8E;border-color:#7A3E8E" onclick="attExcusesModal()">📝 سجل الأعذار</button></div>
+    <div class="tw"><table><thead id="ar-head"></thead><tbody id="ar-body"></tbody></table></div></div>`;
+  attLoadReport();
+}
+function attMonthChanged() {
+  document.getElementById('ar-month').value = document.getElementById('ar-y').value + '-' + document.getElementById('ar-m').value;
   attLoadReport();
 }
 async function attLoadReport() {
@@ -130,16 +140,25 @@ async function attLoadReport() {
 }
 function attFiltered() {
   const q = ((document.getElementById('ar-q') || {}).value || '').trim();
-  return !ATT_REP ? [] : (q ? ATT_REP.rows.filter(r => String(r.name).includes(q) || String(r.student_id).includes(q)) : ATT_REP.rows);
+  const st = (document.getElementById('ar-st') || {}).value || '';
+  let rows = !ATT_REP ? [] : ATT_REP.rows;
+  if (q) rows = rows.filter(r => String(r.name).includes(q) || String(r.student_id).includes(q));
+  if (st) rows = rows.filter(r => r.status === st);
+  return rows;
 }
+const attStLabel = r => r.status === 'met' ? 'مستوفٍ' : (r.status === 'excused' ? 'معذور' + (r.excuse ? ' (' + r.excuse + ')' : '') : 'غير مستوفٍ');
+const attStColor = st => st === 'met' ? '#1B6B3A' : (st === 'excused' ? '#7A3E8E' : '#c0392b');
 function attDrawReport() {
   if (!ATT_REP) return;
-  const rows = attFiltered(), s = ATT_REP.summary;
-  const chip = (t, v, c) => `<div class="card" style="margin:0;padding:10px 16px;min-width:130px"><div style="font-size:11px;color:var(--muted)">${t}</div><div style="font-size:22px;font-weight:800;color:${c || 'var(--g)'}">${v}</div></div>`;
-  document.getElementById('ar-sum').innerHTML = chip('عدد الطلبة', s.students) + chip('زاروا هذا الشهر', s.visited) + chip('لم يزوروا', s.not_visited, '#c0392b') + chip('إجمالي الزيارات', s.visits);
+  const rows = attFiltered(), s = ATT_REP.summary, W = ATT_REP.weeks || [];
+  const chip = (t, v, c) => `<div class="card" style="margin:0;padding:10px 16px;min-width:110px"><div style="font-size:11px;color:var(--muted)">${t}</div><div style="font-size:22px;font-weight:800;color:${c || 'var(--g)'}">${v}</div></div>`;
+  document.getElementById('ar-sum').innerHTML = chip('عدد الطلبة', s.students) + chip(`مستوفون (≥${ATT_REP.required})`, s.met) + chip('غير مستوفين', s.not_met, '#c0392b') + chip('معذورون', s.excused, '#7A3E8E') + chip('لم يزوروا', s.not_visited, '#c0392b') + chip('إجمالي الزيارات', s.visits);
+  document.getElementById('ar-head').innerHTML = `<tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>أيام الزيارة</th>${W.map((w, i) => `<th title="${w.start} → ${w.end}" style="font-size:10.5px">أ${i + 1}</th>`).join('')}<th>الحالة</th><th>آخر زيارة</th><th></th></tr>`;
   document.getElementById('ar-body').innerHTML = rows.length ? rows.map((r, i) => `<tr><td>${i + 1}</td><td><b>${attEsc(r.student_id)}</b></td><td>${attEsc(r.name)}</td><td style="font-size:11px">${attEsc(r.college || '-')}</td><td>${attEsc(r.activity)}</td>
-    <td><b style="color:${r.days ? 'var(--g)' : '#c0392b'}">${r.days}</b></td><td>${attEsc(r.last || '-')}</td>
-    <td><button class="btn btn-sm" onclick="attStudentDetail('${attEsc(r.student_id)}')">تفاصيل</button></td></tr>`).join('') : '<tr><td colspan="8" class="center">لا توجد نتائج</td></tr>';
+    <td><b style="color:${attStColor(r.status)}">${r.days}</b></td>
+    ${(r.weeks || []).map(c => `<td style="text-align:center;font-weight:700;color:${c >= 2 ? '#1B6B3A' : (c === 1 ? '#B7791F' : '#c0392b')}">${c}</td>`).join('')}
+    <td style="font-size:11.5px;font-weight:700;color:${attStColor(r.status)}">${attEsc(attStLabel(r))}</td><td>${attEsc(r.last || '-')}</td>
+    <td><button class="btn btn-sm" onclick="attStudentDetail('${attEsc(r.student_id)}')">تفاصيل</button></td></tr>`).join('') : `<tr><td colspan="${9 + W.length}" class="center">لا توجد نتائج</td></tr>`;
 }
 async function attStudentDetail(sid) {
   const month = document.getElementById('ar-month').value;
@@ -166,8 +185,9 @@ function attPrintSummary() {
   const rows = attFiltered(), act = document.getElementById('ar-act').value;
   openPrint(`<h2 style="text-align:center">تقرير زيارات طلبة التفوق الفني — ${attEsc(act || 'جميع الأنشطة')}</h2>
     <p style="text-align:center">شهر ${attEsc(ATT_REP.month)} — عدد الطلبة ${rows.length} — زاروا ${rows.filter(r => r.days).length} — إجمالي الزيارات ${rows.reduce((n, r) => n + r.days, 0)}</p>
-    <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>أيام الزيارة</th><th>آخر زيارة</th></tr></thead>
-    <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${attEsc(r.student_id)}</td><td>${attEsc(r.name)}</td><td>${attEsc(r.college)}</td><td>${attEsc(r.activity)}</td><td>${r.days}</td><td>${attEsc(r.last || '-')}</td></tr>`).join('')}</tbody></table>`);
+    <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th>#</th><th>الرقم الجامعي</th><th>الاسم</th><th>الكلية</th><th>النشاط</th><th>أيام الزيارة</th><th>الحالة</th><th>آخر زيارة</th></tr></thead>
+    <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${attEsc(r.student_id)}</td><td>${attEsc(r.name)}</td><td>${attEsc(r.college)}</td><td>${attEsc(r.activity)}</td><td>${r.days}</td><td>${attEsc(attStLabel(r))}</td><td>${attEsc(r.last || '-')}</td></tr>`).join('')}</tbody></table>
+    <p style="font-size:12px">الاستيفاء: ${ATT_REP.required} زيارات شهرياً على الأقل (زيارتان أسبوعيّاً). مستوفون: ${rows.filter(r => r.status === 'met').length} — غير مستوفين: ${rows.filter(r => r.status === 'not_met').length} — معذورون: ${rows.filter(r => r.status === 'excused').length}</p>`);
 }
 async function attPrintAllDetails() {
   if (!ATT_REP) return;
@@ -184,7 +204,8 @@ async function attPrintAllDetails() {
 function attExport() {
   if (!ATT_REP) return;
   const rows = attFiltered();
-  const data = [['#', 'الرقم الجامعي', 'الاسم', 'الكلية', 'النشاط', 'أيام الزيارة', 'آخر زيارة']].concat(rows.map((r, i) => [i + 1, r.student_id, r.name, r.college, r.activity, r.days, r.last]));
+  const W = ATT_REP.weeks || [];
+  const data = [['#', 'الرقم الجامعي', 'الاسم', 'الكلية', 'النشاط', 'أيام الزيارة', ...W.map((w, i) => 'أسبوع ' + (i + 1) + ' (' + w.start + ')'), 'الحالة', 'آخر زيارة']].concat(rows.map((r, i) => [i + 1, r.student_id, r.name, r.college, r.activity, r.days, ...(r.weeks || []), attStLabel(r), r.last]));
   if (typeof XLSX !== 'undefined') {
     const ws = XLSX.utils.aoa_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'الزيارات');
     XLSX.writeFile(wb, `زيارات_التفوق_${ATT_REP.month}.xlsx`);
@@ -230,4 +251,42 @@ function openAttendQR(activity) {
     QRCode.toDataURL(url, { width: 640, margin: 1 }, (e, data) => { const im = document.getElementById('att-qr-img'); if (!e && im) im.src = data; });
   };
   tick(); ATT_TIMER = setInterval(tick, 2000);
+}
+
+// نسخ أرقام هواتف غير المستوفين (للتواصل معهم عبر واتساب) مع أسمائهم
+function attCopyNotMet() {
+  if (!ATT_REP) return;
+  const list = ATT_REP.rows.filter(r => r.status === 'not_met');
+  if (!list.length) { alert('لا يوجد طلبة غير مستوفين ضمن الفلاتر الحالية 👏'); return; }
+  const text = list.map(r => `${r.name}\t${r.student_id}\t${r.phone || ''}\t${r.days} زيارة`).join('\n');
+  navigator.clipboard.writeText(text).then(() => alert(`✅ تم نسخ ${list.length} طالباً غير مستوفٍ (الاسم، الرقم الجامعي، الهاتف، عدد الزيارات)`)).catch(() => prompt('انسخ القائمة يدوياً:', text));
+}
+
+// ── سجل الأعذار ──
+async function attExcusesModal() {
+  const list = await api('/api/talent-attendance/excuses');
+  const m = document.getElementById('mod-attend');
+  const fld = 'padding:8px;border:1px solid var(--border);border-radius:var(--r);width:100%;margin-bottom:8px';
+  m.querySelector('.modal').innerHTML = `<h3>📝 سجل الأعذار المقبولة</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">الطالب المعذور خلال فترة تقع ضمن الشهر يظهر «معذور» في التقرير ولا يُعدّ غير مستوفٍ.</div>
+    <input id="ex-id" type="text" inputmode="numeric" placeholder="الرقم الجامعي" style="${fld}">
+    <select id="ex-type" style="${fld}"><option>عذر طبي</option><option>عدم التسجيل خلال الفصل</option></select>
+    <div style="display:flex;gap:8px"><label style="flex:1;font-size:12px">من <input id="ex-from" type="date" style="${fld}"></label><label style="flex:1;font-size:12px">إلى <input id="ex-to" type="date" style="${fld}"></label></div>
+    <input id="ex-note" type="text" placeholder="ملاحظة (اختياري)" style="${fld}">
+    <button class="btn" style="background:var(--g);color:#fff" onclick="attAddExcuse()">إضافة العذر</button>
+    <div class="tw" style="max-height:34vh;overflow:auto;margin-top:10px"><table><thead><tr><th>الطالب</th><th>النوع</th><th>الفترة</th><th></th></tr></thead><tbody>
+    ${Array.isArray(list) && list.length ? list.map(e => `<tr><td>${attEsc(e.name)}<div style="font-size:10.5px;color:var(--muted)">${attEsc(e.student_id)}</div></td><td>${attEsc(e.type)}${e.note ? '<div style="font-size:10.5px;color:var(--muted)">' + attEsc(e.note) + '</div>' : ''}</td><td style="font-size:12px">${attEsc(e.from)} → ${attEsc(e.to)}</td><td><button class="btn btn-sm" style="color:#c0392b" onclick="attDelExcuse('${e.id}')"><i class="ti ti-x"></i></button></td></tr>`).join('') : '<tr><td colspan="4" class="center">لا أعذار مسجَّلة</td></tr>'}</tbody></table></div>
+    <div style="margin-top:10px"><button class="btn" onclick="document.getElementById('mod-attend').classList.remove('open');attLoadReport()">إغلاق</button></div>`;
+  m.classList.add('open');
+}
+async function attAddExcuse() {
+  const g = id => document.getElementById(id).value.trim();
+  const r = await api('/api/talent-attendance/excuses', 'POST', { student_id: g('ex-id'), type: g('ex-type'), from: g('ex-from'), to: g('ex-to'), note: g('ex-note') });
+  if (r && r.error) { alert(r.error); return; }
+  attExcusesModal();
+}
+async function attDelExcuse(id) {
+  if (!confirm('حذف هذا العذر؟')) return;
+  await api('/api/talent-attendance/excuses/delete', 'POST', { id });
+  attExcusesModal();
 }

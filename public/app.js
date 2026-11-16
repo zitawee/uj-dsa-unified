@@ -129,6 +129,12 @@ async function api(url, method='GET', body=null) {
   try {
     const r = await fetch(url, opts);
     const t = await r.text();
+    if (r.status===401 && TOKEN && url!=='/api/login' && !window.__sessExpired) {   // انتهت الجلسة (خمول ١٢ ساعة) → العودة لشاشة الدخول بدل أخطاء صامتة
+      window.__sessExpired = true;
+      localStorage.removeItem('uj_tok'); localStorage.removeItem('uj_me');
+      alert('انتهت جلسة الدخول، يرجى تسجيل الدخول من جديد.');
+      location.reload();
+    }
     try { return JSON.parse(t); }
     catch {
       // رد غير JSON — غالباً خطأ بوابة/وسيط (Railway) مثل "upstream error"
@@ -272,6 +278,7 @@ function buildSidebar() {
     ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('training_courses',this)"><i class="ti ti-school"></i>الدورات التدريبية</div>` : ''}
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('finance',this)"><i class="ti ti-cash"></i>النظام المالي</div>` : ''}
     ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('talent_attendance',this)"><i class="ti ti-qrcode"></i>حضور طلبة التفوق الفني</div>` : ''}
+    ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('student_profile',this)"><i class="ti ti-id-badge-2"></i>ملف الطالب الموحد</div>` : ''}
     ${ME?.role==='admin' ? `<div class="ni" onclick="go('installment_plan',this)"><i class="ti ti-calendar-dollar"></i>نظام تقسيط الرسوم</div>` : ''}
   </div>
 
@@ -313,6 +320,7 @@ function buildSidebar() {
     <div class="ni" onclick="go('eval_report',this)"><i class="ti ti-clipboard-list"></i>تقرير تقييم الفعاليات</div>
     <div class="ni" onclick="go('search',this)"><i class="ti ti-search"></i>البحث الشامل</div>
     <div class="ni" id="nav-users" onclick="go('users',this)"><i class="ti ti-shield"></i>إدارة المستخدمين</div>
+    <div class="ni" id="nav-security" onclick="go('security',this)"><i class="ti ti-lock-check"></i>الأمان والنسخ الاحتياطي</div>
     <div class="ni" id="nav-archive" onclick="go('archive',this)"><i class="ti ti-archive"></i>الأرشفة السنوية</div>
   </div>` : ''}`;
 }
@@ -328,7 +336,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','installment_plan','talent_attendance','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
+  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','installment_plan','talent_attendance','student_profile','security','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
 }
 
@@ -379,7 +387,7 @@ async function showApp() {
   const rb=document.getElementById('hr'); rb.textContent=RLABELS[ME.role]; rb.className='rtag '+RCLS[ME.role];
   await loadSysSettings();
   buildSidebar(); buildPanels();
-  if (ME.role!=='admin') { document.getElementById('nav-users').style.display='none'; document.getElementById('nav-archive').style.display='none'; }
+  if (ME.role!=='admin') { document.getElementById('nav-users').style.display='none'; document.getElementById('nav-archive').style.display='none'; { const ns=document.getElementById('nav-security'); if(ns) ns.style.display='none'; } }
   if (ME.role==='admin' && typeof teLoadBadgeCount==='function') teLoadBadgeCount();
   if (ME.role==='admin' && typeof spLoadBadgeCount==='function') spLoadBadgeCount();
   loadDash();
@@ -460,7 +468,7 @@ function go(name, el) {
   if (el) el.classList.add('active');
   if (window.innerWidth <= 768) closeSidebar();
   const loaders = {
-    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, talent_attendance:loadTalentAttendance, students:loadStudents, achievements:loadAchievements,
+    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, talent_attendance:loadTalentAttendance, student_profile:loadStudentProfile, security:loadSecurity, students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
@@ -560,6 +568,7 @@ async function loadDash() {
       </div>`;
     }).join('')}
   </div></div>`;
+  if (canEditGlobal() && typeof attDashCard==='function') attDashCard();
 }
 
 async function delRec(table,id,cb) {
