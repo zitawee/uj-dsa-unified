@@ -468,7 +468,7 @@ function go(name, el) {
   if (el) el.classList.add('active');
   if (window.innerWidth <= 768) closeSidebar();
   const loaders = {
-    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, talent_attendance:loadTalentAttendance, student_profile:loadStudentProfile, security:loadSecurity, students:loadStudents, achievements:loadAchievements,
+    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, talent_attendance:()=>loadTalentAttendance(), student_profile:()=>loadStudentProfile(), security:()=>loadSecurity(), students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
