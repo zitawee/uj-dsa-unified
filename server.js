@@ -1584,6 +1584,39 @@ app.post('/api/students/bulk', auth(['admin','editor']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ══ ملف الطالب الموحد: يجمع ما للطالب في الأقسام المختلفة بالرقم الجامعي (admin/editor) ══
+app.get('/api/student-profile/:sid', auth(['admin','editor']), async (req, res) => {
+  try {
+    const sid = String(req.params.sid || '').trim();
+    if (!sid) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
+    const ids = [...new Set([sid, sid.replace(/^0+/, ''), sid.padStart(7, '0')])].filter(Boolean);
+    const month = ammanParts().date.slice(0, 7);
+    const [talent, visitsAll, excuses, parts, achs, inst] = await Promise.all([
+      models['students'].findOne({ student_id: { $in: ids } }).lean(),
+      TalentVisit.find({ student_id: { $in: ids } }).sort({ date: -1, time: -1 }).lean(),
+      TalentExcuse.find({ student_id: { $in: ids } }).sort({ from: -1 }).lean(),
+      models['participants'].find({ 'students.id': { $in: ids } }).select('activity date organizer students').lean(),
+      models['achievements'].find({ student_id: { $in: ids } }).sort({ ach_date: -1 }).lean(),
+      InstallmentPlan.findOne({ university_id: { $in: ids } }).lean(),
+    ]);
+    const mine = d => (d.students || []).find(x => ids.includes(String(x.id || '').trim())) || {};
+    const participations = parts.map(d => { const x = mine(d); return { activity: d.activity, date: d.date, organizer: d.organizer || '', attended: !!x.attended, name: x.name || '' }; })
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const name = (talent && talent.name) || (participations.find(x => x.name) || {}).name || (achs[0] && achs[0].student_name) || '';
+    if (!talent && !participations.length && !achs.length && !inst && !visitsAll.length)
+      return res.status(404).json({ error: 'لا توجد أي بيانات لهذا الرقم الجامعي في النظام' });
+    res.json({
+      student_id: sid, name,
+      talent: talent ? { name: talent.name, gender: talent.gender || '', college: talent.college || '', major: talent.major || '', activity: talent.activity || '', excellence_year: talent.excellence_year || '', phone: talent.phone || '' } : null,
+      attendance: { total: visitsAll.length, this_month: visitsAll.filter(v => v.date.startsWith(month)).length, month, recent: visitsAll.slice(0, 10).map(visitDto) },
+      excuses: excuses.map(excDto),
+      participations,
+      achievements: achs.map(a => ({ work: a.work || '', date: a.ach_date || '', activity: a.activity || '', honor: a.honor === 'نعم', honor_reason: a.honor_reason || '' })),
+      installment: inst ? { serial_number: inst.serial_number || '', college: inst.college || '' } : null,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══ لوحة الأمان (admin): سجل العمليات + نسخة احتياطية كاملة قابلة للتنزيل ══
 app.get('/api/admin/audit-log', auth(['admin']), async (req, res) => {
   try {
