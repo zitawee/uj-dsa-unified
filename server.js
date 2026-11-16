@@ -324,9 +324,6 @@ mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log('✅ MongoDB متصل — dsa_unified');
     await initAdmin();
-    SessionStore.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
-    SessionStore.collection.createIndex({ token: 1 }).catch(() => {});
-    AuditLog.collection.createIndex({ at: 1 }, { expireAfterSeconds: 400 * 86400 }).catch(() => {});
     await migrateSingingMerge().catch(e => console.error('⚠️ migrateSingingMerge:', e.message));
   })
   .catch(err => console.error('❌ خطأ في الاتصال:', err));
@@ -396,44 +393,8 @@ app.get('/events.html', async (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ══ Sessions ══ (ذاكرة سريعة + حفظ في قاعدة البيانات لتبقى بعد إعادة تشغيل الخادم، وتنتهي بعد ١٢ ساعة خمول)
+// ══ Sessions ══
 const sessions = {};
-const SESSION_HOURS = 12;
-const SessionStore = mongoose.model('session_store', new mongoose.Schema({}, { strict:false }), 'sessions_store');
-const AuditLog = mongoose.model('audit_log', new mongoose.Schema({}, { strict:false }), 'audit_log');
-async function getSession(token) {
-  if (!token) return null;
-  let u = sessions[token];
-  if (!u) {
-    const d = await SessionStore.findOne({ token }).lean();
-    if (!d || !d.expiresAt || new Date(d.expiresAt) < new Date()) return null;
-    u = sessions[token] = { ...d.user, _touched: Date.now() };
-  }
-  if (!u._touched || Date.now() - u._touched > 10 * 60 * 1000) {   // تمديد الجلسة (خمول لا مطلق) كل ١٠ دقائق كحدّ أقصى
-    u._touched = Date.now();
-    SessionStore.updateOne({ token }, { $set: { expiresAt: new Date(Date.now() + SESSION_HOURS * 3600 * 1000) } }).catch(() => {});
-  }
-  return u;
-}
-const auditLog = (user, action, extra = {}) => AuditLog.create({ at: new Date(), user: user || '', action, ...extra }).catch(() => {});
-
-// سجل العمليات: كل طلب تعديل (POST/PUT/DELETE) ناجح من مستخدم مسجَّل — بلا محتوى الطلب (لا كلمات مرور ولا بيانات شخصية)
-app.use('/api', (req, res, next) => {
-  if (req.method === 'GET' || req.method === 'OPTIONS' || req.path.startsWith('/public/') || req.path === '/login' || req.path === '/logout') return next();
-  res.on('finish', () => {
-    if (res.statusCode < 400 && req.user) auditLog(req.user.username, req.method + ' ' + req.originalUrl.split('?')[0], { role: req.user.role, ip: req.ip, status: res.statusCode });
-  });
-  next();
-});
-
-// تحديد محاولات الدخول الفاشلة: ٥ محاولات لكل (عنوان + اسم مستخدم) أو ٣٠ لكل عنوان خلال ١٥ دقيقة ← حجب مؤقت
-const loginFails = {};
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-function loginBlocked(keys) {
-  const now = Date.now();
-  return keys.some(([k, max]) => { const a = (loginFails[k] || []).filter(t => now - t < LOGIN_WINDOW_MS); loginFails[k] = a; return a.length >= max; });
-}
-function loginFailed(keys) { keys.forEach(([k]) => { (loginFails[k] = loginFails[k] || []).push(Date.now()); }); }
 
 // ══ تقديم عام لطلب إقامة نشاط (بدون تسجيل دخول) — كابتشا + حد للطلبات ══
 const publicCaptchas = {};   // token -> { answer, expires }
@@ -457,26 +418,17 @@ function checkPublicRateLimit(ip) {
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const keys = [['u|' + req.ip + '|' + String(username || '').toLowerCase(), 5], ['ip|' + req.ip, 30]];
-    if (loginBlocked(keys)) return res.status(429).json({ error: 'تم تجاوز عدد محاولات الدخول المسموحة، يرجى المحاولة بعد ١٥ دقيقة' });
-    const user = await User.findOne({ username: String(username || '') });
-    if (!user || !bcrypt.compareSync(String(password || ''), user.password)) {
-      loginFailed(keys); auditLog(String(username || '').slice(0, 60), 'فشل تسجيل الدخول', { ip: req.ip });
+    const user = await User.findOne({ username });
+    if (!user || !bcrypt.compareSync(password, user.password))
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
-    }
-    const token = crypto.randomBytes(24).toString('hex');
-    const u = { id: user._id, username: user.username, fullName: user.fullName, role: user.role, department: user.department||'' };
-    sessions[token] = { ...u, _touched: Date.now() };
-    await SessionStore.create({ token, user: { ...u, id: String(u.id) }, expiresAt: new Date(Date.now() + SESSION_HOURS * 3600 * 1000) });
-    auditLog(user.username, 'تسجيل دخول', { role: user.role, ip: req.ip });
-    res.json({ token, user: u });
+    const token = Math.random().toString(36).substr(2) + Date.now().toString(36);
+    sessions[token] = { id: user._id, username: user.username, fullName: user.fullName, role: user.role, department: user.department||'' };
+    res.json({ token, user: sessions[token] });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/logout', (req, res) => {
-  const tk = (req.headers.authorization||'').replace('Bearer ','');
-  delete sessions[tk];
-  SessionStore.deleteOne({ token: tk }).catch(() => {});
+  delete sessions[(req.headers.authorization||'').replace('Bearer ','')];
   res.json({ ok: true });
 });
 
@@ -1328,9 +1280,8 @@ app.post('/api/public/eval/:id/submit', async (req, res) => {
 });
 
 function auth(roles = []) {
-  return async (req, res, next) => {
-    let u = null;
-    try { u = await getSession((req.headers.authorization||'').replace('Bearer ','')); } catch(e) { return res.status(500).json({ error: 'تعذّر التحقق من الجلسة' }); }
+  return (req, res, next) => {
+    const u = sessions[(req.headers.authorization||'').replace('Bearer ','')];
     if (!u) return res.status(401).json({ error: 'يرجى تسجيل الدخول' });
     if (roles.length && !roles.includes(u.role))
       return res.status(403).json({ error: 'ليس لديك صلاحية' });
@@ -1584,84 +1535,6 @@ app.post('/api/students/bulk', auth(['admin','editor']), async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ══ ملف الطالب الموحد: يجمع ما للطالب في الأقسام المختلفة بالرقم الجامعي (admin/editor) ══
-app.get('/api/student-profile/:sid', auth(['admin','editor']), async (req, res) => {
-  try {
-    const sid = String(req.params.sid || '').trim();
-    if (!sid) return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي' });
-    const ids = [...new Set([sid, sid.replace(/^0+/, ''), sid.padStart(7, '0')])].filter(Boolean);
-    const month = ammanParts().date.slice(0, 7);
-    const [talent, visitsAll, excuses, parts, achs, inst] = await Promise.all([
-      models['students'].findOne({ student_id: { $in: ids } }).lean(),
-      TalentVisit.find({ student_id: { $in: ids } }).sort({ date: -1, time: -1 }).lean(),
-      TalentExcuse.find({ student_id: { $in: ids } }).sort({ from: -1 }).lean(),
-      models['participants'].find({ 'students.id': { $in: ids } }).select('activity date organizer students').lean(),
-      models['achievements'].find({ student_id: { $in: ids } }).sort({ ach_date: -1 }).lean(),
-      InstallmentPlan.findOne({ university_id: { $in: ids } }).lean(),
-    ]);
-    const mine = d => (d.students || []).find(x => ids.includes(String(x.id || '').trim())) || {};
-    const participations = parts.map(d => { const x = mine(d); return { activity: d.activity, date: d.date, organizer: d.organizer || '', attended: !!x.attended, name: x.name || '' }; })
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
-    const name = (talent && talent.name) || (participations.find(x => x.name) || {}).name || (achs[0] && achs[0].student_name) || '';
-    if (!talent && !participations.length && !achs.length && !inst && !visitsAll.length)
-      return res.status(404).json({ error: 'لا توجد أي بيانات لهذا الرقم الجامعي في النظام' });
-    res.json({
-      student_id: sid, name,
-      talent: talent ? { name: talent.name, gender: talent.gender || '', college: talent.college || '', major: talent.major || '', activity: talent.activity || '', excellence_year: talent.excellence_year || '', phone: talent.phone || '' } : null,
-      attendance: { total: visitsAll.length, this_month: visitsAll.filter(v => v.date.startsWith(month)).length, month, recent: visitsAll.slice(0, 10).map(visitDto) },
-      excuses: excuses.map(excDto),
-      participations,
-      achievements: achs.map(a => ({ work: a.work || '', date: a.ach_date || '', activity: a.activity || '', honor: a.honor === 'نعم', honor_reason: a.honor_reason || '' })),
-      installment: inst ? { serial_number: inst.serial_number || '', college: inst.college || '' } : null,
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ══ لوحة الأمان (admin): سجل العمليات + نسخة احتياطية كاملة قابلة للتنزيل ══
-app.get('/api/admin/audit-log', auth(['admin']), async (req, res) => {
-  try {
-    const q = String(req.query.q || '').trim();
-    const filter = q ? { $or: [{ user: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') } }, { action: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') } }] } : {};
-    const rows = await AuditLog.find(filter).sort({ at: -1 }).limit(Math.min(Number(req.query.limit) || 200, 1000)).lean();
-    res.json(rows.map(r => ({ at: r.at, user: r.user, role: r.role || '', action: r.action, ip: r.ip || '' })));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-const BACKUP_SKIP = new Set(['sessions_store', 'audit_log']);
-app.get('/api/admin/backup-info', auth(['admin']), async (req, res) => {
-  try {
-    const db = mongoose.connection.db;
-    const names = (await db.listCollections().toArray()).map(c => c.name).filter(n => !n.startsWith('system.') && !BACKUP_SKIP.has(n));
-    const counts = [];
-    for (const n of names) counts.push({ name: n, count: await db.collection(n).estimatedDocumentCount() });
-    const last = await AuditLog.findOne({ action: 'تنزيل نسخة احتياطية' }).sort({ at: -1 }).lean();
-    res.json({ collections: counts.sort((a, b) => b.count - a.count), last_backup_at: last ? last.at : null, last_backup_by: last ? last.user : '' });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// نسخة احتياطية كاملة (JSON، تُبثّ تدريجياً لتفادي ضغط الذاكرة). تحتوي بيانات حساسة (وكلمات المرور المشفَّرة) — تُحفظ في مكان آمن
-app.get('/api/admin/backup', auth(['admin']), async (req, res) => {
-  try {
-    const db = mongoose.connection.db;
-    const names = (await db.listCollections().toArray()).map(c => c.name).filter(n => !n.startsWith('system.') && !BACKUP_SKIP.has(n));
-    const EJ = mongoose.mongo.BSON && mongoose.mongo.BSON.EJSON;
-    const ser = d => EJ ? EJ.stringify(d, { relaxed: false }) : JSON.stringify(d);
-    const p = ammanParts();
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="ju-dsa-backup-${p.date}-${p.time.slice(0,5).replace(':','')}.json"`);
-    res.write('{"exported_at":' + JSON.stringify(new Date().toISOString()) + ',"format":' + JSON.stringify(EJ ? 'EJSON' : 'JSON') + ',"collections":{');
-    let first = true;
-    for (const n of names) {
-      res.write((first ? '' : ',') + JSON.stringify(n) + ':['); first = false;
-      let i = 0;
-      for await (const d of db.collection(n).find({})) { res.write((i++ ? ',' : '') + ser(d)); }
-      res.write(']');
-    }
-    res.end('}}');
-    auditLog(req.user.username, 'تنزيل نسخة احتياطية', { role: req.user.role, ip: req.ip, collections: names.length });
-  } catch(e) { if (!res.headersSent) res.status(500).json({ error: e.message }); else res.end(); }
-});
-
 // ══════════════════════════════════════════════════════════════
 // حضور طلبة التفوق الفني (نمط الزيارة المستمرة): رمز QR متجدد لكل نشاط يُعرض على شاشة في مكان النشاط،
 // والطالب يمسحه في أي وقت خلال الدوام (٨:٠٠–١٥:٠٠) فتُسجَّل زيارة واحدة له في اليوم بتاريخها ويومها ووقتها.
@@ -1728,37 +1601,7 @@ app.get('/api/talent-attendance/today', auth(ATT_SCREEN_ROLES), async (req, res)
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── الأعذار المقبولة (طبي / عدم تسجيل خلال الفصل): طالب + فترة؛ الطالب المعذور لا يُعدّ مخالفاً في التقرير الشهري ──
-const TalentExcuse = mongoose.model('talent_excuse', new mongoose.Schema({}, { strict:false, timestamps:true }));
-const ATT_EXCUSE_TYPES = ['عذر طبي', 'عدم التسجيل خلال الفصل'];
-const ATT_REQUIRED_MONTH = 8;
-const excDto = e => ({ id: String(e._id), student_id: e.student_id, name: e.name || '', type: e.type, from: e.from, to: e.to, note: e.note || '' });
-app.get('/api/talent-attendance/excuses', auth(ATT_ROLES), async (req, res) => {
-  try {
-    const q = {}; if (req.query.student_id) q.student_id = String(req.query.student_id);
-    const list = await TalentExcuse.find(q).sort({ from: -1 }).lean();
-    res.json(list.map(excDto));
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/talent-attendance/excuses', auth(ATT_ROLES), async (req, res) => {
-  try {
-    const isD = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
-    const sid = String(req.body.student_id || '').trim();
-    const type = ATT_EXCUSE_TYPES.includes(req.body.type) ? req.body.type : '';
-    if (!sid || !type || !isD(req.body.from) || !isD(req.body.to) || req.body.to < req.body.from)
-      return res.status(400).json({ error: 'يرجى إدخال الرقم الجامعي ونوع العذر وفترة صحيحة (من – إلى)' });
-    const st = await models['students'].findOne({ student_id: sid }).lean();
-    if (!st) return res.status(404).json({ error: 'الرقم الجامعي غير مسجَّل ضمن طلبة التفوق الفني' });
-    await TalentExcuse.create({ student_id: sid, name: st.name, type, from: req.body.from, to: req.body.to, note: String(req.body.note || '').trim(), created_by: req.user.username });
-    res.json({ message: 'تم' });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/talent-attendance/excuses/delete', auth(ATT_ROLES), async (req, res) => {
-  try { await TalentExcuse.findByIdAndDelete(String(req.body.id || '')); res.json({ message: 'تم' }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// التقرير الشهري: كل طالب (بحسب الفلاتر) مع عدد أيام زيارته، توزيعها على أسابيع الشهر (الأحد–الخميس)، وحالة الاستيفاء (٨ زيارات)
+// التقرير الشهري: كل طالب (بحسب الفلاتر) مع عدد أيام زيارته خلال الشهر
 app.get('/api/talent-attendance/report', auth(ATT_ROLES), async (req, res) => {
   try {
     const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : ammanParts().date.slice(0, 7);
@@ -1770,30 +1613,14 @@ app.get('/api/talent-attendance/report', auth(ATT_ROLES), async (req, res) => {
     const visits = await TalentVisit.find(vq).sort({ date: 1, time: 1 }).lean();
     const by = {};
     visits.forEach(v => { (by[v.student_id] = by[v.student_id] || []).push(v); });
-    // أسابيع الشهر: كل أسبوع يبدأ يوم أحد
-    const [Y, M] = month.split('-').map(Number);
-    const first = new Date(Date.UTC(Y, M - 1, 1)), lastDay = new Date(Date.UTC(Y, M, 0));
-    const wk0 = new Date(first); wk0.setUTCDate(wk0.getUTCDate() - wk0.getUTCDay());
-    const weeks = [];
-    for (let d = new Date(wk0); d <= lastDay; d.setUTCDate(d.getUTCDate() + 7)) {
-      const s0 = d.toISOString().slice(0, 10); const e0 = new Date(d); e0.setUTCDate(e0.getUTCDate() + 4);
-      weeks.push({ start: s0, end: e0.toISOString().slice(0, 10) });
-    }
-    const weekIdx = date => Math.min(weeks.length - 1, Math.max(0, Math.floor((new Date(date + 'T00:00:00Z') - wk0) / (7 * 86400000))));
-    const mStart = month + '-01', mEnd = lastDay.toISOString().slice(0, 10);
-    const excs = await TalentExcuse.find({ from: { $lte: mEnd }, to: { $gte: mStart } }).lean();
-    const excBy = {}; excs.forEach(e => { (excBy[e.student_id] = excBy[e.student_id] || []).push(e); });
-    const rows = studs.map(st => {
-      const vs = by[String(st.student_id)] || [];
+    const rows = studs.map(s => {
+      const vs = by[String(s.student_id)] || [];
       const last = vs[vs.length - 1];
-      const w = weeks.map(() => 0); vs.forEach(v => { w[weekIdx(v.date)]++; });
-      const ex = excBy[String(st.student_id)] || [];
-      const status = vs.length >= ATT_REQUIRED_MONTH ? 'met' : (ex.length ? 'excused' : 'not_met');
-      return { student_id: st.student_id, name: st.name, college: st.college || '', gender: st.gender || '', activity: st.activity || '', phone: st.phone || '',
-        days: vs.length, last: last ? last.date + ' ' + last.time.slice(0, 5) : '', weeks: w, status, excuse: ex.map(e => e.type).join('، ') };
+      return { student_id: s.student_id, name: s.name, college: s.college || '', gender: s.gender || '', activity: s.activity || '',
+        days: vs.length, last: last ? last.date + ' ' + last.time.slice(0, 5) : '' };
     }).sort((a, b) => b.days - a.days || String(a.name).localeCompare(String(b.name), 'ar'));
-    const cnt = k => rows.filter(r => r.status === k).length;
-    res.json({ month, required: ATT_REQUIRED_MONTH, weeks, rows, summary: { students: rows.length, visited: rows.filter(r => r.days > 0).length, not_visited: rows.filter(r => !r.days).length, visits: rows.reduce((n, r) => n + r.days, 0), met: cnt('met'), not_met: cnt('not_met'), excused: cnt('excused') } });
+    const totalVisits = rows.reduce((n, r) => n + r.days, 0);
+    res.json({ month, rows, summary: { students: rows.length, visited: rows.filter(r => r.days > 0).length, not_visited: rows.filter(r => !r.days).length, visits: totalVisits } });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
