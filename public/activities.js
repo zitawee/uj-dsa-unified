@@ -82,6 +82,8 @@ async function loadAR() {
         <div class="fg"><label>الكلية</label><select id="ar-supcol"><option value="">اختر الكلية...</option>${colOpts()}</select></div>
         <div class="fg"><label>رقم الهاتف</label><input id="ar-supph" type="text"></div>
       </div>
+      <div id="ar-xsups"></div>
+      <button type="button" class="btn btn-sm" onclick="arAddSup()" style="margin-top:6px">➕ إضافة مشرف آخر</button>
     </div>
     <div class="card">
       <div class="ct"><i class="ti ti-info-circle"></i>مشاركة جهة خارجية</div>
@@ -147,6 +149,7 @@ function showARForm() {
   delete f.dataset.editId;
   f.querySelectorAll('input:not([type=file]):not([type=checkbox]),select,textarea').forEach(el=>el.value='');
   f.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=false);
+  arSetSups([]);
   document.getElementById('ar-sdate').valueAsDate=new Date();
   document.getElementById('ar-date').valueAsDate=new Date();
   const t=document.getElementById('ar-form-title'); if(t) t.textContent='طلب جديد';
@@ -173,7 +176,7 @@ async function editContentAR(id) {
   document.querySelectorAll('.ar-svc-place-cb').forEach(cb=>cb.checked=(r.svc_places||[]).includes(cb.value));
   setc('ar-svc-actpoint',r.svc_activity_point); setc('ar-svc-comsvc',r.svc_community_service); setc('ar-svc-security',r.svc_security);
   set('ar-svc-other',r.svc_other);
-  set('ar-sup',r.supervisor); set('ar-supcol',r.sup_college); set('ar-supph',r.sup_phone);
+  set('ar-sup',r.supervisor); set('ar-supcol',r.sup_college); set('ar-supph',r.sup_phone); arSetSups(r.extra_supervisors);
   set('ar-guest',r.guests); set('ar-ext-name',r.ext_name); set('ar-ext-people',r.ext_people);
   const t=document.getElementById('ar-form-title'); if(t) t.textContent='✏️ تعديل بيانات الطلب — '+(r.ref_code||'');
   document.getElementById('ar-savebtns').style.display='none';
@@ -195,7 +198,7 @@ async function saveEditAR() {
     svc_places:Array.from(document.querySelectorAll('.ar-svc-place-cb:checked')).map(el=>el.value),
     svc_activity_point:gc('ar-svc-actpoint'),svc_community_service:gc('ar-svc-comsvc'),svc_security:gc('ar-svc-security'),
     svc_other:g('ar-svc-other'),
-    supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),
+    supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),extra_supervisors:arGetSups(),
     guests:g('ar-guest'),ext_name:g('ar-ext-name'),ext_people:document.getElementById('ar-ext-people')?.value||''
   };
   if (!data.title){showMsg('msg-ar','يرجى ملء عنوان الفعالية (حقل إلزامي)',true);return;}
@@ -335,7 +338,7 @@ async function saveAR() {
     svc_places:Array.from(document.querySelectorAll('.ar-svc-place-cb:checked')).map(el=>el.value),
     svc_activity_point:gc('ar-svc-actpoint'),svc_community_service:gc('ar-svc-comsvc'),svc_security:gc('ar-svc-security'),
     svc_other:g('ar-svc-other'),
-    supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),
+    supervisor:g('ar-sup'),sup_college:g('ar-supcol'),sup_phone:g('ar-supph'),extra_supervisors:arGetSups(),
     guests:g('ar-guest'),ext_name:g('ar-ext-name'),ext_people:document.getElementById('ar-ext-people')?.value||'',
     status:'pending'
   };
@@ -609,6 +612,7 @@ function arViewBodyHTML(r, cats) {
     ${vrow('الاسم', r.supervisor)}
     ${vrow('الكلية', r.sup_college)}
     ${vrow('الهاتف', r.sup_phone)}
+    ${(r.extra_supervisors||[]).map((x,i)=>vrow('مشرف إضافي '+(i+1), [x.name,x.college,x.phone].filter(Boolean).join(' — '))).join('')}
 
     ${(r.guests||r.ext_name||r.ext_people)?vsec('مشاركة جهة خارجية'):''}
     ${vrow('مشاركة جهة خارجية', r.guests)}
@@ -651,4 +655,25 @@ async function viewAR(id) {
     </div>
   </div>`;
   document.body.appendChild(modal);
+}
+
+
+// ═ مشرفون إضافيون في طلب إقامة النشاط (المشرف الأول يبقى في الحقول الأساسية) ═
+function arAddSup(v) {
+  const box=document.getElementById('ar-xsups'); if(!box) return;
+  v=v||{};
+  const d=document.createElement('div'); d.className='g3 ar-xsup'; d.style.cssText='margin-top:8px;padding-top:8px;border-top:1px dashed #ddd';
+  const e=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  d.innerHTML=`<div class="fg"><label>اسم مشرف آخر</label><input type="text" class="xs-n" value="${e(v.name)}"></div>
+    <div class="fg"><label>الكلية</label><select class="xs-c"><option value="">اختر الكلية...</option>${colOpts()}</select></div>
+    <div class="fg"><label>رقم الهاتف</label><div style="display:flex;gap:6px"><input type="text" class="xs-p" value="${e(v.phone)}" style="flex:1"><button type="button" class="btn btn-sm" onclick="this.closest('.ar-xsup').remove()" title="حذف">✕</button></div></div>`;
+  box.appendChild(d);
+  const sel=d.querySelector('.xs-c'); if(v.college) sel.value=v.college;
+}
+function arGetSups() {
+  return Array.from(document.querySelectorAll('#ar-xsups .ar-xsup')).map(d=>({name:d.querySelector('.xs-n').value.trim(),college:d.querySelector('.xs-c').value,phone:d.querySelector('.xs-p').value.trim()})).filter(x=>x.name);
+}
+function arSetSups(list) {
+  const box=document.getElementById('ar-xsups'); if(!box) return; box.innerHTML='';
+  (Array.isArray(list)?list:[]).forEach(x=>arAddSup(x));
 }

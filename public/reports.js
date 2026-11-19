@@ -65,6 +65,7 @@ function buildARBodyHTML(r, cats) {
     <div class="fr"><span class="fl">الكلية:</span><span class="fv">${r.sup_college||''}</span></div>
     <div class="fr"><span class="fl">الهاتف:</span><span class="fv">${r.sup_phone||''}</span></div>
   </div>
+  ${(r.extra_supervisors||[]).map((x,i)=>`<div class="fg3"><div class="fr"><span class="fl">مشرف إضافي ${i+1}:</span><span class="fv">${x.name||''}</span></div><div class="fr"><span class="fl">الكلية:</span><span class="fv">${x.college||''}</span></div><div class="fr"><span class="fl">الهاتف:</span><span class="fv">${x.phone||''}</span></div></div>`).join('')}
   <div class="psub">مشاركة جهة خارجية</div>
   <div class="fr"><span class="fl">مشاركة جهة خارجية:</span><span class="fv">${r.guests||'-'}</span></div>
   <div class="fr"><span class="fl">اسم الجهة الخارجية:</span><span class="fv">${r.ext_name||''}</span></div>

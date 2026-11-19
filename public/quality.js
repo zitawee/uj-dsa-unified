@@ -484,8 +484,8 @@ async function loadParticipants() {
     <div class="card">
       <div class="ct"><i class="ti ti-info-circle"></i>بيانات النشاط</div>
       <div class="g2">
-        <div class="fg"><label>اسم النشاط *</label><input id="pf-act" type="text"></div>
-        <div class="fg"><label>يوم وتاريخ عقد النشاط *</label><input id="pf-date" type="date"></div>
+        <div class="fg"><label>اسم النشاط *</label><input id="pf-act" type="text" onchange="pfAutoSupervisor()"></div>
+        <div class="fg"><label>يوم وتاريخ عقد النشاط *</label><input id="pf-date" type="date" onchange="pfAutoSupervisor()"></div>
         <div class="fg"><label>الجهة المسؤولة</label><select id="pf-org"><option value="">اختر...</option>${DEANSHIP_DEPTS.map(d=>`<option>${d}</option>`).join('')}</select></div>
         <div class="fg"><label>رقم النشاط للتقييم</label><input id="pf-eval" type="text"></div>
         <div class="fg"><label>الحد الأقصى لعدد المسجَّلين عبر رابط التسجيل (اختياري)</label><input id="pf-maxcap" type="number" min="1" placeholder="بدون حدّ إن تُرك فارغاً"></div>
@@ -519,7 +519,7 @@ async function loadParticipants() {
     <div class="card">
       <div class="ct"><i class="ti ti-users-group"></i>المشرفون والموظفون</div>
       <div class="g2">
-        <div class="fg"><label>المشرفون</label><textarea id="pf-sups" placeholder="الاسم الأول&#10;الاسم الثاني"></textarea></div>
+        <div class="fg"><label>المشرفون</label><textarea id="pf-sups" placeholder="الاسم الأول&#10;الاسم الثاني"></textarea><div id="pf-sups-hint" style="font-size:11px;color:var(--g);margin-top:3px"></div></div>
         <div class="fg"><label>الموظفون</label><textarea id="pf-staff" placeholder="الاسم الأول&#10;الاسم الثاني"></textarea></div>
       </div>
     </div>
@@ -1685,4 +1685,24 @@ async function printCommitteesReport() {
     إجمالي الاجتماعات: <strong>${(minutes||[]).length}</strong>
   </div>`;
   openPrint(html);
+}
+
+
+// ═ تعبئة «المشرفون» تلقائياً من حقل «اسم المشرف» في طلب النشاط المطابق (بالاسم، ويُفضَّل المطابق بالتاريخ) — فقط إن كان الحقل فارغاً ═
+let PF_REQ_CACHE = null;
+function pfNorm(t) { return String(t||'').replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim().toLowerCase(); }
+async function pfAutoSupervisor() {
+  const box = document.getElementById('pf-sups'); if (!box) return;
+  const hh = document.getElementById('pf-sups-hint'); if (hh && !box.value.trim()) hh.textContent = '';
+  if (box.value.trim()) return;
+  const name = pfNorm(document.getElementById('pf-act').value), date = document.getElementById('pf-date').value;
+  if (name.length < 4) return;
+  if (!PF_REQ_CACHE) { const r = await api('/api/activity_requests'); PF_REQ_CACHE = Array.isArray(r) ? r : []; }
+  const supNames = r => [r.supervisor].concat((r.extra_supervisors||[]).map(x => x && x.name)).filter(Boolean).join('\n');
+  const m = PF_REQ_CACHE.filter(r => r.supervisor && (() => { const t = pfNorm(r.title); return t && (t === name || (t.length >= 4 && (t.includes(name) || name.includes(t)))); })());
+  if (!m.length) return;
+  const best = m.find(r => date && r.activity_date === date) || m[0];
+  if (box.value.trim()) return;
+  box.value = supNames(best);
+  const h = document.getElementById('pf-sups-hint'); if (h) h.textContent = '✓ أُدرج تلقائياً من طلب النشاط: «' + (best.title || '') + '» — يمكنك التعديل';
 }
