@@ -2426,7 +2426,7 @@ async function logisticsDecision(req, res, { dept, places, statusField, byField,
       for (const place of myPlaces) {
         const booking = await models['hall_bookings'].create({
           hall: place, day: weekdayNameFromDate(doc.activity_date), date: doc.activity_date || '',
-          time_from: doc.time_from || '', time_to: doc.time_to || '', purpose: doc.title || '', supervisor: doc.supervisor || '',
+          time_from: doc.time_from || '', time_to: doc.time_to || '', purpose: doc.title || '', supervisor: [doc.supervisor].concat((doc.get('extra_supervisors')||[]).map(x=>x&&x.name)).filter(Boolean).join('، '),
           confirmed: false, request_id: String(doc._id), created_by: req.user.username,
           source: `محجوز مبدئياً بانتظار الاعتماد النهائي للنشاط — ${doc.title}`
         });
@@ -2582,7 +2582,7 @@ const AR_EDITABLE_FIELDS = [
   'student_name','student_id','phone','college','submit_date',
   'activity_date','time_from','time_to','location',
   'svc_places','svc_activity_point','svc_community_service','svc_security','svc_other',
-  'supervisor','sup_college','sup_phone','guests','ext_name','ext_people'
+  'supervisor','sup_college','sup_phone','extra_supervisors','guests','ext_name','ext_people'
 ];
 app.post('/api/activity_requests/:id/edit-content', auth(), async (req, res) => {
   try {
