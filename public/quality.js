@@ -551,6 +551,7 @@ function showPForm() {
 // ═ تبديل حقل «المستوى» إلى «الرقم الوطني» (أو العكس) لنشاط مُعيّن — يؤثر فقط على نموذج التسجيل الذاتي والكشف المطبوع لهذا النشاط ═
 // ═ نافذة اختيار نوع الكشف قبل الطباعة الجماعية: كل المسجَّلين أم الحاضرين فقط (يُطبَّق على كل العناصر المحدَّدة) ═
 function printSelectedPartsChoice(ids) {
+  window.__bulkPrintIds = ids;
   const existing=document.getElementById('bulk-print-choice-modal'); if(existing) existing.remove();
   const modal=document.createElement('div');
   modal.id='bulk-print-choice-modal';
@@ -559,8 +560,8 @@ function printSelectedPartsChoice(ids) {
   <div style="background:#fff;border-radius:12px;padding:22px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="font-size:14px;font-weight:700;color:var(--g);margin-bottom:14px">🖨️ طباعة (${ids.length}) — اختر البيانات</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-b" onclick="document.getElementById('bulk-print-choice-modal').remove();printSelectedParts(${JSON.stringify(ids)},'all')">👥 كل المسجَّلين</button>
-      <button class="btn btn-g" onclick="document.getElementById('bulk-print-choice-modal').remove();printSelectedParts(${JSON.stringify(ids)},'attended')">✅ الحاضرين فقط</button>
+      <button class="btn btn-b" onclick="document.getElementById('bulk-print-choice-modal').remove();printSelectedParts(window.__bulkPrintIds,'all')">👥 كل المسجَّلين</button>
+      <button class="btn btn-g" onclick="document.getElementById('bulk-print-choice-modal').remove();printSelectedParts(window.__bulkPrintIds,'attended')">✅ الحاضرين فقط</button>
     </div>
     <div style="text-align:left;margin-top:14px"><button class="btn" onclick="document.getElementById('bulk-print-choice-modal').remove()">إلغاء</button></div>
   </div>`;
