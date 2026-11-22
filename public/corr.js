@@ -29,7 +29,7 @@ function crpRenderReg() {
   box.innerHTML = `<div id="crp-stats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
   <div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
     <input id="crp-q" type="text" placeholder="🔍 بحث برقم الكتاب أو الموضوع أو الجهة..." oninput="crpDebounce()" style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:8px">
-    <select id="crp-fs" onchange="crpLoad()"><option value="">كل الحالات</option><option value="open">المفتوحة فقط</option>${CRP_ST.map(k => `<option>${k}</option>`).join('')}</select>
+    <select id="crp-fs" onchange="crpLoad()"><option value="open">المفتوحة فقط</option><option value="">كل الحالات (مع المنجزة)</option>${CRP_ST.map(k => `<option>${k}</option>`).join('')}</select>
     <select id="crp-fp" onchange="crpLoad()"><option value="">كل الأولويات</option><option>عادي</option><option>مهم</option><option>عاجل</option></select>
     <select id="crp-fsrc" onchange="crpLoad()"><option value="">كل الجهات</option>${CRP_SOURCES.map(s => `<option>${crpEsc(s)}</option>`).join('')}</select>
     <label style="font-size:12px">من <input id="crp-ff" type="date" onchange="crpLoad()"></label>
