@@ -3010,7 +3010,7 @@ const Corr = mongoose.model('correspondences', new mongoose.Schema({}, { strict:
 const CORR_STATUSES = ['جديدة','قيد الإجراء','بانتظار رد','محوّلة','منجزة'];
 const CORR_ACTION_TYPES = ['كتاب صادر','إنجاز مهمة','تحويل لجهة','حفظ للعلم'];
 const CORR_PRIORITIES = ['عادي','مهم','عاجل'];
-const CORR_CATS = ['للإجراء','للعلم','للتعميم'];
+const CORR_CATS = ['للإجراء','للمتابعة','للعلم','للتعميم'];
 const corrStr = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, n);
 const corrDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : '');
 function corrView(d) {
