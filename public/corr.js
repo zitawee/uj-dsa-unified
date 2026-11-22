@@ -144,10 +144,9 @@ async function crpActDel(id, aid) { if (!confirm('حذف الإجراء؟')) ret
 
 // ── الطباعة والتصدير ──
 function crpPrintReg() {
-  const rows = CRP_ROWS;
-  openPrint(`<div style="text-align:center;font-weight:800;font-size:14pt;margin-bottom:8px">سجل المعاملات الواردة</div>
-  <table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr>${['#','رقم الوارد','رقم الكتاب','تاريخ الكتاب','الجهة','الموضوع','تاريخ الاستلام','الحالة','موعد الرد'].map(h => `<th style="border:1px solid #444;padding:4px;background:#eee">${h}</th>`).join('')}</tr></thead><tbody>
-  ${rows.map((r, i) => `<tr>${[i + 1, r.in_no, r.book_no, r.book_date, r.source, r.subject, r.received_date, r.status, r.due_date].map(v => `<td style="border:1px solid #444;padding:4px">${crpEsc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+  openPrint(`<div style="text-align:center;font-weight:800;font-size:15pt;margin-bottom:8px">سجل المعاملات الواردة</div>` +
+    crpPrintTbl(['رقم الوارد','رقم الكتاب','تاريخ الكتاب','الجهة','الموضوع','تاريخ الاستلام','الحالة','موعد الرد'],
+      CRP_ROWS.map(r => [r.in_no, r.book_no, r.book_date, r.source, r.subject, r.received_date, r.status, r.due_date])));
 }
 function crpDownload(name, head, rows) {
   const tr = a => '<tr>' + a.map(v => `<td>${crpEsc(v)}</td>`).join('') + '</tr>';
@@ -174,7 +173,22 @@ async function crpRenderRep() {
     <b>المعاملات الواردة خلال الشهر</b><div class="tw"><table><thead><tr><th>رقم الوارد</th><th>الجهة</th><th>الموضوع</th><th>الاستلام</th><th>الحالة</th><th>المدة</th></tr></thead><tbody>${r.received_rows.map(x => `<tr><td>${crpEsc(x.in_no)}</td><td>${crpEsc(x.source)}</td><td>${crpEsc(x.subject)}</td><td>${crpEsc(x.received_date)}</td><td>${crpEsc(x.status)}</td><td>${x.age_days} يوم</td></tr>`).join('') || '<tr><td colspan="6" class="center">لا يوجد</td></tr>'}</tbody></table></div>
     <b style="display:block;margin-top:12px">المعاملات المفتوحة (لم تُنجز بعد)</b><div class="tw"><table><thead><tr><th>رقم الوارد</th><th>الجهة</th><th>الموضوع</th><th>الاستلام</th><th>الحالة</th><th>المدة</th><th>موعد الرد</th></tr></thead><tbody>${r.open_rows.map(x => `<tr${x.overdue ? ' style="background:#FDF0F0"' : ''}><td>${crpEsc(x.in_no)}</td><td>${crpEsc(x.source)}</td><td>${crpEsc(x.subject)}</td><td>${crpEsc(x.received_date)}</td><td>${crpEsc(x.status)}</td><td>${x.age_days} يوم</td><td>${crpEsc(x.due_date || '-')}</td></tr>`).join('') || '<tr><td colspan="7" class="center">لا يوجد</td></tr>'}</tbody></table></div>`;
 }
-function crpPrintRep() { const el = document.getElementById('crp-rep'); if (el) openPrint(`<div style="text-align:center;font-weight:800;font-size:14pt;margin-bottom:8px">تقرير المعاملات — ${crpEsc(CRP_REP && CRP_REP.month)}</div>` + el.innerHTML); }
+function crpPrintTbl(heads, rows) {
+  const th = 'border:1px solid #333;padding:5px 6px;background:#e9ece9;font-size:9.5pt;text-align:right';
+  const td = 'border:1px solid #333;padding:5px 6px;font-size:9.5pt;text-align:right;vertical-align:top';
+  return `<table style="width:100%;border-collapse:collapse;margin:6px 0 14px"><thead><tr><th style="${th};width:28px">#</th>${heads.map(h => `<th style="${th}">${h}</th>`).join('')}</tr></thead><tbody>${
+    rows.map((r, i) => `<tr><td style="${td}">${i + 1}</td>${r.map(v => `<td style="${td}">${crpEsc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${heads.length + 1}" style="${td};text-align:center">لا يوجد</td></tr>`}</tbody></table>`;
+}
+function crpPrintRep() {
+  const r = CRP_REP; if (!r || r.error) return;
+  const box = (l, n) => `<td style="border:1px solid #333;padding:6px 10px;text-align:center"><div style="font-size:9pt">${l}</div><div style="font-size:14pt;font-weight:800">${n}</div></td>`;
+  const h = t => `<div style="font-weight:800;font-size:11.5pt;margin:12px 0 2px;border-bottom:2px solid #333;padding-bottom:2px">${t}</div>`;
+  openPrint(`<div style="text-align:center;font-weight:800;font-size:15pt;margin-bottom:10px">تقرير المعاملات الواردة — ${crpEsc(r.month)}</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:6px"><tr>${box('وارد الشهر', r.received)}${box('أُنجز خلال الشهر', r.done)}${box('مفتوحة', r.open)}${box('متأخرة (حالياً)', r.overdue)}${box('متوسط مدة الإنجاز (يوم)', r.avg_days)}</tr></table>
+    ${h('الوارد حسب الجهة')}${crpPrintTbl(['الجهة', 'العدد'], r.by_source.map(x => [x.source, x.count]))}
+    ${h('المعاملات الواردة خلال الشهر')}${crpPrintTbl(['رقم الوارد', 'الجهة', 'الموضوع', 'الاستلام', 'الحالة', 'المدة (يوم)'], r.received_rows.map(x => [x.in_no, x.source, x.subject, x.received_date, x.status, x.age_days]))}
+    ${h('المعاملات المفتوحة (لم تُنجز بعد)')}${crpPrintTbl(['رقم الوارد', 'الجهة', 'الموضوع', 'الاستلام', 'الحالة', 'المدة (يوم)', 'موعد الرد'], r.open_rows.map(x => [x.in_no, x.source, x.subject, x.received_date, x.status, x.age_days, x.due_date || '-']))}`);
+}
 function crpExcelRep() {
   if (!CRP_REP) return;
   crpDownload('correspondences_' + CRP_REP.month + '.xls', ['رقم الوارد','الجهة','الموضوع','تاريخ الاستلام','الحالة','المدة (يوم)','موعد الرد','النوع'],
