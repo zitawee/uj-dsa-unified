@@ -3003,6 +3003,140 @@ app.post('/api/festival/delete', auth(['admin']), async (req, res) => {
   try { await FestivalSubmission.deleteOne({ _id: req.body.id }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════
+// المعاملات والمراسلات الرسمية (سرّية: للمدير فقط)
+// ═══════════════════════════════════════════════════════════
+const Corr = mongoose.model('correspondences', new mongoose.Schema({}, { strict:false }));
+const CORR_STATUSES = ['جديدة','قيد الإجراء','بانتظار رد','محوّلة','منجزة'];
+const CORR_ACTION_TYPES = ['كتاب صادر','إنجاز مهمة','تحويل لجهة','حفظ للعلم'];
+const CORR_PRIORITIES = ['عادي','مهم','عاجل'];
+const CORR_CATS = ['للإجراء','للعلم','للتعميم'];
+const corrStr = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, n);
+const corrDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : '');
+function corrView(d) {
+  const o = d.toObject ? d.toObject() : d;
+  const today = ammanParts().date;
+  const rec = o.received_at ? ammanParts(new Date(o.received_at)).date : '';
+  const end = o.status === 'منجزة' && o.completed_at ? ammanParts(new Date(o.completed_at)).date : today;
+  const age = rec ? Math.max(0, Math.round((Date.parse(end) - Date.parse(rec)) / 86400000)) : 0;
+  const open = o.status !== 'منجزة';
+  return { ...o, id: String(o._id), _id: undefined, __v: undefined, received_date: rec, age_days: age, overdue: !!(open && o.due_date && o.due_date < today) };
+}
+function corrClean(b) {
+  const out = {};
+  if (b.book_no !== undefined) out.book_no = corrStr(b.book_no, 60);
+  if (b.book_date !== undefined) out.book_date = corrDate(b.book_date);
+  if (b.source !== undefined) out.source = corrStr(b.source, 160);
+  if (b.subject !== undefined) out.subject = corrStr(b.subject, 400);
+  if (b.summary !== undefined) out.summary = corrStr(b.summary, 3000);
+  if (b.category !== undefined) out.category = CORR_CATS.includes(b.category) ? b.category : 'للإجراء';
+  if (b.priority !== undefined) out.priority = CORR_PRIORITIES.includes(b.priority) ? b.priority : 'عادي';
+  if (b.due_date !== undefined) out.due_date = corrDate(b.due_date);
+  if (b.received_at !== undefined) { const t = new Date(b.received_at); if (!isNaN(t)) out.received_at = t.toISOString(); }
+  if (b.notes !== undefined) out.notes = corrStr(b.notes, 3000);
+  return out;
+}
+app.get('/api/corr', auth(['admin']), async (req, res) => {
+  try {
+    const q = {};
+    const st = req.query.status;
+    if (st === 'open') q.status = { $ne: 'منجزة' }; else if (CORR_STATUSES.includes(st)) q.status = st;
+    if (CORR_PRIORITIES.includes(req.query.priority)) q.priority = req.query.priority;
+    if (req.query.source) q.source = String(req.query.source);
+    const docs = await Corr.find(q).sort({ received_at: -1 });
+    let rows = docs.map(corrView);
+    const from = corrDate(req.query.from), to = corrDate(req.query.to);
+    if (from) rows = rows.filter(r => r.received_date >= from);
+    if (to) rows = rows.filter(r => r.received_date <= to);
+    if (req.query.overdue === '1') rows = rows.filter(r => r.overdue);
+    const s = corrStr(req.query.q, 80).toLowerCase();
+    if (s) rows = rows.filter(r => [r.book_no, r.subject, r.source, r.summary, r.in_no].some(x => String(x || '').toLowerCase().includes(s)));
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/corr/stats', auth(['admin']), async (req, res) => {
+  try {
+    const rows = (await Corr.find({})).map(corrView);
+    res.json({ total: rows.length, pending: rows.filter(r => r.status !== 'منجزة').length, done: rows.filter(r => r.status === 'منجزة').length, overdue: rows.filter(r => r.overdue).length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/corr/sources', auth(['admin']), async (req, res) => {
+  try { res.json((await Corr.distinct('source')).filter(Boolean).sort()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/corr/report', auth(['admin']), async (req, res) => {
+  try {
+    const m = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : ammanParts().date.slice(0, 7);
+    const all = (await Corr.find({})).map(corrView);
+    const received = all.filter(r => r.received_date.slice(0, 7) === m);
+    const doneIn = all.filter(r => r.status === 'منجزة' && r.completed_at && ammanParts(new Date(r.completed_at)).date.slice(0, 7) === m);
+    const open = all.filter(r => r.status !== 'منجزة' && r.received_date.slice(0, 7) <= m);
+    const avg = doneIn.length ? Math.round(doneIn.reduce((n, r) => n + r.age_days, 0) / doneIn.length * 10) / 10 : 0;
+    const bySource = {}; received.forEach(r => { const k = r.source || '—'; bySource[k] = (bySource[k] || 0) + 1; });
+    res.json({ month: m, received: received.length, done: doneIn.length, open: open.length, overdue: all.filter(r => r.overdue).length, avg_days: avg,
+      by_source: Object.entries(bySource).sort((a, b) => b[1] - a[1]).map(([source, count]) => ({ source, count })), received_rows: received.reverse(), open_rows: open });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/corr', auth(['admin']), async (req, res) => {
+  try {
+    const d = corrClean(req.body || {});
+    if (!d.subject) return res.status(400).json({ error: 'يرجى كتابة موضوع المعاملة' });
+    if (!d.source) return res.status(400).json({ error: 'يرجى كتابة الجهة الصادر عنها الكتاب' });
+    if (!d.received_at) d.received_at = new Date().toISOString();
+    const year = ammanParts(new Date(d.received_at)).date.slice(0, 4);
+    const last = await Corr.findOne({ year }).sort({ seq: -1 });
+    const seq = (last && last.get('seq') || 0) + 1;
+    const doc = await Corr.create({ category: 'للإجراء', priority: 'عادي', ...d, year, seq, in_no: year + '/' + String(seq).padStart(4, '0'), status: 'جديدة', actions: [], history: [{ at: new Date().toISOString(), status: 'جديدة', note: 'تسجيل المعاملة', by: req.user.fullName || req.user.username }], created_at: new Date().toISOString() });
+    res.json({ ok: true, id: String(doc._id), in_no: doc.get('in_no') });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/corr/:id', auth(['admin']), async (req, res) => {
+  try {
+    const d = corrClean(req.body || {});
+    if (d.subject === '' || d.source === '') return res.status(400).json({ error: 'الموضوع والجهة مطلوبان' });
+    await Corr.updateOne({ _id: req.params.id }, { $set: d });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/corr/:id/status', auth(['admin']), async (req, res) => {
+  try {
+    const status = req.body.status;
+    if (!CORR_STATUSES.includes(status)) return res.status(400).json({ error: 'حالة غير صحيحة' });
+    const doc = await Corr.findById(req.params.id); if (!doc) return res.status(404).json({ error: 'غير موجودة' });
+    const now = new Date().toISOString();
+    const hist = (doc.get('history') || []).map(h => (h.toObject ? h.toObject() : h));
+    hist.push({ at: now, status, note: corrStr(req.body.note, 400), by: req.user.fullName || req.user.username });
+    const set = { status, history: hist, completed_at: status === 'منجزة' ? now : '' };
+    await Corr.updateOne({ _id: doc._id }, { $set: set });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function corrActions(id, fn) {
+  const doc = await Corr.findById(id); if (!doc) throw new Error('غير موجودة');
+  const acts = (doc.get('actions') || []).map(a => (a.toObject ? a.toObject() : a));
+  fn(acts);
+  await Corr.updateOne({ _id: doc._id }, { $set: { actions: acts } });
+}
+function corrAct(b, old) {
+  return { aid: old ? old.aid : crypto.randomBytes(4).toString('hex'),
+    type: CORR_ACTION_TYPES.includes(b.type) ? b.type : 'إنجاز مهمة', text: corrStr(b.text, 800), out_no: corrStr(b.out_no, 60), out_date: corrDate(b.out_date),
+    to: corrStr(b.to, 160), date: corrDate(b.date) || ammanParts().date, done: b.done === undefined ? (old ? !!old.done : false) : !!b.done };
+}
+app.post('/api/corr/:id/action', auth(['admin']), async (req, res) => {
+  try { await corrActions(req.params.id, a => { if (a.length >= 50) throw new Error('عدد الإجراءات كبير'); a.push(corrAct(req.body || {})); }); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/corr/:id/action/update', auth(['admin']), async (req, res) => {
+  try { await corrActions(req.params.id, a => { const i = a.findIndex(x => x.aid === req.body.aid); if (i < 0) throw new Error('الإجراء غير موجود'); a[i] = corrAct({ ...a[i], ...req.body }, a[i]); }); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/corr/:id/action/delete', auth(['admin']), async (req, res) => {
+  try { await corrActions(req.params.id, a => { const i = a.findIndex(x => x.aid === req.body.aid); if (i >= 0) a.splice(i, 1); }); res.json({ ok: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/corr/:id/delete', auth(['admin']), async (req, res) => {
+  try { await Corr.deleteOne({ _id: req.params.id }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log('\n  ══════════════════════════════════════════');
   console.log('  الجامعة الأردنية — عمادة شؤون الطلبة');
