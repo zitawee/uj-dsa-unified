@@ -58,7 +58,7 @@ async function crpLoad() {
     <td><span style="color:${CRP_PRCOL[r.priority] || '#444'};font-weight:700">${crpEsc(r.priority)}</span></td>
     <td><span style="color:${CRP_STCOL[r.status] || '#444'};font-weight:700">${crpEsc(r.status)}</span></td>
     <td style="font-size:12px;${r.overdue ? 'color:#c0392b;font-weight:700' : ''}">${crpEsc(r.due_date || '-')}${r.overdue ? ' ⚠️' : ''}</td>
-    <td>${(r.actions || []).length}</td><td><button class="btn btn-sm" onclick="crpOpen('${r.id}')">فتح</button></td></tr>`).join('') || '<tr><td colspan="11" class="center">لا توجد معاملات</td></tr>';
+    <td>${(r.actions || []).length}</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="crpView('${r.id}')">عرض</button> <button class="btn btn-sm" onclick="crpOpen('${r.id}')">فتح</button></td></tr>`).join('') || '<tr><td colspan="11" class="center">لا توجد معاملات</td></tr>';
 }
 
 // ── نافذة المعاملة (إضافة / عرض / إجراءات) ──
@@ -191,4 +191,22 @@ async function corrDashCard() {
     <div style="display:flex;gap:8px;flex-wrap:wrap">${[['إجمالي المعاملات', st.total, '#333'], ['معلّقة', st.pending, '#B7791F'], ['منجزة', st.done, '#1B6B3A'], ['متأخرة', st.overdue, '#c0392b']].map(([l, n, c]) => `<div style="background:#f6f8f6;border:1px solid var(--border);border-radius:10px;padding:8px 18px;text-align:center"><div style="font-size:11.5px;color:var(--muted)">${l}</div><div style="font-size:20px;font-weight:800;color:${c}">${n}</div></div>`).join('')}</div>`;
   const att = document.getElementById('att-dash-card');
   if (att) att.after(div); else panel.insertBefore(div, panel.firstChild.nextSibling || null);
+}
+
+// ── عرض المعاملة للقراءة فقط (بدون فتح نموذج التعديل) ──
+function crpView(id) {
+  const r = CRP_ROWS.find(x => x.id === id); if (!r) return;
+  const old = document.getElementById('crp-view'); if (old) old.remove();
+  const row = (l, v) => v ? `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed #eee;font-size:13px"><span style="min-width:120px;color:var(--muted)">${l}</span><span style="flex:1">${crpEsc(v)}</span></div>` : '';
+  const d = document.createElement('div'); d.id = 'crp-view';
+  d.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto;font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif";
+  d.onclick = e => { if (e.target === d) d.remove(); };
+  d.innerHTML = `<div style="background:#fff;border-radius:12px;padding:18px;max-width:640px;width:100%;margin:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--g)">معاملة ${crpEsc(r.in_no)}</b><button onclick="document.getElementById('crp-view').remove()" style="background:none;border:none;font-size:18px;cursor:pointer">✕</button></div>
+    <div style="margin-bottom:8px"><span style="color:${CRP_STCOL[r.status] || '#444'};font-weight:700">${crpEsc(r.status)}</span> · <span style="color:${CRP_PRCOL[r.priority] || '#444'};font-weight:700">${crpEsc(r.priority)}</span> · ${crpEsc(r.category)}${r.overdue ? ' · <b style="color:#c0392b">⚠️ متأخرة</b>' : ''}</div>
+    ${row('الموضوع', r.subject)}${row('الجهة', r.source)}${row('رقم الكتاب', r.book_no)}${row('تاريخ الكتاب', r.book_date)}${row('الاستلام', crpFmtDT(r.received_at))}${row('المدة منذ الاستلام', r.age_days + ' يوم')}${row('موعد الرد', r.due_date)}${row('ملخص المطلوب', r.summary)}${row('ملاحظات', r.notes)}
+    <div style="margin-top:10px"><b>الإجراءات</b>${(r.actions || []).map(a => `<div style="font-size:13px;padding:5px 0;border-bottom:1px dashed #eee">${a.done ? '✅' : '⬜'} <b>${crpEsc(a.type)}</b> — ${crpEsc(a.date)}${a.out_no ? ' — صادر رقم ' + crpEsc(a.out_no) + (a.out_date ? ' بتاريخ ' + crpEsc(a.out_date) : '') : ''}${a.to ? ' — إلى: ' + crpEsc(a.to) : ''}${a.text ? '<div style="color:#444">' + crpEsc(a.text) + '</div>' : ''}</div>`).join('') || '<div style="font-size:12px;color:var(--muted)">لا توجد إجراءات</div>'}</div>
+    <div style="margin-top:10px"><b>سجل الحالة</b>${(r.history || []).slice().reverse().map(h => `<div style="font-size:12px;color:#555;padding:3px 0">${crpEsc(crpFmtDT(h.at))} — <b style="color:${CRP_STCOL[h.status] || '#444'}">${crpEsc(h.status)}</b>${h.note ? ' — ' + crpEsc(h.note) : ''}</div>`).join('')}</div>
+    <div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="document.getElementById('crp-view').remove();crpOpen('${r.id}')">فتح للتعديل</button><button class="btn btn-sm" onclick="document.getElementById('crp-view').remove()">إغلاق</button></div></div>`;
+  document.body.appendChild(d);
 }
