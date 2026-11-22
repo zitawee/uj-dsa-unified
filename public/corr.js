@@ -75,7 +75,7 @@ async function crpOpen(id) {
       ${inp('bno', 'رقم الكتاب', r.book_no)}${inp('bdate', 'تاريخ الكتاب', r.book_date, 'date')}
       <div class="fg"><label>الجهة الصادر عنها *</label><input id="crp-src" list="crp-srcs" value="${crpEsc(r.source)}" style="width:100%"><datalist id="crp-srcs">${CRP_SOURCES.map(s => `<option value="${crpEsc(s)}">`).join('')}</datalist></div>
       ${inp('rec', 'تاريخ ووقت الاستلام', crpToLocal(r.received_at), 'datetime-local')}
-      <div class="fg"><label>التصنيف</label><select id="crp-cat" style="width:100%">${['للإجراء','للعلم','للتعميم'].map(k => `<option ${k === (r.category || 'للإجراء') ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+      <div class="fg"><label>التصنيف</label><select id="crp-cat" style="width:100%">${['للإجراء','للمتابعة','للعلم','للتعميم'].map(k => `<option ${k === (r.category || 'للإجراء') ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
       <div class="fg"><label>الأولوية</label><select id="crp-pri" style="width:100%">${['عادي','مهم','عاجل'].map(k => `<option ${k === (r.priority || 'عادي') ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
       ${inp('due', 'الموعد النهائي للرد (اختياري)', r.due_date, 'date')}</div>
     <div class="fg" style="margin-top:8px"><label>الموضوع *</label><input id="crp-subj" value="${crpEsc(r.subject)}" style="width:100%"></div>
