@@ -311,6 +311,13 @@ function buildSidebar() {
     <div class="ni" onclick="go('community_svc',this)"><i class="ti ti-heart-handshake"></i>الخدمات المجتمعية<span class="cnt" id="c-community_svc">0</span></div>
   </div>
 
+  ${ME?.role==='admin' ? `
+  <!-- المعاملات والمراسلات (سرّي) -->
+  <div class="folder-hdr sec-corr" onclick="toggleFolder('f-corr')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-corr"></i><i class="ti ti-mail-opened"></i>المعاملات والمراسلات</div>
+  <div class="folder-body sec-corr" id="f-corr" style="display:none">
+    <div class="ni" onclick="go('corr',this)"><i class="ti ti-inbox"></i>سجل المعاملات</div>
+  </div>` : ''}
+
   <!-- الأدوات -->
   <div class="folder-hdr sec-tools" onclick="toggleFolder('f-tools')"><i class="ti ti-chevron-left folder-arrow" id="arr-f-tools"></i><i class="ti ti-tools"></i>الأدوات</div>
   <div class="folder-body sec-tools" id="f-tools" style="display:none">
@@ -337,7 +344,7 @@ function toggleFolder(id) {
 // ══ Build panels ══
 function buildPanels() {
   const panels = document.getElementById('panels');
-  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','installment_plan','talent_attendance','student_profile','festival','security','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
+  const IDS = ['dash','incomplete','talent_excellence','talent_committee','sports_excellence','sports_ability_test','sports_committee','sports_certificate','room_booking','training_courses','finance','installment_plan','talent_attendance','student_profile','festival','corr','security','students','achievements','activity_requests','activity_requests_external','announcements','hall_bookings','participants','committees','meeting_invites','meeting_minutes','governance','student_activities','student_activities_external','student_honors','staff_committees','staff_training','staff_innovation','staff_honors','uni_committees','community_svc','reports','committee_report','sa_report','cat_report','eval_report','search','users','archive'];
   panels.innerHTML = IDS.map(id=>`<div id="panel-${id}" class="panel${id==='dash'?' active':''}"></div>`).join('');
 }
 
@@ -469,7 +476,7 @@ function go(name, el) {
   if (el) el.classList.add('active');
   if (window.innerWidth <= 768) closeSidebar();
   const loaders = {
-    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, talent_attendance:()=>loadTalentAttendance(), student_profile:()=>loadStudentProfile(), festival:()=>loadFestival(), security:()=>loadSecurity(), students:loadStudents, achievements:loadAchievements,
+    dash:loadDash, incomplete:loadIncomplete, talent_excellence:loadTalent, talent_committee:loadTalentCommittee, sports_excellence:loadSports, sports_ability_test:loadSportsAbilityTest, sports_committee:loadSportsCommittee, sports_certificate:loadSportsCertificates, room_booking:loadRoomBooking, training_courses:loadTrainingCourses, finance:loadFinance, installment_plan:loadInstallmentPlan, talent_attendance:()=>loadTalentAttendance(), student_profile:()=>loadStudentProfile(), festival:()=>loadFestival(), corr:()=>loadCorr(), security:()=>loadSecurity(), students:loadStudents, achievements:loadAchievements,
     activity_requests:loadAR, activity_requests_external:loadARExternal, announcements:()=>loadForm('announcements'), hall_bookings:()=>loadForm('hall_bookings'),
     participants:()=>loadParticipants(), committees:()=>loadForm('committees'),
     meeting_invites:()=>loadForm('meeting_invites'), meeting_minutes:()=>loadForm('meeting_minutes'),
@@ -569,7 +576,7 @@ async function loadDash() {
       </div>`;
     }).join('')}
   </div></div>`;
-  if (canEditGlobal() && typeof attDashCard==='function') attDashCard();
+  if (canEditGlobal() && typeof attDashCard==='function') Promise.resolve(attDashCard()).catch(()=>{}).then(()=>{ if (typeof corrDashCard==='function') corrDashCard(); });
 }
 
 async function delRec(table,id,cb) {
