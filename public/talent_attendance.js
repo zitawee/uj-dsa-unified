@@ -11,7 +11,7 @@ function loadTalentAttendance() {
   const panel = document.getElementById('panel-talent_attendance');
   if (!panel) return;
   panel.innerHTML = `
-  <div class="ph"><div><div class="pt">حضور طلبة التفوق الفني</div><div class="ps">زيارة مستمرة خلال الدوام ٨:٠٠ صباحاً – ٣:٠٠ عصراً — يمسح الطالب الرمز المعروض على الشاشة فتُسجَّل زيارته بالتاريخ واليوم والوقت</div></div></div>
+  <div class="ph"><div><div class="pt">حضور طلبة التفوق الفني</div><div class="ps">زيارة مستمرة خلال الدوام ٨:٠٠ صباحاً – ٤:٠٠ عصراً — يمسح الطالب الرمز المعروض على الشاشة فتُسجَّل زيارته بالتاريخ واليوم والوقت</div></div></div>
   <div class="card" style="display:flex;gap:8px">
     <button class="btn btn-sm" id="att-t-today" onclick="attTab('today')">📺 الزيارات والشاشات</button>
     <button class="btn btn-sm" id="att-t-report" onclick="attTab('report')">📊 التقرير الشهري</button>
@@ -231,7 +231,7 @@ function openAttendQR(activity) {
   ov.innerHTML = `<button onclick="closeAttendQR()" style="position:absolute;top:12px;left:12px;padding:8px 16px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;z-index:2">✕ إغلاق</button>
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;min-width:0">
       <div style="font-size:26px;font-weight:800;color:#0F5132">تسجيل الحضور — ${attEsc(activity)}</div>
-      <div style="font-size:15px;color:#666;margin:4px 0 14px">امسح الرمز بكاميرا هاتفك ثم أدخل رقمك الجامعي (الدوام ٨:٠٠ – ٣:٠٠)</div>
+      <div style="font-size:15px;color:#666;margin:4px 0 14px">امسح الرمز بكاميرا هاتفك ثم أدخل رقمك الجامعي (الدوام ٨:٠٠ – ٤:٠٠)</div>
       <img id="att-qr-img" style="width:min(64vh,50vw);height:min(64vh,50vw);image-rendering:pixelated" alt="">
       <div style="font-size:13px;color:#888;margin-top:8px">يتجدد الرمز تلقائياً كل ثوانٍ</div></div>
     <div style="width:min(340px,38vw);border-right:1px solid #e3e6e0;background:#f8faf8;padding:56px 12px 12px;overflow:auto">
