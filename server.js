@@ -1668,7 +1668,7 @@ app.get('/api/admin/backup', auth(['admin']), async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 const TalentVisit = mongoose.model('talent_visit', new mongoose.Schema({}, { strict:false, timestamps:true }));
 const TalentAttendCfg = mongoose.model('talent_attend_cfg', new mongoose.Schema({}, { strict:false }));
-const ATT_OPEN = '08:00:00', ATT_CLOSE = '15:00:00';
+const ATT_OPEN = '08:00:00', ATT_CLOSE = '16:00:00';
 const ATT_TICKET_MINUTES = 2;
 const ATT_WINDOW_SECONDS = 10;   // مدة تجدد رمز الحضور (مستقلة عن رمز التسجيل داخل القاعة)
 const ATT_ROLES = ['admin','editor'];
