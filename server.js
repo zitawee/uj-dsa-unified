@@ -3147,6 +3147,171 @@ app.post('/api/corr/:id/delete', auth(['admin']), async (req, res) => {
   try { await Corr.deleteOne({ _id: req.params.id }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════
+// البرنامج الرمضاني — استقبال مقترحات الكليات (صفحة عامة) + قرارات + تحويل المعتمد إلى «طلب إقامة نشاط»
+// ═══════════════════════════════════════════════════════════
+const RamSettings = mongoose.model('ramadan_settings', new mongoose.Schema({}, { strict:false }));
+const RamSubmission = mongoose.model('ramadan_submissions', new mongoose.Schema({}, { strict:false }));
+const RAM_TYPES = ['ندوة / حوار فكري أو توعوي','مسابقة','مبادرة طلابية','ورشة تطبيقية','أخرى'];
+const RAM_TYPE_MAP = { 'ندوة / حوار فكري أو توعوي':'جلسة', 'مسابقة':'مسابقة', 'مبادرة طلابية':'مبادرة', 'ورشة تطبيقية':'ورشة', 'أخرى':'أخرى' };
+const RAM_STATUSES = ['جديد','قيد الدراسة','معتمد','معتذر عنه'];
+const ramHits = {};
+async function ramGetSettings() {
+  const d = await RamSettings.findOne({ key: 'main' });
+  const g = k => d ? d.get(k) : undefined;
+  return { title: g('title') || 'البرنامج الرمضاني — مقترحات الكليات', subtitle: g('subtitle') || 'نموذج ترشيح الأنشطة والفعاليات',
+    intro: g('intro') || '', logo: g('logo') || '', color: g('color') || '#0F5132',
+    open_date: g('open_date') || '', close_date: g('close_date') || '', colleges: g('colleges') || [] };
+}
+function ramState(s) {
+  const t = ammanParts().date;
+  if (!s.open_date || !s.close_date) return 'closed';
+  return t < s.open_date ? 'not_yet' : (t > s.close_date ? 'closed' : 'open');
+}
+function ramProps(arr, old) {
+  const out = [];
+  for (const p of (Array.isArray(arr) ? arr : []).slice(0, 20)) {
+    const type = RAM_TYPES.includes(p.type) ? p.type : null;
+    if (!type) throw new Error('يرجى اختيار نوع كل مقترح');
+    const title = festStr(p.title, 200); if (!title) throw new Error('يرجى كتابة عنوان لكل مقترح');
+    const other_text = festStr(p.other_text, 120);
+    if (type === 'أخرى' && !other_text) throw new Error('يرجى كتابة نوع المقترح عند اختيار "أخرى"');
+    const cnt = p.expected_count === '' || p.expected_count == null ? 0 : Math.round(Number(p.expected_count));
+    if (!(cnt >= 0 && cnt <= 5000)) throw new Error('العدد المتوقع غير صحيح');
+    const sd = /^\d{4}-\d{2}-\d{2}$/.test(p.suggested_date || '') ? p.suggested_date : '';
+    const prev = old && old.find(o => o.pid && o.pid === p.pid);
+    out.push({ pid: prev ? prev.pid : crypto.randomBytes(5).toString('hex'), type, other_text: type === 'أخرى' ? other_text : '', title,
+      description: festStr(p.description, 1500), audience: festStr(p.audience, 200), expected_count: cnt, suggested_date: sd,
+      place: festStr(p.place, 200), needs: festStr(p.needs, 800),
+      status: prev ? prev.status : 'جديد', committee_note: prev ? (prev.committee_note || '') : '', request_ref: prev ? (prev.request_ref || '') : '' });
+  }
+  if (!out.length) throw new Error('أضف مقترحاً واحداً على الأقل');
+  return out;
+}
+function ramBase(b, s, fixedSource) {
+  let source = fixedSource, other = false;
+  if (!source) {
+    source = festStr(b.source, 160);
+    if (b.source_other) { source = festStr(b.source_other, 160); other = true; }
+    else if (!s.colleges.includes(source)) throw new Error('يرجى اختيار الكلية من القائمة');
+    if (!source) throw new Error('يرجى تحديد الجهة');
+  }
+  const c = b.contact || {};
+  const contact = { name: festStr(c.name, 120), title: festStr(c.title, 120), phone: festStr(c.phone, 30), email: festStr(c.email, 160).toLowerCase() };
+  if (!contact.name) throw new Error('يرجى كتابة اسم ضابط الارتباط');
+  if (!/^[0-9+\-\s()]{7,20}$/.test(contact.phone)) throw new Error('رقم الهاتف غير صحيح');
+  if (contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) throw new Error('البريد الإلكتروني غير صحيح');
+  return { source, is_other: other, contact, notes: festStr(b.notes, 1500) };
+}
+app.get('/api/public/ramadan/info', async (req, res) => {
+  try { const s = await ramGetSettings(); res.json({ ...s, types: RAM_TYPES, state: ramState(s) }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/public/ramadan/submit', async (req, res) => {
+  try {
+    const ip = req.ip || 'x', now = Date.now();
+    ramHits[ip] = (ramHits[ip] || []).filter(t => now - t < 3600000);
+    if (ramHits[ip].length >= 15) return res.status(429).json({ error: 'محاولات كثيرة، يرجى المحاولة لاحقاً' });
+    const cap = publicCaptchas[req.body.captcha_token];
+    if (!cap || now > cap.expires || Number(req.body.captcha_answer) !== cap.answer) return res.status(400).json({ error: 'إجابة التحقق غير صحيحة، يرجى المحاولة من جديد' });
+    delete publicCaptchas[req.body.captcha_token]; ramHits[ip].push(now);
+    const s = await ramGetSettings();
+    if (ramState(s) !== 'open') return res.status(400).json({ error: 'باب استقبال المقترحات غير مفتوح حالياً' });
+    const base = ramBase(req.body, s), props = ramProps(req.body.proposals, null);
+    const last = await RamSubmission.findOne({}).sort({ seq: -1 });
+    const seq = (last && last.get('seq') || 0) + 1, ref = 'RAM-' + String(seq).padStart(4, '0'), token = crypto.randomBytes(16).toString('hex');
+    await RamSubmission.create({ seq, ref, ...base, proposals: props, edit_token: token, created_at: new Date(), updated_at: new Date() });
+    let emailed = false;
+    if (base.contact.email) try {
+      const link = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.get('host') + '/ramadan.html?t=' + token;
+      await sendBrevoEmail(base.contact.email, base.contact.name, 'تأكيد استلام مقترحات البرنامج الرمضاني',
+        `<div dir="rtl" style="font-family:Tahoma,Arial"><p>مرحباً ${base.contact.name}،</p><p>تم استلام مقترحات <b>${base.source}</b> برقم مرجعي <b>${ref}</b> (${props.length} مقترح).</p><p>يمكنكم تعديلها حتى إغلاق الباب عبر الرابط:<br><a href="${link}">${link}</a></p></div>`);
+      emailed = true;
+    } catch (e) {}
+    res.json({ ok: true, ref, edit_token: token, emailed });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/public/ramadan/submission/:token', async (req, res) => {
+  try {
+    const d = await RamSubmission.findOne({ edit_token: festStr(req.params.token, 64) });
+    if (!d) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const s = await ramGetSettings();
+    res.json({ ref: d.get('ref'), source: d.get('source'), contact: d.get('contact'), proposals: d.get('proposals') || [], notes: d.get('notes') || '', state: ramState(s) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/public/ramadan/submission/:token', async (req, res) => {
+  try {
+    const d = await RamSubmission.findOne({ edit_token: festStr(req.params.token, 64) });
+    if (!d) return res.status(404).json({ error: 'الرابط غير صحيح' });
+    const s = await ramGetSettings();
+    if (ramState(s) !== 'open') return res.status(400).json({ error: 'انتهى باب التسجيل، لا يمكن التعديل' });
+    const base = ramBase(req.body, s, d.get('source')), props = ramProps(req.body.proposals, d.get('proposals') || []);
+    await RamSubmission.updateOne({ _id: d._id }, { $set: { contact: base.contact, notes: base.notes, proposals: props, updated_at: new Date() } });
+    res.json({ ok: true, ref: d.get('ref') });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/ramadan/settings', auth(['admin','editor']), async (req, res) => {
+  try { const s = await ramGetSettings(); res.json({ ...s, state: ramState(s) }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/ramadan/settings', auth(['admin']), async (req, res) => {
+  try {
+    const b = req.body || {}, set = {};
+    ['title','subtitle','intro'].forEach(k => { if (b[k] !== undefined) set[k] = festStr(b[k], k === 'intro' ? 2000 : 200); });
+    if (b.color !== undefined) set.color = /^#[0-9a-fA-F]{6}$/.test(b.color) ? b.color : '#0F5132';
+    ['open_date','close_date'].forEach(k => { if (b[k] !== undefined) { if (b[k] && !/^\d{4}-\d{2}-\d{2}$/.test(b[k])) throw new Error('تاريخ غير صحيح'); set[k] = b[k] || ''; } });
+    if (set.open_date && set.close_date && set.close_date < set.open_date) throw new Error('تاريخ الإغلاق قبل تاريخ الفتح');
+    if (b.logo !== undefined) { if (b.logo && (!/^data:image\/(png|jpeg|webp);base64,/.test(b.logo) || b.logo.length > 1500000)) throw new Error('الشعار غير صالح أو كبير الحجم'); set.logo = b.logo || ''; }
+    if (b.colleges !== undefined) set.colleges = [...new Set((Array.isArray(b.colleges) ? b.colleges : []).map(u => festStr(u, 120)).filter(Boolean))].slice(0, 200);
+    await RamSettings.updateOne({ key: 'main' }, { $set: set }, { upsert: true });
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/ramadan/submissions', auth(['admin','editor']), async (req, res) => {
+  try {
+    const docs = await RamSubmission.find({}).sort({ seq: 1 });
+    res.json(docs.map(d => ({ id: String(d._id), ref: d.get('ref'), source: d.get('source'), is_other: !!d.get('is_other'), contact: d.get('contact'), proposals: d.get('proposals') || [], notes: d.get('notes') || '', edit_token: d.get('edit_token'), created_at: d.get('created_at') })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function ramUpdateProp(id, pid, fn) {
+  const d = await RamSubmission.findById(id); if (!d) throw new Error('غير موجود');
+  const props = (d.get('proposals') || []).map(p => ({ ...(p.toObject ? p.toObject() : p) }));
+  const p = props.find(x => x.pid === pid); if (!p) throw new Error('المقترح غير موجود');
+  const extra = await fn(p, d);
+  await RamSubmission.updateOne({ _id: d._id }, { $set: { proposals: props } });
+  return extra;
+}
+app.post('/api/ramadan/decision', auth(['admin','editor']), async (req, res) => {
+  try {
+    const { id, pid, status, committee_note } = req.body || {};
+    if (!RAM_STATUSES.includes(status)) return res.status(400).json({ error: 'حالة غير صحيحة' });
+    await ramUpdateProp(id, pid, p => { p.status = status; p.committee_note = festStr(committee_note, 600); });
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/ramadan/convert', auth(['admin','editor']), async (req, res) => {
+  try {
+    const { id, pid } = req.body || {};
+    const ref = await ramUpdateProp(id, pid, async (p, d) => {
+      if (p.request_ref) throw new Error('تم تحويل هذا المقترح مسبقاً (' + p.request_ref + ')');
+      const c = d.get('contact') || {};
+      const ref_code = genRefCode();
+      await models['activity_requests'].create({
+        ref_code, status: 'pending', submitted_via: 'ramadan_program', created_by: req.user.username,
+        type: RAM_TYPE_MAP[p.type] || 'أخرى', title: p.title, description: p.description || '', audience: p.audience || '',
+        organizer: 'دائرة النشاطات الثقافية والحزبية', student_name: c.name || '', phone: c.phone || '', college: d.get('is_other') ? '' : d.get('source'),
+        submit_date: ammanParts().date, activity_date: p.suggested_date || '', location: p.place || '', svc_other: p.needs || '',
+        supervisor: c.name || '', sup_phone: c.phone || '', ext_name: d.get('is_other') ? d.get('source') : '',
+        guests: 'البرنامج الرمضاني — ' + d.get('source') + ' (' + d.get('ref') + ')',
+      });
+      p.request_ref = ref_code; if (p.status !== 'معتمد') p.status = 'معتمد';
+      return ref_code;
+    });
+    res.json({ ok: true, ref_code: ref });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/ramadan/delete', auth(['admin']), async (req, res) => {
+  try { await RamSubmission.deleteOne({ _id: req.body.id }); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log('\n  ══════════════════════════════════════════');
   console.log('  الجامعة الأردنية — عمادة شؤون الطلبة');
