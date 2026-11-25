@@ -3027,6 +3027,7 @@ function corrClean(b) {
   if (b.book_no !== undefined) out.book_no = corrStr(b.book_no, 60);
   if (b.book_date !== undefined) out.book_date = corrDate(b.book_date);
   if (b.source !== undefined) out.source = corrStr(b.source, 160);
+  if (b.sent_to !== undefined) out.sent_to = corrStr(b.sent_to, 160);
   if (b.subject !== undefined) out.subject = corrStr(b.subject, 400);
   if (b.summary !== undefined) out.summary = corrStr(b.summary, 3000);
   if (b.category !== undefined) out.category = CORR_CATS.includes(b.category) ? b.category : 'للإجراء';
@@ -3050,7 +3051,7 @@ app.get('/api/corr', auth(['admin']), async (req, res) => {
     if (to) rows = rows.filter(r => r.received_date <= to);
     if (req.query.overdue === '1') rows = rows.filter(r => r.overdue);
     const s = corrStr(req.query.q, 80).toLowerCase();
-    if (s) rows = rows.filter(r => [r.book_no, r.subject, r.source, r.summary, r.in_no].some(x => String(x || '').toLowerCase().includes(s)));
+    if (s) rows = rows.filter(r => [r.book_no, r.subject, r.source, r.sent_to, r.summary, r.in_no].some(x => String(x || '').toLowerCase().includes(s)));
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
