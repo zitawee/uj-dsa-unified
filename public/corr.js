@@ -37,7 +37,7 @@ function crpRenderReg() {
     <label style="font-size:12px"><input id="crp-fo" type="checkbox" onchange="crpLoad()"> المتأخرة فقط</label>
     <button class="btn btn-sm" onclick="crpPrintReg()"><i class="ti ti-printer"></i> طباعة السجل</button>
     <button class="btn btn-sm" onclick="crpExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button></div>
-    <div class="tw"><table><thead><tr><th>رقم الوارد</th><th>رقم الكتاب / تاريخه</th><th>الجهة</th><th>الموضوع</th><th>الاستلام</th><th>المدة</th><th>الأولوية</th><th>الحالة</th><th>موعد الرد</th><th>إجراءات</th><th></th></tr></thead><tbody id="crp-rows"></tbody></table></div></div>`;
+    <div class="tw"><table><thead><tr><th>رقم الكتاب / تاريخه</th><th>الجهة الصادر عنها</th><th>الجهة المرسل لها</th><th>الموضوع</th><th>الاستلام</th><th>المدة</th><th>الحالة</th><th>إجراءات</th><th></th></tr></thead><tbody id="crp-rows"></tbody></table></div></div>`;
   crpLoad();
 }
 let CRP_T = null;
@@ -52,13 +52,11 @@ async function crpLoad() {
   if (sb && st && !st.error) sb.innerHTML = [['الإجمالي', st.total, '#333'], ['معلّقة', st.pending, '#B7791F'], ['منجزة', st.done, '#1B6B3A'], ['متأخرة', st.overdue, '#c0392b']].map(([l, n, c]) => `<div class="card" style="padding:8px 16px;margin:0;text-align:center"><div style="font-size:11.5px;color:var(--muted)">${l}</div><div style="font-size:20px;font-weight:800;color:${c}">${n}</div></div>`).join('');
   const tb = document.getElementById('crp-rows'); if (!tb) return;
   tb.innerHTML = CRP_ROWS.map(r => `<tr${r.overdue ? ' style="background:#FDF0F0"' : ''}>
-    <td><b>${crpEsc(r.in_no)}</b></td><td>${crpEsc(r.book_no)}<div style="font-size:11px;color:var(--muted)">${crpEsc(r.book_date)}</div></td>
-    <td>${crpEsc(r.source)}</td><td style="max-width:260px">${crpEsc(r.subject)}</td>
+    <td>${crpEsc(r.book_no)}<div style="font-size:11px;color:var(--muted)">${crpEsc(r.book_date)}</div></td>
+    <td>${crpEsc(r.source)}</td><td>${crpEsc(r.sent_to || '-')}</td><td style="max-width:260px">${crpEsc(r.subject)}${r.overdue ? ' <span title="متأخرة">⚠️</span>' : ''}</td>
     <td style="font-size:12px">${crpEsc(crpFmtDT(r.received_at))}</td><td>${r.age_days} يوم</td>
-    <td><span style="color:${CRP_PRCOL[r.priority] || '#444'};font-weight:700">${crpEsc(r.priority)}</span></td>
     <td><span style="color:${CRP_STCOL[r.status] || '#444'};font-weight:700">${crpEsc(r.status)}</span></td>
-    <td style="font-size:12px;${r.overdue ? 'color:#c0392b;font-weight:700' : ''}">${crpEsc(r.due_date || '-')}${r.overdue ? ' ⚠️' : ''}</td>
-    <td>${(r.actions || []).length}</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="crpView('${r.id}')">عرض</button> <button class="btn btn-sm" onclick="crpOpen('${r.id}')">فتح</button></td></tr>`).join('') || '<tr><td colspan="11" class="center">لا توجد معاملات</td></tr>';
+    <td>${(r.actions || []).length}</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="crpView('${r.id}')">عرض</button> <button class="btn btn-sm" onclick="crpOpen('${r.id}')">فتح</button></td></tr>`).join('') || '<tr><td colspan="9" class="center">لا توجد معاملات</td></tr>';
 }
 
 // ── نافذة المعاملة (إضافة / عرض / إجراءات) ──
@@ -74,6 +72,7 @@ async function crpOpen(id) {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
       ${inp('bno', 'رقم الكتاب', r.book_no)}${inp('bdate', 'تاريخ الكتاب', r.book_date, 'date')}
       <div class="fg"><label>الجهة الصادر عنها *</label><input id="crp-src" list="crp-srcs" value="${crpEsc(r.source)}" style="width:100%"><datalist id="crp-srcs">${CRP_SOURCES.map(s => `<option value="${crpEsc(s)}">`).join('')}</datalist></div>
+      <div class="fg"><label>الجهة المرسل لها</label><input id="crp-to" list="crp-tos" value="${crpEsc(r.sent_to)}" style="width:100%"><datalist id="crp-tos">${[...new Set(CRP_ROWS.map(x => x.sent_to).filter(Boolean).concat(CRP_SOURCES))].map(s => `<option value="${crpEsc(s)}">`).join('')}</datalist></div>
       ${inp('rec', 'تاريخ ووقت الاستلام', crpToLocal(r.received_at), 'datetime-local')}
       <div class="fg"><label>التصنيف</label><select id="crp-cat" style="width:100%">${['للإجراء','للمتابعة','للعلم','للتعميم'].map(k => `<option ${k === (r.category || 'للإجراء') ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
       <div class="fg"><label>الأولوية</label><select id="crp-pri" style="width:100%">${['عادي','مهم','عاجل'].map(k => `<option ${k === (r.priority || 'عادي') ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
@@ -89,7 +88,7 @@ async function crpOpen(id) {
 }
 async function crpSave(id) {
   const g = i => document.getElementById('crp-' + i).value;
-  const body = { book_no: g('bno'), book_date: g('bdate'), source: g('src'), received_at: g('rec') ? new Date(g('rec')).toISOString() : '', category: g('cat'), priority: g('pri'), due_date: g('due'), subject: g('subj'), summary: g('sum'), notes: g('notes') };
+  const body = { book_no: g('bno'), book_date: g('bdate'), source: g('src'), sent_to: g('to'), received_at: g('rec') ? new Date(g('rec')).toISOString() : '', category: g('cat'), priority: g('pri'), due_date: g('due'), subject: g('subj'), summary: g('sum'), notes: g('notes') };
   const r = id ? await api('/api/corr/' + id, 'PUT', body) : await api('/api/corr', 'POST', body);
   if (r && r.error) return alert(r.error);
   if (!id) { document.getElementById('crp-dlg').remove(); alert('تم التسجيل برقم وارد: ' + r.in_no); }
@@ -148,8 +147,8 @@ async function crpActDel(id, aid) { if (!confirm('حذف الإجراء؟')) ret
 // ── الطباعة والتصدير ──
 function crpPrintReg() {
   openPrint(`<div style="text-align:center;font-weight:800;font-size:15pt;margin-bottom:8px">سجل المعاملات الواردة</div>` +
-    crpPrintTbl(['رقم الوارد','رقم الكتاب','تاريخ الكتاب','الجهة','الموضوع','تاريخ الاستلام','الحالة','موعد الرد'],
-      CRP_ROWS.map(r => [r.in_no, r.book_no, r.book_date, r.source, r.subject, r.received_date, r.status, r.due_date])));
+    crpPrintTbl(['رقم الكتاب','تاريخ الكتاب','الجهة الصادر عنها','الجهة المرسل لها','الموضوع','تاريخ الاستلام','الحالة'],
+      CRP_ROWS.map(r => [r.book_no, r.book_date, r.source, r.sent_to, r.subject, r.received_date, r.status])));
 }
 function crpDownload(name, head, rows) {
   const tr = a => '<tr>' + a.map(v => `<td>${crpEsc(v)}</td>`).join('') + '</tr>';
@@ -157,8 +156,8 @@ function crpDownload(name, head, rows) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' })); a.download = name; a.click();
 }
 function crpExcel() {
-  crpDownload('correspondences.xls', ['رقم الوارد','رقم الكتاب','تاريخ الكتاب','الجهة','الموضوع','الملخص','تاريخ الاستلام','المدة (يوم)','الأولوية','الحالة','موعد الرد','الإجراءات'],
-    CRP_ROWS.map(r => [r.in_no, r.book_no, r.book_date, r.source, r.subject, r.summary, r.received_date, r.age_days, r.priority, r.status, r.due_date, (r.actions || []).map(a => a.type + (a.out_no ? ' ' + a.out_no : '') + (a.text ? ': ' + a.text : '')).join(' | ')]));
+  crpDownload('correspondences.xls', ['رقم الكتاب','تاريخ الكتاب','الجهة الصادر عنها','الجهة المرسل لها','الموضوع','الملخص','تاريخ الاستلام','المدة (يوم)','الحالة','الإجراءات'],
+    CRP_ROWS.map(r => [r.book_no, r.book_date, r.source, r.sent_to, r.subject, r.summary, r.received_date, r.age_days, r.status, (r.actions || []).map(a => a.type + (a.out_no ? ' ' + a.out_no : '') + (a.text ? ': ' + a.text : '')).join(' | ')]));
 }
 
 // ── التقرير الشهري ──
@@ -221,7 +220,7 @@ function crpView(id) {
   d.innerHTML = `<div style="background:#fff;border-radius:12px;padding:18px;max-width:640px;width:100%;margin:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--g)">معاملة ${crpEsc(r.in_no)}</b><button onclick="document.getElementById('crp-view').remove()" style="background:none;border:none;font-size:18px;cursor:pointer">✕</button></div>
     <div style="margin-bottom:8px"><span style="color:${CRP_STCOL[r.status] || '#444'};font-weight:700">${crpEsc(r.status)}</span> · <span style="color:${CRP_PRCOL[r.priority] || '#444'};font-weight:700">${crpEsc(r.priority)}</span> · ${crpEsc(r.category)}${r.overdue ? ' · <b style="color:#c0392b">⚠️ متأخرة</b>' : ''}</div>
-    ${row('الموضوع', r.subject)}${row('الجهة', r.source)}${row('رقم الكتاب', r.book_no)}${row('تاريخ الكتاب', r.book_date)}${row('الاستلام', crpFmtDT(r.received_at))}${row('المدة منذ الاستلام', r.age_days + ' يوم')}${row('موعد الرد', r.due_date)}${row('ملخص المطلوب', r.summary)}${row('ملاحظات', r.notes)}
+    ${row('الموضوع', r.subject)}${row('الجهة الصادر عنها', r.source)}${row('الجهة المرسل لها', r.sent_to)}${row('رقم الكتاب', r.book_no)}${row('تاريخ الكتاب', r.book_date)}${row('الاستلام', crpFmtDT(r.received_at))}${row('المدة منذ الاستلام', r.age_days + ' يوم')}${row('موعد الرد', r.due_date)}${row('ملخص المطلوب', r.summary)}${row('ملاحظات', r.notes)}
     <div style="margin-top:10px"><b>الإجراءات</b>${(r.actions || []).map(a => `<div style="font-size:13px;padding:5px 0;border-bottom:1px dashed #eee">${a.done ? '✅' : '⬜'} <b>${crpEsc(a.type)}</b> — ${crpEsc(a.date)}${a.out_no ? ' — صادر رقم ' + crpEsc(a.out_no) + (a.out_date ? ' بتاريخ ' + crpEsc(a.out_date) : '') : ''}${a.to ? ' — إلى: ' + crpEsc(a.to) : ''}${a.text ? '<div style="color:#444">' + crpEsc(a.text) + '</div>' : ''}</div>`).join('') || '<div style="font-size:12px;color:var(--muted)">لا توجد إجراءات</div>'}</div>
     <div style="margin-top:10px"><b>سجل الحالة</b>${(r.history || []).slice().reverse().map(h => `<div style="font-size:12px;color:#555;padding:3px 0">${crpEsc(crpFmtDT(h.at))} — ${crpHistLine(h)}</div>`).join('')}</div>
     <div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="document.getElementById('crp-view').remove();crpOpen('${r.id}')">فتح للتعديل</button><button class="btn btn-sm" onclick="document.getElementById('crp-view').remove()">إغلاق</button></div></div>`;
