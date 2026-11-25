@@ -121,7 +121,10 @@ function crpDetail(r) {
       <input id="crp-a-to" placeholder="الجهة المحوَّل إليها" style="display:none">
       <input id="crp-a-x" placeholder="تفاصيل الإجراء" style="grid-column:1/-1">
       <button class="btn btn-sm" style="background:var(--g);color:#fff" onclick="crpAddAct('${r.id}')">➕ إضافة إجراء</button></div>
-    <div style="margin-top:12px"><b>سجل الحالة</b>${hist.slice().reverse().map(h => `<div style="font-size:12px;color:#555;padding:3px 0;border-bottom:1px dashed #eee">${crpEsc(crpFmtDT(h.at))} — <b style="color:${CRP_STCOL[h.status] || '#444'}">${crpEsc(h.status)}</b>${h.note ? ' — ' + crpEsc(h.note) : ''}</div>`).join('')}</div>`;
+    <div style="margin-top:12px"><b>سجل الحالة</b>${hist.slice().reverse().map(h => `<div style="font-size:12px;color:#555;padding:3px 0;border-bottom:1px dashed #eee">${crpEsc(crpFmtDT(h.at))} — ${crpHistLine(h)}</div>`).join('')}</div>`;
+}
+function crpHistLine(h) {
+  return h.kind === 'action' ? `<b style="color:#8A5A2B">📝 إجراء</b> — ${crpEsc(h.note)}` : `<b style="color:${CRP_STCOL[h.status] || '#444'}">${crpEsc(h.status)}</b>${h.note ? ' — ' + crpEsc(h.note) : ''}`;
 }
 function crpActType() {
   const t = document.getElementById('crp-a-t').value;
@@ -220,7 +223,7 @@ function crpView(id) {
     <div style="margin-bottom:8px"><span style="color:${CRP_STCOL[r.status] || '#444'};font-weight:700">${crpEsc(r.status)}</span> · <span style="color:${CRP_PRCOL[r.priority] || '#444'};font-weight:700">${crpEsc(r.priority)}</span> · ${crpEsc(r.category)}${r.overdue ? ' · <b style="color:#c0392b">⚠️ متأخرة</b>' : ''}</div>
     ${row('الموضوع', r.subject)}${row('الجهة', r.source)}${row('رقم الكتاب', r.book_no)}${row('تاريخ الكتاب', r.book_date)}${row('الاستلام', crpFmtDT(r.received_at))}${row('المدة منذ الاستلام', r.age_days + ' يوم')}${row('موعد الرد', r.due_date)}${row('ملخص المطلوب', r.summary)}${row('ملاحظات', r.notes)}
     <div style="margin-top:10px"><b>الإجراءات</b>${(r.actions || []).map(a => `<div style="font-size:13px;padding:5px 0;border-bottom:1px dashed #eee">${a.done ? '✅' : '⬜'} <b>${crpEsc(a.type)}</b> — ${crpEsc(a.date)}${a.out_no ? ' — صادر رقم ' + crpEsc(a.out_no) + (a.out_date ? ' بتاريخ ' + crpEsc(a.out_date) : '') : ''}${a.to ? ' — إلى: ' + crpEsc(a.to) : ''}${a.text ? '<div style="color:#444">' + crpEsc(a.text) + '</div>' : ''}</div>`).join('') || '<div style="font-size:12px;color:var(--muted)">لا توجد إجراءات</div>'}</div>
-    <div style="margin-top:10px"><b>سجل الحالة</b>${(r.history || []).slice().reverse().map(h => `<div style="font-size:12px;color:#555;padding:3px 0">${crpEsc(crpFmtDT(h.at))} — <b style="color:${CRP_STCOL[h.status] || '#444'}">${crpEsc(h.status)}</b>${h.note ? ' — ' + crpEsc(h.note) : ''}</div>`).join('')}</div>
+    <div style="margin-top:10px"><b>سجل الحالة</b>${(r.history || []).slice().reverse().map(h => `<div style="font-size:12px;color:#555;padding:3px 0">${crpEsc(crpFmtDT(h.at))} — ${crpHistLine(h)}</div>`).join('')}</div>
     <div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="document.getElementById('crp-view').remove();crpOpen('${r.id}')">فتح للتعديل</button><button class="btn btn-sm" onclick="document.getElementById('crp-view').remove()">إغلاق</button></div></div>`;
   document.body.appendChild(d);
 }
