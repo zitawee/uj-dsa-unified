@@ -3110,11 +3110,20 @@ app.post('/api/corr/:id/status', auth(['admin']), async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-async function corrActions(id, fn) {
+function corrActText(a) {
+  return a.type + (a.out_no ? ' رقم ' + a.out_no + (a.out_date ? ' بتاريخ ' + a.out_date : '') : '') + (a.to ? ' إلى ' + a.to : '') + (a.text ? ' — ' + a.text : '') + (a.date ? ' (' + a.date + ')' : '');
+}
+async function corrActions(id, fn, user) {
   const doc = await Corr.findById(id); if (!doc) throw new Error('غير موجودة');
   const acts = (doc.get('actions') || []).map(a => (a.toObject ? a.toObject() : a));
-  fn(acts);
-  await Corr.updateOne({ _id: doc._id }, { $set: { actions: acts } });
+  const log = fn(acts);   // قد تُرجع الدالة وصفاً لسطر يُضاف إلى سجل الحالة
+  const set = { actions: acts };
+  if (log) {
+    const hist = (doc.get('history') || []).map(h => (h.toObject ? h.toObject() : h));
+    hist.push({ at: new Date().toISOString(), status: doc.get('status'), kind: 'action', note: log, by: user });
+    set.history = hist;
+  }
+  await Corr.updateOne({ _id: doc._id }, { $set: set });
 }
 function corrAct(b, old) {
   return { aid: old ? old.aid : crypto.randomBytes(4).toString('hex'),
@@ -3122,15 +3131,15 @@ function corrAct(b, old) {
     to: corrStr(b.to, 160), date: corrDate(b.date) || ammanParts().date, done: b.done === undefined ? (old ? !!old.done : false) : !!b.done };
 }
 app.post('/api/corr/:id/action', auth(['admin']), async (req, res) => {
-  try { await corrActions(req.params.id, a => { if (a.length >= 50) throw new Error('عدد الإجراءات كبير'); a.push(corrAct(req.body || {})); }); res.json({ ok: true }); }
+  try { await corrActions(req.params.id, a => { if (a.length >= 50) throw new Error('عدد الإجراءات كبير'); const x = corrAct(req.body || {}); a.push(x); return 'إجراء مضاف: ' + corrActText(x); }, req.user.fullName || req.user.username); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/corr/:id/action/update', auth(['admin']), async (req, res) => {
-  try { await corrActions(req.params.id, a => { const i = a.findIndex(x => x.aid === req.body.aid); if (i < 0) throw new Error('الإجراء غير موجود'); a[i] = corrAct({ ...a[i], ...req.body }, a[i]); }); res.json({ ok: true }); }
+  try { await corrActions(req.params.id, a => { const i = a.findIndex(x => x.aid === req.body.aid); if (i < 0) throw new Error('الإجراء غير موجود'); const was = a[i].done; a[i] = corrAct({ ...a[i], ...req.body }, a[i]); return was !== a[i].done ? (a[i].done ? 'إنجاز الإجراء: ' : 'إعادة فتح الإجراء: ') + corrActText(a[i]) : null; }, req.user.fullName || req.user.username); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/corr/:id/action/delete', auth(['admin']), async (req, res) => {
-  try { await corrActions(req.params.id, a => { const i = a.findIndex(x => x.aid === req.body.aid); if (i >= 0) a.splice(i, 1); }); res.json({ ok: true }); }
+  try { await corrActions(req.params.id, a => { const i = a.findIndex(x => x.aid === req.body.aid); if (i < 0) return null; const x = a.splice(i, 1)[0]; return 'حذف إجراء: ' + corrActText(x); }, req.user.fullName || req.user.username); res.json({ ok: true }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/corr/:id/delete', auth(['admin']), async (req, res) => {
