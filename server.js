@@ -1479,20 +1479,20 @@ app.put('/api/sports_excellence/settings', auth(['admin']), async (req, res) => 
 
 // ══ إعدادات عامة (إظهار/إخفاء قسمَي التفوق الفني والرياضي بالقائمة الجانبية) ══
 // GET متاح لأي مستخدم مسجَّل دخول (كل الأدوار تحتاج معرفة الحالة الحالية لبناء القائمة الجانبية بشكل صحيح)
+const SYS_KEYS = ['show_talent','show_sports','show_rooms','show_courses','show_finance','show_ramadan','show_festival','show_installment'];
 app.get('/api/system_settings', auth(), async (req, res) => {
   try {
     const s = await SystemSettings.findOne({ key: 'general' }).lean();
-    res.json({ show_talent: s?.show_talent !== false, show_sports: s?.show_sports !== false });
+    const out = {}; SYS_KEYS.forEach(k => out[k] = s?.[k] !== false);
+    res.json(out);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/system_settings', auth(['admin']), async (req, res) => {
   try {
-    await SystemSettings.findOneAndUpdate(
-      { key: 'general' },
-      { key: 'general', show_talent: req.body.show_talent !== false, show_sports: req.body.show_sports !== false },
-      { upsert: true }
-    );
+    const set = { key: 'general' };
+    SYS_KEYS.forEach(k => { if (typeof req.body[k] === 'boolean') set[k] = req.body[k]; });
+    await SystemSettings.updateOne({ key: 'general' }, { $set: set }, { upsert: true });
     res.json({ message: 'تم الحفظ' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
