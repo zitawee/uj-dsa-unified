@@ -274,14 +274,14 @@ function buildSidebar() {
   <div class="folder-body sec-acts" id="f-acts" style="display:none">
     <div class="ni" onclick="go('students',this)"><i class="ti ti-users"></i>الطلبة المسجلون<span class="cnt" id="c-students">0</span></div>
     <div class="ni" onclick="go('achievements',this)"><i class="ti ti-trophy"></i>الإنجازات والتكريم<span class="cnt" id="c-achievements">0</span></div>
-    ${ME?.role==='admin' ? `<div class="ni" onclick="go('room_booking',this)"><i class="ti ti-bed"></i>نظام حجز الغرف</div>` : ''}
-    ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('training_courses',this)"><i class="ti ti-school"></i>الدورات التدريبية</div>` : ''}
-    ${ME?.role==='admin' ? `<div class="ni" onclick="go('finance',this)"><i class="ti ti-cash"></i>النظام المالي</div>` : ''}
+    ${ME?.role==='admin' && SYS_SETTINGS.show_rooms ? `<div class="ni" onclick="go('room_booking',this)"><i class="ti ti-bed"></i>نظام حجز الغرف</div>` : ''}
+    ${(ME?.role==='admin'||ME?.role==='editor') && SYS_SETTINGS.show_courses ? `<div class="ni" onclick="go('training_courses',this)"><i class="ti ti-school"></i>الدورات التدريبية</div>` : ''}
+    ${ME?.role==='admin' && SYS_SETTINGS.show_finance ? `<div class="ni" onclick="go('finance',this)"><i class="ti ti-cash"></i>النظام المالي</div>` : ''}
     ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('talent_attendance',this)"><i class="ti ti-qrcode"></i>حضور طلبة التفوق الفني</div>` : ''}
-    ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('ramadan',this)"><i class="ti ti-moon-stars"></i>البرنامج الرمضاني</div>` : ''}
-    ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('festival',this)"><i class="ti ti-confetti"></i>مهرجان الجامعات</div>` : ''}
+    ${(ME?.role==='admin'||ME?.role==='editor') && SYS_SETTINGS.show_ramadan ? `<div class="ni" onclick="go('ramadan',this)"><i class="ti ti-moon-stars"></i>البرنامج الرمضاني</div>` : ''}
+    ${(ME?.role==='admin'||ME?.role==='editor') && SYS_SETTINGS.show_festival ? `<div class="ni" onclick="go('festival',this)"><i class="ti ti-confetti"></i>مهرجان الجامعات</div>` : ''}
     ${(ME?.role==='admin'||ME?.role==='editor') ? `<div class="ni" onclick="go('student_profile',this)"><i class="ti ti-id-badge-2"></i>ملف الطالب الموحد</div>` : ''}
-    ${ME?.role==='admin' ? `<div class="ni" onclick="go('installment_plan',this)"><i class="ti ti-calendar-dollar"></i>نظام تقسيط الرسوم</div>` : ''}
+    ${ME?.role==='admin' && SYS_SETTINGS.show_installment ? `<div class="ni" onclick="go('installment_plan',this)"><i class="ti ti-calendar-dollar"></i>نظام تقسيط الرسوم</div>` : ''}
   </div>
 
   <!-- النماذج الرسمية -->
@@ -382,10 +382,10 @@ async function checkSession() {
   if (stored) { ME=JSON.parse(stored); showApp(); }
 }
 
-let SYS_SETTINGS = { show_talent: true, show_sports: true };
+let SYS_SETTINGS = { show_talent: true, show_sports: true, show_rooms: true, show_courses: true, show_finance: true, show_ramadan: true, show_festival: true, show_installment: true };
 async function loadSysSettings() {
   const r = await api('/api/system_settings');
-  if (r && !r.error) SYS_SETTINGS = r;
+  if (r && !r.error) SYS_SETTINGS = { ...SYS_SETTINGS, ...r };
 }
 
 async function showApp() {

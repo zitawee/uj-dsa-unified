@@ -1284,6 +1284,10 @@ async function loadUsers() {
       <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="sys-show-talent" ${SYS_SETTINGS.show_talent?'checked':''}> إظهار قسم "التفوق الفني"</label>
       <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="sys-show-sports" ${SYS_SETTINGS.show_sports?'checked':''}> إظهار قسم "التفوق الرياضي"</label>
     </div>
+    <div style="font-size:12.5px;font-weight:600;margin:6px 0">أقسام «نظام الأنشطة» الموسمية</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px">
+      ${[['rooms','نظام حجز الغرف'],['courses','الدورات التدريبية'],['finance','النظام المالي'],['ramadan','البرنامج الرمضاني'],['festival','مهرجان الجامعات'],['installment','نظام تقسيط الرسوم']].map(([k,l])=>`<label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="sys-show-${k}" ${SYS_SETTINGS['show_'+k]!==false?'checked':''}> إظهار «${l}»</label>`).join('')}
+    </div>
     <button class="btn btn-g" onclick="saveSysSettings()">✔ حفظ</button>
   </div>
   <div class="card">
@@ -1315,9 +1319,11 @@ async function loadUsers() {
 async function saveSysSettings() {
   const show_talent = document.getElementById('sys-show-talent').checked;
   const show_sports = document.getElementById('sys-show-sports').checked;
-  const r = await api('/api/system_settings', 'PUT', { show_talent, show_sports });
+  const body = { show_talent, show_sports };
+  ['rooms','courses','finance','ramadan','festival','installment'].forEach(k => { const el = document.getElementById('sys-show-' + k); if (el) body['show_' + k] = el.checked; });
+  const r = await api('/api/system_settings', 'PUT', body);
   if (r.error) { alert(r.error); return; }
-  SYS_SETTINGS = { show_talent, show_sports };
+  SYS_SETTINGS = { ...SYS_SETTINGS, ...body };
   buildSidebar();
   alert('✅ تم الحفظ — ستظهر/تختفي الأقسام لكل المستخدمين فوراً عند تحديث الصفحة لديهم.');
 }
